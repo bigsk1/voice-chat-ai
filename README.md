@@ -25,13 +25,42 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 ### Steps
 
-Ensure you have Git LFS installed before cloning the repository or you can directly download the files below, these are for whisper and XTTSv2 models 
+Ensure you have Git LFS installed before cloning the repository then you will get large checkpoints downloaded when cloning or you can directly download the files below, these are for whisper and XTTSv2 models 
 
 download directly https://nordnet.blob.core.windows.net/bilde/checkpoints.zip
 
-also https://huggingface.co/coqui/XTTS-v2 
+download directly https://huggingface.co/coqui/XTTS-v2 
 
 download the model and place both in project folder
+
+   ```bash
+   voice-chat-ai/
+├── .gitignore
+├── .env
+├── README.md
+├── app.py
+├── requirements.txt
+├── cpu_requirements.txt
+├── checkpoints/
+│   ├── base_speakers
+│   ├── convertor
+│   
+├── XTTS-v2/
+│   ├── config.json
+│   ├── model.pth
+│   ├── ... (other XTTS model files)
+├── outputs/
+│   └── ... (generated audio files)
+├── samantha/
+│   ├── samantha.txt
+│   ├── prompts.json
+│   └── samantha.wav
+├── wizard/
+│   ├── wizard.txt
+│   ├── prompts.json
+│   └── wizard.wav
+   ```
+
 
 1. Clone the repository:
 
