@@ -19,9 +19,19 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 - Python 3.10
 - CUDA-enabled GPU
 - Microphone
+- Git
+- Git LFS 
 - A sence of humor! 
 
 ### Steps
+
+Ensure you have Git LFS installed before cloning the repository or you can directly download the files below, these are for whisper and XTTSv2 models 
+
+download directly https://nordnet.blob.core.windows.net/bilde/checkpoints.zip
+
+also https://huggingface.co/coqui/XTTS-v2 
+
+download the model and place both in project folder
 
 1. Clone the repository:
 
@@ -37,7 +47,20 @@ Voice Chat AI is a project that allows you to interact with different AI charact
    source venv/bin/activate   # On Windows use `venv\Scripts\Activate`
    ```
 
-or use conda just make it python 3.10
+   or use conda just make it python 3.10
+
+
+   ```bash
+   conda create --name voice-chat-ai python=3.10
+   conda activate voice-chat-ai
+
+   # Install CUDA-enabled PyTorch and other dependencies
+   pip install torch==2.3.1+cu121 torchaudio==2.3.1+cu121 torchvision==0.18.1+cu121 -f https://download.pytorch.org/whl/torch_stable.html
+   pip install -r requirements.txt
+
+   # For CPU-only installations, use:
+   pip install -r cpu_requirements.txt
+   ```
 
 3. Install dependencies:
 
@@ -57,21 +80,60 @@ or use conda just make it python 3.10
 
 ## Configuration
 
-1. Create a `.env` file in the root directory of the project and configure it with the necessary environment variables:
+1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
 
    ```env
-   MODEL_PROVIDER=ollama   # or openai
-   TTS_PROVIDER=xtts       # or openai
-   CHARACTER_NAME=samantha  # or any other character folder name
+   # Conditional API Usage: Depending on the value of MODEL_PROVIDER, that's what will be used when ran! 
+   # use either ollama or openai .
 
-   OPENAI_API_KEY=your-openai-api-key
-   OPENAI_MODEL=gpt-4o      # or your preferred OpenAI model
+   # openai or ollama
+   MODEL_PROVIDER=ollama 
+
+   # Endpoints
+   OPENAI_BASE_URL=https://api.openai.com/v1/chat/completions
+   OLLAMA_BASE_URL=http://localhost:11434
+
+   # Add your OpenAI Api Key 
+   OPENAI_API_KEY=sk-1234
+
+   # Models
+   OPENAI_MODEL=gpt-4o
+   OLLAMA_MODEL=llama3
+   # Conditional API Usage: Depending on the value of MODEL_PROVIDER, that's what will be used when ran 
+   # use either ollama or openai, can mix and match, use local olllama with openai speech or use openai model with local xtts, ect..
+
+   # openai or ollama
+   MODEL_PROVIDER=ollama
+
+   # Enter charactor name to use - samantha, wizard, pirate, valleygirl, newscaster1920s, 
+   CHARACTER_NAME=pirate
+
+   # Text-to-Speech Provider - (xtts local uses the custom charactor .wav) or (openai text to speech uses openai tts voice)
+   # xtts  or  openai
+   TTS_PROVIDER=xtts  
+
+   # The voice speed for xtts only ( 1.0 - 1.5 , default 1.1)
+   XTTS_SPEED=1.1
+
+   # OpenAI TTS Voice - When TTS Provider is set to openai above it will use the chosen voice
+   # Examples here  https://platform.openai.com/docs/guides/text-to-speech
+   # Choose the desired voice options are - alloy, echo, fable, onyx, nova, and shimmer
+   OPENAI_TTS_VOICE=onyx  
+
+
+   # SET THESE BELOW AND NO NEED TO CHANGE OFTEN #
+
+   # Endpoints
    OPENAI_BASE_URL=https://api.openai.com/v1/chat/completions
    OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
-   OPENAI_TTS_VOICE=alloy  # or your preferred voice
-
-   OLLAMA_MODEL=llama3     # or your preferred Ollama model
    OLLAMA_BASE_URL=http://localhost:11434
+
+   # OpenAI API Key for models and speech
+   OPENAI_API_KEY=sk-11111111
+
+   # Models to use - llama3 works good for local
+   OPENAI_MODEL=gpt-4o
+   OLLAMA_MODEL=llama3
    ```
 
 
@@ -91,6 +153,7 @@ python app.py
 ```
 
 ### Commands
+
 - To stop the conversation, say "Quit", "Exit", or "Leave".
 
 ## Adding New Characters
