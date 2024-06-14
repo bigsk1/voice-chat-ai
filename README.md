@@ -25,7 +25,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 ### Steps
 
-Ensure you have Git LFS installed before cloning the repository then you will get large checkpoints downloaded when cloning or you can directly download the files below, these are for whisper and XTTSv2 models 
+Download the models below
 
 download directly https://nordnet.blob.core.windows.net/bilde/checkpoints.zip
 
