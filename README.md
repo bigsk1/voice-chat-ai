@@ -112,22 +112,6 @@ download the model and place both in project folder
 1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
 
    ```env
-   # Conditional API Usage: Depending on the value of MODEL_PROVIDER, that's what will be used when ran! 
-   # use either ollama or openai .
-
-   # openai or ollama
-   MODEL_PROVIDER=ollama 
-
-   # Endpoints
-   OPENAI_BASE_URL=https://api.openai.com/v1/chat/completions
-   OLLAMA_BASE_URL=http://localhost:11434
-
-   # Add your OpenAI Api Key 
-   OPENAI_API_KEY=sk-1234
-
-   # Models
-   OPENAI_MODEL=gpt-4o
-   OLLAMA_MODEL=llama3
    # Conditional API Usage: Depending on the value of MODEL_PROVIDER, that's what will be used when ran 
    # use either ollama or openai, can mix and match, use local olllama with openai speech or use openai model with local xtts, ect..
 
