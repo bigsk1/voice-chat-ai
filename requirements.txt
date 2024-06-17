@@ -4,8 +4,8 @@ torch==2.3.1+cu121
 torchaudio==2.3.1+cu121
 torchvision==0.18.1+cu121
 -f https://download.pytorch.org/whl/torch_stable.html
-pyaudio==0.2.14
-numpy==1.22.0
+pyaudio
+numpy
 faster-whisper==1.0.2
 soundfile==0.12.1
 langid==1.1.6
