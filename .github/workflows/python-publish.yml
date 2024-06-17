@@ -41,4 +41,4 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@release/v1
