@@ -206,3 +206,8 @@ models/
 
 # Ignore the downloads directory
 downloads/
+
+XTTS-v2
+checkpoints
+XTTS-v2/*
+checkpoints/*
