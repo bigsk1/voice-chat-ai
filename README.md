@@ -19,7 +19,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 - Python 3.10
 - CUDA-enabled GPU
 - Microphone
-- A sence of humor!
+- A sence of humor
 
 ### Steps
 
