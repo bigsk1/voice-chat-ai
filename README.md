@@ -115,42 +115,47 @@ unzip XTTS-v2.zip -d .
 
 1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
 
-   ```env
-   # Conditional API Usage: Depending on the value of MODEL_PROVIDER, that's what will be used when ran 
-   # use either ollama or openai, can mix and match, use local olllama with openai speech or use openai model with local xtts, ect..
+```env
+# Conditional API Usage: Depending on the value of MODEL_PROVIDER, that's what will be used when run.
+# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc.
 
-   # openai or ollama
-   MODEL_PROVIDER=ollama
+# Model Provider: openai or ollama
+MODEL_PROVIDER=ollama
 
-   # Enter charactor name to use - samantha, wizard, pirate, valleygirl, newscaster1920s, 
-   CHARACTER_NAME=pirate
+# Character to use - Options: samantha, wizard, pirate, valleygirl, newscaster1920s, alien_scientist, cyberpunk, detective
+CHARACTER_NAME=wizard
 
-   # Text-to-Speech Provider - (xtts local uses the custom charactor .wav) or (openai text to speech uses openai tts voice)
-   # xtts  or  openai
-   TTS_PROVIDER=xtts  
+# Text-to-Speech Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice)
+TTS_PROVIDER=xtts
 
-   # The voice speed for xtts only ( 1.0 - 1.5 , default 1.1)
-   XTTS_SPEED=1.1
+# OpenAI TTS Voice - When TTS_PROVIDER is set to openai above, it will use the chosen voice.
+# If MODEL_PROVIDER is ollama, then it will use the .wav in the character folder.
+# Voice options: alloy, echo, fable, onyx, nova, shimmer
+OPENAI_TTS_VOICE=onyx
 
-   # OpenAI TTS Voice - When TTS Provider is set to openai above it will use the chosen voice
-   # Examples here  https://platform.openai.com/docs/guides/text-to-speech
-   # Choose the desired voice options are - alloy, echo, fable, onyx, nova, and shimmer
-   OPENAI_TTS_VOICE=onyx  
+# Endpoints (set these below and no need to change often)
+OPENAI_BASE_URL=https://api.openai.com/v1/chat/completions
+OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
+OLLAMA_BASE_URL=http://localhost:11434
 
-   # SET THESE BELOW AND NO NEED TO CHANGE OFTEN #
+# OpenAI API Key for models and speech (replace with your actual API key)
+OPENAI_API_KEY=sk-proj-1111111111
 
-   # Endpoints
-   OPENAI_BASE_URL=https://api.openai.com/v1/chat/completions
-   OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
-   OLLAMA_BASE_URL=http://localhost:11434
+# Models to use - llama3 works well for local usage.
+# OPTIONAL: For screen analysis, if MODEL_PROVIDER is ollama, llava will be used by default.
+# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o works well.
+OPENAI_MODEL=gpt-4o
+OLLAMA_MODEL=llama3
 
-   # OpenAI API Key for models and speech
-   OPENAI_API_KEY=sk-11111111
+# The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
+XTTS_SPEED=1.2
 
-   # Models to use - llama3 works good for local
-   OPENAI_MODEL=gpt-4o
-   OLLAMA_MODEL=llama3
-   ```
+# NOTES:
+# List of trigger phrases to have the model view your desktop (desktop, browser, images, etc.).
+# It will describe what it sees, and you can ask questions about it:
+# "what's on my screen", "take a screenshot", "show me my screen", "analyze my screen", 
+# "what do you see on my screen", "screen capture", "screenshot"
+```
 
 ## Usage
 
