@@ -11,7 +11,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 - **Supports both OpenAI and Ollama language models**: Choose the model that best fits your needs.
 - **Provides text-to-speech synthesis using XTTS or OpenAI TTS**: Enjoy natural and expressive voices.
-- **No typing needed, just speak!**: Hands-free interaction makes conversations smooth and effortless.
+- **No typing needed, just speak**: Hands-free interaction makes conversations smooth and effortless.
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
 - **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
@@ -23,6 +23,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 - Python 3.10
 - CUDA-enabled GPU
+- Microsoft C++ Build Tools on windows
 - Microphone
 - A sense of humor
 
@@ -69,6 +70,9 @@ Voice Chat AI is a project that allows you to interact with different AI charact
    ```bash
    pip install -r cpu_requirements.txt
    ```
+
+Need to have Microsoft C++ Build Tools for TTS
+[Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
 ### Download Checkpoints
 
