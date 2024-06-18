@@ -25,43 +25,6 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 ### Steps
 
-Download the models below
-
-download directly https://nordnet.blob.core.windows.net/bilde/checkpoints.zip
-
-download directly https://huggingface.co/coqui/XTTS-v2 
-
-download the model and place both in project folder
-
-   ```bash
-   voice-chat-ai/
-├── .gitignore
-├── .env
-├── README.md
-├── app.py
-├── requirements.txt
-├── cpu_requirements.txt
-├── checkpoints/
-│   ├── base_speakers
-│   ├── convertor
-│   
-├── XTTS-v2/
-│   ├── config.json
-│   ├── model.pth
-│   ├── ... (other XTTS model files)
-├── outputs/
-│   └── ... (generated audio files)
-├── samantha/
-│   ├── samantha.txt
-│   ├── prompts.json
-│   └── samantha.wav
-├── wizard/
-│   ├── wizard.txt
-│   ├── prompts.json
-│   └── wizard.wav
-   ```
-
-
 1. Clone the repository:
 
    ```bash
@@ -107,6 +70,50 @@ download the model and place both in project folder
    pip install -r cpu_requirements.txt
    ```
 
+### Download Checkpoints
+
+You need to download the checkpoints for the models used in this project. You can download them from the GitHub releases page and extract the zip into the project folder.
+
+- [Download EN Checkpoint](https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip)
+
+- [Download XTTS-v2](https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip)
+
+After downloading, place the folders as follows:
+
+```bash
+voice-chat-ai/
+├── checkpoints/
+│   ├── base_speakers/
+│   │   ├── EN/
+│   │   │   └── checkpoint.pth
+│   │   ├── ZH/
+│   │   │   └── checkpoint.pth
+│   ├── converter/
+│   │   └── checkpoint.pth
+├── XTTS-v2/
+│   ├── config.json
+│   ├── other_xtts_files...
+```
+
+#### Linux CLI Instructions
+
+You can use the following commands to download and extract the files directly into the project directory:
+
+
+```sh
+# Navigate to the project directory
+cd /path/to/your/voice-chat-ai
+
+# Download and extract checkpoints.zip
+wget https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip
+unzip checkpoints.zip -d .
+
+# Download and extract XTTS-v2.zip
+wget https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip
+unzip XTTS-v2.zip -d .
+```
+
+
 ## Configuration
 
 1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
@@ -150,13 +157,6 @@ download the model and place both in project folder
    ```
 
 
-2. Add character-specific configuration files:
-   - Create a folder named after your character (e.g., `samantha`).
-   - Add a text file with the character's prompt (e.g., `samantha/samantha.txt`).
-   - Add a JSON file with mood prompts (e.g., `samantha/prompts.json`).
-   - Add the voice sample in the character folder (e.g., `samantha/samantha.wav`).
-
-
 ## Usage
 
 Run the application:
@@ -171,13 +171,13 @@ python app.py
 
 ## Adding New Characters
 
-1. Create a new folder for the character in the root directory.
+1. Create a new folder for the character in the project directory.
 2. Add a text file with the character's prompt (e.g., `wizard/wizard.txt`).
 3. Add a JSON file with mood prompts (e.g., `wizard/prompts.json`).
 
 ## Example Character Configuration
 
-### `wizard/wizard.txt`
+`wizard/wizard.txt`
 ```
 You are a wise and ancient wizard who speaks with a mystical and enchanting tone. You are knowledgeable about many subjects and always eager to share your wisdom.
 ```
@@ -196,6 +196,8 @@ You are a wise and ancient wizard who speaks with a mystical and enchanting tone
     "disgusted": "RESPOND WITH UNDERSTANDING AND COMFORT, LIKE A WISE OLD SAGE WHO KNOWS THAT DISGUST IS A PART OF LIFE."
 }
 ```
+For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automaticly find the .wav when it has the characters name and use it. 
+
 
 ## License
 
