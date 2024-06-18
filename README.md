@@ -9,10 +9,13 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 ## Features
 
-- Supports both OpenAI and Ollama language models.
-- Provides text-to-speech synthesis using XTTS or OpenAI TTS.
-- Analyzes user mood and adjusts AI responses accordingly.
-- Easy configuration through environment variables.
+- **Supports both OpenAI and Ollama language models**: Choose the model that best fits your needs.
+- **Provides text-to-speech synthesis using XTTS or OpenAI TTS**: Enjoy natural and expressive voices.
+- **No typing needed, just speak!**: Hands-free interaction makes conversations smooth and effortless.
+- **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
+- **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
+- **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
+
 
 ## Installation
 
@@ -21,7 +24,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 - Python 3.10
 - CUDA-enabled GPU
 - Microphone
-- A sence of humor
+- A sense of humor
 
 ### Steps
 
@@ -41,7 +44,6 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
    or use conda just make it python 3.10
 
-
    ```bash
    conda create --name voice-chat-ai python=3.10
    conda activate voice-chat-ai
@@ -56,13 +58,11 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 3. Install dependencies:
 
-
    For GPU (CUDA) version:
 
    ```bash
    pip install -r requirements.txt
    ```
-
 
    For CPU-only version:
 
@@ -74,8 +74,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 You need to download the checkpoints for the models used in this project. You can download them from the GitHub releases page and extract the zip into the project folder.
 
-- [Download EN Checkpoint](https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip)
-
+- [Download Checkpoint](https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip)
 - [Download XTTS-v2](https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip)
 
 After downloading, place the folders as follows:
@@ -99,7 +98,6 @@ voice-chat-ai/
 
 You can use the following commands to download and extract the files directly into the project directory:
 
-
 ```sh
 # Navigate to the project directory
 cd /path/to/your/voice-chat-ai
@@ -112,7 +110,6 @@ unzip checkpoints.zip -d .
 wget https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip
 unzip XTTS-v2.zip -d .
 ```
-
 
 ## Configuration
 
@@ -140,7 +137,6 @@ unzip XTTS-v2.zip -d .
    # Choose the desired voice options are - alloy, echo, fable, onyx, nova, and shimmer
    OPENAI_TTS_VOICE=onyx  
 
-
    # SET THESE BELOW AND NO NEED TO CHANGE OFTEN #
 
    # Endpoints
@@ -156,7 +152,6 @@ unzip XTTS-v2.zip -d .
    OLLAMA_MODEL=llama3
    ```
 
-
 ## Usage
 
 Run the application:
@@ -171,18 +166,19 @@ python app.py
 
 ## Adding New Characters
 
-1. Create a new folder for the character in the project directory.
+1. Create a new folder for the character in the project's characters directory.
 2. Add a text file with the character's prompt (e.g., `wizard/wizard.txt`).
 3. Add a JSON file with mood prompts (e.g., `wizard/prompts.json`).
 
 ## Example Character Configuration
 
 `wizard/wizard.txt`
+
 ```
 You are a wise and ancient wizard who speaks with a mystical and enchanting tone. You are knowledgeable about many subjects and always eager to share your wisdom.
 ```
 
-### `wizard/prompts.json`
+`wizard/prompts.json`
 
 ```json
 {
@@ -196,9 +192,9 @@ You are a wise and ancient wizard who speaks with a mystical and enchanting tone
     "disgusted": "RESPOND WITH UNDERSTANDING AND COMFORT, LIKE A WISE OLD SAGE WHO KNOWS THAT DISGUST IS A PART OF LIFE."
 }
 ```
-For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automaticly find the .wav when it has the characters name and use it. 
 
+For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automaticly find the .wav when it has the characters name and use it. 
 
 ## License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License.
