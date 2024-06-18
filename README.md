@@ -65,7 +65,8 @@ Voice Chat AI is a project that allows you to interact with different AI charact
    pip install -r requirements.txt
    ```
 
-   For CPU-only version: ( not advised and may need some additional work )
+   For CPU-only version: clone the cpu-only branch
+   https://github.com/bigsk1/voice-chat-ai/tree/cpu-only
 
    ```bash
    pip install -r cpu_requirements.txt
