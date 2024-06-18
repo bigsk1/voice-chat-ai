@@ -59,13 +59,13 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 3. Install dependencies:
 
-   For GPU (CUDA) version:
+   For GPU (CUDA) version: RECOMMEND
 
    ```bash
    pip install -r requirements.txt
    ```
 
-   For CPU-only version:
+   For CPU-only version: ( not advised and may need some additional work )
 
    ```bash
    pip install -r cpu_requirements.txt
