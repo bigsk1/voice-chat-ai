@@ -4,7 +4,7 @@
 torch==2.3.1
 torchaudio==2.3.1
 torchvision==0.18.1
-pyaudio==0.2.14
+pyaudio
 numpy
 faster-whisper==1.0.2
 soundfile==0.12.1
