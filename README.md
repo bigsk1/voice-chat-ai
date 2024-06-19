@@ -216,7 +216,13 @@ For XTTS find a .wav voice and add it to the wizard folder and name it as wizard
 
 ## Watch the Demos
 
-This is CPU Only mode in demo videos
+GPU - 100% local - ollama llama3, xtts-v2
+
+[![Watch the video](https://img.youtube.com/vi/WsWbYnITdCo/maxresdefault.jpg)](https://youtu.be/WsWbYnITdCo)
+
+
+
+CPU Only mode
 
 Alien conversation using openai gpt4o and openai speech for tts.
 
