@@ -205,6 +205,14 @@ You are a wise and ancient wizard who speaks with a mystical and enchanting tone
 
 For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automaticly find the .wav when it has the characters name and use it. 
 
+
+## Watch the Demo
+
+This is CPU Only mode in demo video using openai gpt4o and openai speech for tts.
+
+[![Watch the video](https://img.youtube.com/vi/d5LbRLhWa5c/maxresdefault.jpg)](https://youtu.be/d5LbRLhWa5c)
+
+
 ## License
 
 This project is licensed under the MIT License.
