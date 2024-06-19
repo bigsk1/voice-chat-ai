@@ -172,7 +172,15 @@ python app.py
 
 ### Commands
 
-- To stop the conversation, say "Quit", "Exit", or "Leave".
+- You have 5 secs to talk, if there is silence then it's the AI's turn to talk
+- Say any of the following - "what's on my screen", 
+        "take a screenshot", 
+        "show me my screen", 
+        "analyze my screen", 
+        "what do you see on my screen", 
+        "screen capture", 
+        "screenshot" to have the AI explain what it is seeing in detail.
+- To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also)
 
 ## Adding New Characters
 
@@ -206,11 +214,19 @@ You are a wise and ancient wizard who speaks with a mystical and enchanting tone
 For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automaticly find the .wav when it has the characters name and use it. 
 
 
-## Watch the Demo
+## Watch the Demos
 
-This is CPU Only mode in demo video using openai gpt4o and openai speech for tts.
+This is CPU Only mode in demo videos
+
+Alien conversation using openai gpt4o and openai speech for tts.
 
 [![Watch the video](https://img.youtube.com/vi/d5LbRLhWa5c/maxresdefault.jpg)](https://youtu.be/d5LbRLhWa5c)
+
+
+Valley girl conversation using ollama llama3, openai tts
+
+[![Watch the video](https://img.youtube.com/vi/HSEFH0UnZEk/maxresdefault.jpg)](https://youtu.be/HSEFH0UnZEk)
+
 
 
 ## License
