@@ -1,0 +1,43 @@
+# Ignore Python bytecode files
+__pycache__
+*.pyc
+*.pyo
+
+# Ignore virtual environments
+venv
+env
+ENV
+.env
+
+# Ignore the .git directory
+.git
+.gitignore
+
+# Ignore Docker-related files
+Dockerfile
+.dockerignore
+
+# Ignore OS-generated files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+
+# Ignore coverage reports
+htmlcov
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+.github

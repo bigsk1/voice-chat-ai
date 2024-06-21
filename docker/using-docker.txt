@@ -1,0 +1,5 @@
+
+docker build -t voice-chat-ai:latest .
+
+
+wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
