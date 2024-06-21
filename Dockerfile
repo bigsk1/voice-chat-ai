@@ -1,4 +1,4 @@
-# Use the official NVIDIA CUDA base image
+# Use the official NVIDIA CUDA base image - This total image is huge 40 gb when completly built - use at your own risk!
 FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 # Set environment variables

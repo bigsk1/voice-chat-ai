@@ -117,6 +117,29 @@ wget https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zi
 unzip XTTS-v2.zip -d .
 ```
 
+## Docker - Experimental
+
+This image is huge when built because of all the checkpoints, base image, build tools and audio tools - 40gb - there maybe a way to get it smaller I haven't tried yet
+
+Docker run command allows you to use microphone in docker container 
+
+```bash
+docker build -t voice-chat-ai .
+```
+On windows docker desktop using wsl - run in windows
+
+```bash
+wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+```
+
+Running from wsl
+
+```bash
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+```
+
+In the docker folder there is also some scripts to update the model and tts provider into the container, so you can change from openai to ollama and back again if you like, instead of exec into the container and making changes manually. 
+
 ## Configuration
 
 1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
