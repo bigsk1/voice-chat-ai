@@ -15,6 +15,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
 - **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
+- **WebUI or Terminal usage**: Can be ran with either 
 
 
 ## Installation
@@ -72,7 +73,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
    pip install -r cpu_requirements.txt
    ```
 
-Need to have Microsoft C++ Build Tools for TTS
+Need to have Microsoft C++ Build Tools on windows for TTS
 [Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
 ### Download Checkpoints
@@ -166,8 +167,17 @@ XTTS_SPEED=1.2
 
 Run the application:
 
+Web UI
 ```bash
-python app.py
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+Find on http://localhost:8000/
+
+
+CLI Only
+
+```bash
+python cli.py
 ```
 
 ### Commands
@@ -211,10 +221,18 @@ You are a wise and ancient wizard who speaks with a mystical and enchanting tone
 }
 ```
 
-For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automaticly find the .wav when it has the characters name and use it. 
+For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech a .wav isn't needed
 
 
 ## Watch the Demos
+
+Webui - OpenAI and Ollama
+
+[![Watch the video](https://img.youtube.com/vi/bgdQkzGltdk/maxresdefault.jpg)](https://youtu.be/bgdQkzGltdk)
+
+
+
+CLI
 
 GPU - 100% local - ollama llama3, xtts-v2
 
@@ -222,17 +240,11 @@ GPU - 100% local - ollama llama3, xtts-v2
 
 
 
-CPU Only mode
+CPU Only mode CLI
 
 Alien conversation using openai gpt4o and openai speech for tts.
 
 [![Watch the video](https://img.youtube.com/vi/d5LbRLhWa5c/maxresdefault.jpg)](https://youtu.be/d5LbRLhWa5c)
-
-
-Valley girl conversation using ollama llama3, openai tts
-
-[![Watch the video](https://img.youtube.com/vi/HSEFH0UnZEk/maxresdefault.jpg)](https://youtu.be/HSEFH0UnZEk)
-
 
 
 ## License

@@ -1,0 +1,86 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+#conversation {
+    width: 80%;
+    max-width: 800px;
+    height: 400px;
+    border: 1px solid #ffffff;
+    padding: 10px;
+    overflow-y: scroll;
+    background-color: #1e1e1e;
+    margin-bottom: 20px;
+}
+
+#messages p {
+    margin: 10px 0;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+    background-color: #333333;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #555555;
+}
+
+.dropdown-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+}
+
+.dropdown-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 10px;
+}
+
+label {
+    margin-bottom: 5px;
+}
+
+select {
+    padding: 5px;
+    background-color: #333333;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 5px;
+}
+
+pre {
+    background-color: #1e1e1e;
+    border: 1px solid #555555;
+    border-radius: 5px;
+    padding: 10px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+code {
+    font-family: Consolas, "Courier New", monospace;
+    color: #07f107;
+}
+
