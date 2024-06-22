@@ -43,6 +43,7 @@
             <select id="tts-select">
                 <option value="openai">OpenAI</option>
                 <option value="xtts">XTTS</option>
+                <option value="elevenlabs">ElevenLabs</option>
             </select>
         </div>
     </div>
@@ -57,6 +58,10 @@
                 <option value="nova">Nova</option>
                 <option value="shimmer">Shimmer</option>
             </select>
+        </div>
+        <div class="dropdown-row">
+            <label for="elevenlabs-voice-select">ElevenLabs Voice:</label>
+            <select id="elevenlabs-voice-select"></select>
         </div>
         <div class="dropdown-row">
             <label for="openai-model-select">OpenAI Model:</label>
@@ -105,6 +110,24 @@
                         characterSelect.add(option);
                     });
                     characterSelect.value = "{{ character_name }}";
+                });
+
+                fetch('/elevenlabs_voices')
+                .then(response => response.json())
+                .then(data => {
+                    const voiceSelect = document.getElementById('elevenlabs-voice-select');
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.text = 'Selected Voice from .env';
+                    voiceSelect.add(defaultOption);
+        
+                    data.voices.forEach(voice => {
+                        const option = document.createElement('option');
+                        option.value = voice.id;
+                        option.text = voice.name;
+                        voiceSelect.add(option);
+                    });
+                    voiceSelect.value = "{{ elevenlabs_tts_voice }}";
                 });
 
             document.getElementById('provider-select').value = "{{ model_provider }}";

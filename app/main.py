@@ -39,6 +39,7 @@ async def get(request: Request):
     openai_model = os.getenv("OPENAI_MODEL")
     ollama_model = os.getenv("OLLAMA_MODEL")
     xtts_speed = os.getenv("XTTS_SPEED")
+    elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
 
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -49,6 +50,7 @@ async def get(request: Request):
         "openai_model": openai_model,
         "ollama_model": ollama_model,
         "xtts_speed": xtts_speed,
+        "elevenlabs_voice": elevenlabs_voice,
     })
 
 @app.get("/characters")
@@ -57,6 +59,19 @@ async def get_characters():
     characters_folder = os.path.join(project_dir, 'characters')
     characters = [name for name in os.listdir(characters_folder) if os.path.isdir(os.path.join(characters_folder, name))]
     return {"characters": characters}
+
+@app.get("/elevenlabs_voices")
+async def get_elevenlabs_voices():
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    voices_file = os.path.join(project_dir, 'elevenlabs_voices.json')
+    try:
+        with open(voices_file, 'r', encoding='utf-8') as f:
+            voices = json.load(f)
+        return voices
+    except FileNotFoundError:
+        return {"voices": []}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -85,6 +100,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("OLLAMA_MODEL", message["model"])
             elif message["action"] == "set_xtts_speed":
                 set_env_variable("XTTS_SPEED", message["speed"])
+            elif message["action"] == "set_elevenlabs_voice":
+                set_env_variable("ELEVENLABS_TTS_VOICE", message["voice"])
     except WebSocketDisconnect:
         if websocket in clients:
             clients.remove(websocket)

@@ -211,3 +211,9 @@ XTTS-v2
 checkpoints
 XTTS-v2/*
 checkpoints/*
+
+temp_output.wav
+temp_output.mp3
+
+#elevenlabs_voices.json
+elevenlabs_voices.json.bak

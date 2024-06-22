@@ -18,6 +18,7 @@ from textblob import TextBlob
 from pathlib import Path
 import re
 import io
+from pydub import AudioSegment
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +33,10 @@ OPENAI_MODEL = os.getenv('OPENAI_MODEL')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
+ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
+ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
+XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
+
 
 # Initialize OpenAI API key
 OpenAI.api_key = OPENAI_API_KEY
@@ -83,15 +88,27 @@ def init_openai_tts_voice(voice_name):
     OPENAI_TTS_VOICE = voice_name
     print(f"Switched to OpenAI TTS voice: {voice_name}")
 
+def init_elevenlabs_tts_voice(voice_name):
+    global ELEVENLABS_TTS_VOICE
+    ELEVENLABS_TTS_VOICE = voice_name
+    print(f"Switched to ElevenLabs TTS voice: {voice_name}")
+
+def init_xtts_speed(speed_value):
+    global XTTS_SPEED
+    XTTS_SPEED = speed_value
+    print(f"Switched to XTTS speed: {speed_value}")
 
 
 # Initial model and TTS voice setup
 if MODEL_PROVIDER == "openai":
-    init_openai_model(OPENAI_MODEL)  # Ensure the OpenAI model is initialized
+    init_openai_model(OPENAI_MODEL)  
     init_openai_tts_voice(OPENAI_TTS_VOICE)
 elif MODEL_PROVIDER == "ollama":
     init_ollama_model(OLLAMA_MODEL)
 
+if TTS_PROVIDER == "elevenlabs":
+    init_elevenlabs_tts_voice(ELEVENLABS_TTS_VOICE) 
+ 
 
 # Function to open a file and return its contents as a string
 def open_file(filepath):
@@ -100,6 +117,15 @@ def open_file(filepath):
 
 # Function to play audio using PyAudio
 def play_audio(file_path):
+    file_extension = Path(file_path).suffix.lstrip('.').lower()
+    
+    temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
+    
+    if file_extension == 'mp3':
+        audio = AudioSegment.from_mp3(file_path)
+        audio.export(temp_wav_path, format="wav")
+        file_path = temp_wav_path
+    
     wf = wave.open(file_path, 'rb')
     p = pyaudio.PyAudio()
     stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
@@ -136,6 +162,15 @@ def process_and_play(prompt, audio_file_pth):
             play_audio(output_path)
         else:
             print("Error: Audio file not found.")
+    elif TTS_PROVIDER == 'elevenlabs':
+        output_path = os.path.join(output_dir, 'output.mp3')
+        elevenlabs_text_to_speech(prompt, output_path)
+        print(f"Generated audio file at: {output_path}")
+        if os.path.exists(output_path):
+            print("Playing generated audio...")
+            play_audio(output_path)
+        else:
+            print("Error: Audio file not found.")
     else:
         tts_model = xtts_model
         try:
@@ -146,7 +181,7 @@ def process_and_play(prompt, audio_file_pth):
                 gpt_cond_len=24,
                 temperature=0.2,
                 language='en',
-                speed=1.1
+                speed=float(XTTS_SPEED)
             )
             synthesized_audio = outputs['wav']
             src_path = os.path.join(output_dir, 'output.wav')
@@ -210,6 +245,36 @@ def openai_text_to_speech(prompt, output_path):
             play_audio(output_path)
         except requests.HTTPError as e:
             print(f"Error during OpenAI TTS: {e}")
+
+def elevenlabs_text_to_speech(text, output_path):
+    CHUNK_SIZE = 1024
+    tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_TTS_VOICE}/stream"
+
+    headers = {
+        "Accept": "application/json",
+        "xi-api-key": ELEVENLABS_API_KEY
+    }
+
+    data = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.8,
+            "style": 0.0,
+            "use_speaker_boost": True
+        }
+    }
+
+    response = requests.post(tts_url, headers=headers, json=data, stream=True, timeout=30)
+
+    if response.ok:
+        with open(output_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                f.write(chunk)
+        print("Audio stream saved successfully.")
+    else:
+        print("Error generating speech:", response.text)
 
 def sanitize_response(response):
     response = re.sub(r'\*.*?\*', '', response)
@@ -324,6 +389,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             response.raise_for_status()
 
             print("Starting OpenAI stream...")
+            line_buffer = ""
             for line in response.iter_lines(decode_unicode=True):
                 if line.startswith("data:"):
                     line = line[5:].strip()
@@ -332,17 +398,24 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                         chunk = json.loads(line)
                         delta_content = chunk['choices'][0]['delta'].get('content', '')
                         if delta_content:
-                            print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
-                            full_response += delta_content
+                            line_buffer += delta_content
+                            if '\n' in line_buffer:
+                                lines = line_buffer.split('\n')
+                                for line in lines[:-1]:
+                                    print(NEON_GREEN + line + RESET_COLOR)
+                                    full_response += line + '\n'
+                                line_buffer = lines[-1]
                     except json.JSONDecodeError:
                         continue
+            if line_buffer:
+                print(NEON_GREEN + line_buffer + RESET_COLOR)
+                full_response += line_buffer
             print("\nOpenAI stream complete.")
 
         except requests.exceptions.RequestException as e:
             full_response = f"Error connecting to OpenAI model: {e}"
 
     return full_response
-
 
 def transcribe_with_whisper(audio_file):
     segments, info = whisper_model.transcribe(audio_file, beam_size=5)
@@ -387,7 +460,12 @@ def record_audio(file_path, silence_threshold=512, silence_duration=4.0, chunk_s
 
 def execute_once(question_prompt):
     temp_image_path = os.path.join(output_dir, 'temp_img.jpg')
-    temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')
+    
+    # Determine the audio file format based on the TTS provider
+    if TTS_PROVIDER == 'elevenlabs':
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.mp3')  # Use mp3 for ElevenLabs
+    else:
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for others
 
     image_path = take_screenshot(temp_image_path)
     response = analyze_image(image_path, question_prompt)
@@ -400,9 +478,18 @@ def execute_once(question_prompt):
     print(text_response)
 
     generate_speech(text_response, temp_audio_path)
-    play_audio(temp_audio_path)
+
+    if TTS_PROVIDER == 'elevenlabs':
+        # Convert MP3 to WAV if ElevenLabs is used
+        temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
+        audio = AudioSegment.from_mp3(temp_audio_path)
+        audio.export(temp_wav_path, format="wav")
+        play_audio(temp_wav_path)
+    else:
+        play_audio(temp_audio_path)
 
     os.remove(image_path)
+
 
 def execute_screenshot_and_analyze():
     question_prompt = "What do you see in this image? Keep it short but detailed and answer any follow up questions about it"
@@ -472,6 +559,8 @@ def generate_speech(text, temp_audio_path):
                 audio_file.write(response.content)
         else:
             print(f"Failed to generate speech: {response.status_code} - {response.text}")
+    elif TTS_PROVIDER == 'elevenlabs':
+        elevenlabs_text_to_speech(text, temp_audio_path)
     else:
         tts_model = xtts_model
         try:

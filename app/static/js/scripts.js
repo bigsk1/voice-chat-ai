@@ -83,10 +83,16 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_xtts_speed", speed: selectedSpeed }));
     }
 
+    function setElevenLabsVoice() {
+        const selectedVoice = document.getElementById('elevenlabs-voice-select').value;
+        websocket.send(JSON.stringify({ action: "set_elevenlabs_voice", voice: selectedVoice }));
+    }
+
     document.getElementById('provider-select').addEventListener('change', setProvider);
     document.getElementById('tts-select').addEventListener('change', setTTS);
     document.getElementById('openai-voice-select').addEventListener('change', setOpenAIVoice);
     document.getElementById('openai-model-select').addEventListener('change', setOpenAIModel);
     document.getElementById('ollama-model-select').addEventListener('change', setOllamaModel);
     document.getElementById('xtts-speed-select').addEventListener('change', setXTTSSpeed);
+    document.getElementById('elevenlabs-voice-select').addEventListener('change', setElevenLabsVoice);
 });

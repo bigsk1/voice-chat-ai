@@ -15,8 +15,9 @@ from .app import (
     init_ollama_model,
     init_openai_model,
     init_openai_tts_voice,
+    init_elevenlabs_tts_voice,
+    init_xtts_speed,
 )
-
 
 router = APIRouter()
 
@@ -111,7 +112,6 @@ async def conversation_loop():
         await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}")
         print(f"{current_character.capitalize()}: {chatbot_response}")
 
-
 def set_env_variable(key: str, value: str):
     os.environ[key] = value
     if key == "OLLAMA_MODEL":
@@ -120,4 +120,7 @@ def set_env_variable(key: str, value: str):
         init_openai_model(value)  # Reinitialize OpenAI model
     if key == "OPENAI_TTS_VOICE":
         init_openai_tts_voice(value)  # Reinitialize OpenAI TTS voice
-
+    if key == "ELEVENLABS_TTS_VOICE":
+        init_elevenlabs_tts_voice(value)  # Reinitialize Elevenlabs TTS voice
+    if key == "XTTS_SPEED":
+        init_xtts_speed(value)  # Reinitialize XTTS speed

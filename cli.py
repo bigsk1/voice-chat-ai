@@ -1,4 +1,4 @@
-# use python app.py to run cli version 
+# use python cli.py to run CLI version
 
 import os
 import torch
@@ -20,24 +20,24 @@ from textblob import TextBlob
 from pathlib import Path
 import re
 import io
+from pydub import AudioSegment
 
 # Load environment variables
 load_dotenv()
 
 MODEL_PROVIDER = os.getenv('MODEL_PROVIDER')
-
 CHARACTER_NAME = os.getenv('CHARACTER_NAME')
-
 TTS_PROVIDER = os.getenv('TTS_PROVIDER')
 OPENAI_TTS_URL = os.getenv('OPENAI_TTS_URL')
 OPENAI_TTS_VOICE = os.getenv('OPENAI_TTS_VOICE', 'alloy')
-
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
-
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
+ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
+ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
+XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1')
 
 # Initialize OpenAI API key
 OpenAI.api_key = OPENAI_API_KEY
@@ -81,21 +81,25 @@ def open_file(filepath):
 
 # Function to play audio using PyAudio
 def play_audio(file_path):
-    # Open the audio file
+    file_extension = Path(file_path).suffix.lstrip('.').lower()
+    
+    temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
+    
+    if file_extension == 'mp3':
+        audio = AudioSegment.from_mp3(file_path)
+        audio.export(temp_wav_path, format="wav")
+        file_path = temp_wav_path
+    
     wf = wave.open(file_path, 'rb')
-    # Create a PyAudio instance
     p = pyaudio.PyAudio()
-    # Open a stream to play audio
     stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
                     channels=wf.getnchannels(),
                     rate=wf.getframerate(),
                     output=True)
-    # Read and play audio data
     data = wf.readframes(1024)
     while data:
         stream.write(data)
         data = wf.readframes(1024)
-    # Stop and close the stream and PyAudio instance
     stream.stop_stream()
     stream.close()
     p.terminate()
@@ -115,7 +119,7 @@ print("To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to ha
 # Function to synthesize speech using XTTS
 def process_and_play(prompt, audio_file_pth):
     if TTS_PROVIDER == 'openai':
-        output_path = os.path.join(output_dir, 'output.wav')  # or 'output.mp3' if you want MP3
+        output_path = os.path.join(output_dir, 'output.wav')
         openai_text_to_speech(prompt, output_path)
         print(f"Generated audio file at: {output_path}")
         if os.path.exists(output_path):
@@ -123,28 +127,34 @@ def process_and_play(prompt, audio_file_pth):
             play_audio(output_path)
         else:
             print("Error: Audio file not found.")
+    elif TTS_PROVIDER == 'elevenlabs':
+        output_path = os.path.join(output_dir, 'output.mp3')
+        elevenlabs_text_to_speech(prompt, output_path)
+        print(f"Generated audio file at: {output_path}")
+        if os.path.exists(output_path):
+            # Convert MP3 to WAV if ElevenLabs is used
+            temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
+            audio = AudioSegment.from_mp3(output_path)
+            audio.export(temp_wav_path, format="wav")
+            play_audio(temp_wav_path)
+        else:
+            print("Error: Audio file not found.")
     else:
         tts_model = xtts_model
         try:
-            # Use XTTS to synthesize speech
             outputs = tts_model.synthesize(
-                prompt,  # Pass the prompt as a string directly
+                prompt,
                 xtts_config,
-                speaker_wav=audio_file_pth,  # Pass the file path directly
+                speaker_wav=audio_file_pth,
                 gpt_cond_len=24,
                 temperature=0.2,
                 language='en',
-                speed=1.1  # Use the speed from .env
+                speed=float(XTTS_SPEED)
             )
-
-            # Get the synthesized audio tensor from the dictionary
             synthesized_audio = outputs['wav']
-
-            # Save the synthesized audio to the output path
             src_path = os.path.join(output_dir, 'output.wav')
             sample_rate = xtts_config.audio.sample_rate
             sf.write(src_path, synthesized_audio, sample_rate)
-
             print("Audio generated successfully with XTTS.")
             play_audio(src_path)
         except Exception as e:
@@ -223,6 +233,36 @@ def openai_text_to_speech(prompt, output_path):
             play_audio(output_path)
         except requests.HTTPError as e:
             print(f"Error during OpenAI TTS: {e}")
+
+def elevenlabs_text_to_speech(text, output_path):
+    CHUNK_SIZE = 1024
+    tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_TTS_VOICE}/stream"
+
+    headers = {
+        "Accept": "application/json",
+        "xi-api-key": ELEVENLABS_API_KEY
+    }
+
+    data = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.8,
+            "style": 0.0,
+            "use_speaker_boost": True
+        }
+    }
+
+    response = requests.post(tts_url, headers=headers, json=data, stream=True, timeout=30)
+
+    if response.ok:
+        with open(output_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                f.write(chunk)
+        print("Audio stream saved successfully.")
+    else:
+        print("Error generating speech:", response.text)
 
 def sanitize_response(response):
     # Remove asterisks and emojis
@@ -410,13 +450,17 @@ def record_audio(file_path, silence_threshold=512, silence_duration=4.0, chunk_s
 
 def execute_once(question_prompt):
     temp_image_path = os.path.join(output_dir, 'temp_img.jpg')
-    temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')
+    
+    # Determine the audio file format based on the TTS provider
+    if TTS_PROVIDER == 'elevenlabs':
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.mp3')  
+    else:
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  
 
     image_path = take_screenshot(temp_image_path)
     response = analyze_image(image_path, question_prompt)
     text_response = response.get('choices', [{}])[0].get('message', {}).get('content', 'No response received.')
 
-    # Truncate response if too long for XTTS
     max_char_length = 350
     if len(text_response) > max_char_length:
         text_response = text_response[:max_char_length] + "..."
@@ -424,7 +468,15 @@ def execute_once(question_prompt):
     print(text_response)
 
     generate_speech(text_response, temp_audio_path)
-    play_audio(temp_audio_path)
+
+    if TTS_PROVIDER == 'elevenlabs':
+        # Convert MP3 to WAV if ElevenLabs is used
+        temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
+        audio = AudioSegment.from_mp3(temp_audio_path)
+        audio.export(temp_wav_path, format="wav")
+        play_audio(temp_wav_path)
+    else:
+        play_audio(temp_audio_path)
 
     os.remove(image_path)
 
@@ -433,7 +485,6 @@ def execute_screenshot_and_analyze():
     print("Taking screenshot and analyzing...")
     execute_once(question_prompt)
     print("\nReady for the next question....")
-
 
 def take_screenshot(temp_image_path):
     time.sleep(5)  # Wait for 5 seconds before taking a screenshot
@@ -460,7 +511,6 @@ def analyze_image(image_path, question_prompt):
         try:
             response = requests.post(f'{OLLAMA_BASE_URL}/api/generate', headers=headers, json=payload, timeout=20)
             print(f"Response status code: {response.status_code}")  # Debugging statement
-            # print(f"Response content: {response.content}")  # Debugging statement
             if response.status_code == 200:
                 return {"choices": [{"message": {"content": response.json().get('response', 'No response received.')}}]}
             elif response.status_code == 404:
@@ -515,20 +565,20 @@ def generate_speech(text, temp_audio_path):
                 audio_file.write(response.content)
         else:
             print(f"Failed to generate speech: {response.status_code} - {response.text}")
+    elif TTS_PROVIDER == 'elevenlabs':
+        elevenlabs_text_to_speech(text, temp_audio_path)
     else:
         tts_model = xtts_model
         try:
-            # Use XTTS to synthesize speech
             outputs = tts_model.synthesize(
-                text,  # Pass the prompt as a string directly
+                text,
                 xtts_config,
-                speaker_wav=character_audio_file,  # Pass the file path directly
+                speaker_wav=character_audio_file,
                 gpt_cond_len=24,
                 temperature=0.2,
                 language='en',
-                speed=float(os.getenv('XTTS_SPEED', '1.1'))  # Use the speed from .env
+                speed=float(XTTS_SPEED)
             )
-            # Get the synthesized audio tensor from the dictionary
             synthesized_audio = outputs['wav']
             sample_rate = xtts_config.audio.sample_rate
             sf.write(temp_audio_path, synthesized_audio, sample_rate)
@@ -539,7 +589,7 @@ def generate_speech(text, temp_audio_path):
 def user_chatbot_conversation():
     conversation_history = []
     base_system_message = open_file(character_prompt_file)
-    quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Leave."]
+    quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave", "Leave."]
     screenshot_phrases = [
         "what's on my screen", 
         "take a screenshot", 

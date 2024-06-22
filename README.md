@@ -10,7 +10,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 ## Features
 
 - **Supports both OpenAI and Ollama language models**: Choose the model that best fits your needs.
-- **Provides text-to-speech synthesis using XTTS or OpenAI TTS**: Enjoy natural and expressive voices.
+- **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
 - **No typing needed, just speak**: Hands-free interaction makes conversations smooth and effortless.
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
 - **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
@@ -24,6 +24,8 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 - Python 3.10
 - CUDA-enabled GPU
+- Ollama models or Openai API for chat
+- XTTS or Openai API or ElevenLabs API for speech
 - Microsoft C++ Build Tools on windows
 - Microphone
 - A sense of humor
@@ -154,7 +156,7 @@ MODEL_PROVIDER=ollama
 # Character to use - Options: samantha, wizard, pirate, valleygirl, newscaster1920s, alien_scientist, cyberpunk, detective
 CHARACTER_NAME=wizard
 
-# Text-to-Speech Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice)
+# Text-to-Speech Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs (add voice names and id's to elevenlabs_voices.json)
 TTS_PROVIDER=xtts
 
 # OpenAI TTS Voice - When TTS_PROVIDER is set to openai above, it will use the chosen voice.
@@ -169,6 +171,11 @@ OLLAMA_BASE_URL=http://localhost:11434
 
 # OpenAI API Key for models and speech (replace with your actual API key)
 OPENAI_API_KEY=sk-proj-1111111111
+
+ELEVENLABS_API_KEY=49b111111111
+
+# Default voice ID
+ELEVENLABS_TTS_VOICE=VgPpppppppp
 
 # Models to use - llama3 works well for local usage.
 # OPTIONAL: For screen analysis, if MODEL_PROVIDER is ollama, llava will be used by default.
@@ -214,6 +221,31 @@ python cli.py
         "screen capture", 
         "screenshot" to have the AI explain what it is seeing in detail.
 - To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also)
+
+### ElevenLabs
+
+Add names and voice id's - in the webui you can select them in dropdown menu
+
+```json
+{
+    "voices": [
+        {
+            "id": "8qUUChaaaaaaaaa",
+            "name": "Joe - cool, calm, deep"
+        },
+        {
+            "id": "JqseNaaaaaaaaaa",
+            "name": "Joanne - pensive, introspective"
+        },
+        {
+            "id": "L5iaaaaaaaaa",
+            "name": "Victoria - Classy British Mature"
+        }    
+    ]
+}
+```
+For the CLI the voice id in the .env will be used
+
 
 ## Adding New Characters
 
