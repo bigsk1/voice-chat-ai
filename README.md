@@ -286,6 +286,8 @@ Webui - OpenAI and Ollama
 [![Watch the video](https://img.youtube.com/vi/bgdQkzGltdk/maxresdefault.jpg)](https://youtu.be/bgdQkzGltdk)
 
 
+Click on the thumbnail to open the video☝️
+
 ---
 
 CLI
@@ -295,6 +297,8 @@ GPU - 100% local - ollama llama3, xtts-v2
 [![Watch the video](https://img.youtube.com/vi/WsWbYnITdCo/maxresdefault.jpg)](https://youtu.be/WsWbYnITdCo)
 
 
+Click on the thumbnail to open the video☝️
+
 ---
 
 CPU Only mode CLI
@@ -303,6 +307,9 @@ Alien conversation using openai gpt4o and openai speech for tts.
 
 [![Watch the video](https://img.youtube.com/vi/d5LbRLhWa5c/maxresdefault.jpg)](https://youtu.be/d5LbRLhWa5c)
 
+
+Click on the thumbnail to open the video☝️
+
 ---
 
 
@@ -310,6 +317,8 @@ Docker - ollama - xtts-v2
 
 [![Watch the video](https://img.youtube.com/vi/wG4-Djicuf4/maxresdefault.jpg)](https://youtu.be/wG4-Djicuf4)
 
+
+Click on the thumbnail to open the video☝️
 
 ## License
 
