@@ -276,7 +276,7 @@ You are a wise and ancient wizard who speaks with a mystical and enchanting tone
 }
 ```
 
-For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech a .wav isn't needed
+For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
 
 
 ## Watch the Demos
@@ -286,6 +286,7 @@ Webui - OpenAI and Ollama
 [![Watch the video](https://img.youtube.com/vi/bgdQkzGltdk/maxresdefault.jpg)](https://youtu.be/bgdQkzGltdk)
 
 
+---
 
 CLI
 
@@ -294,6 +295,7 @@ GPU - 100% local - ollama llama3, xtts-v2
 [![Watch the video](https://img.youtube.com/vi/WsWbYnITdCo/maxresdefault.jpg)](https://youtu.be/WsWbYnITdCo)
 
 
+---
 
 CPU Only mode CLI
 
@@ -301,6 +303,7 @@ Alien conversation using openai gpt4o and openai speech for tts.
 
 [![Watch the video](https://img.youtube.com/vi/d5LbRLhWa5c/maxresdefault.jpg)](https://youtu.be/d5LbRLhWa5c)
 
+---
 
 
 Docker - ollama - xtts-v2
