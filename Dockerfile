@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev \
     libswresample-dev \
     wget \
+    curl \
     python3.10 \
     python3.10-venv \
     python3-pip \

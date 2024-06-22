@@ -270,6 +270,12 @@ Alien conversation using openai gpt4o and openai speech for tts.
 [![Watch the video](https://img.youtube.com/vi/d5LbRLhWa5c/maxresdefault.jpg)](https://youtu.be/d5LbRLhWa5c)
 
 
+
+Docker - ollama - xtts-v2
+
+[![Watch the video](https://img.youtube.com/vi/wG4-Djicuf4/maxresdefault.jpg)](https://youtu.be/wG4-Djicuf4)
+
+
 ## License
 
 This project is licensed under the MIT License.
