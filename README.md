@@ -155,7 +155,7 @@ In the docker folder there is also some scripts to update the model and tts prov
 # You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc. You have to shutdown server when switching between tts providers and model providers but all other options can be updated when server is running in webui.
 
 # Model Provider: openai or ollama
-# Once set, if run webui can't change in UI until you stop server and restart
+# Once set, if running webui you can't change in the UI until you stop server and restart
 MODEL_PROVIDER=ollama
 
 # Character Configuration:
@@ -202,6 +202,7 @@ OLLAMA_MODEL=llama3
 # It will describe what it sees, and you can ask questions about it:
 # "what's on my screen", "take a screenshot", "show me my screen", "analyze my screen", 
 # "what do you see on my screen", "screen capture", "screenshot"
+# To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also)
 ```
 
 ## Usage
@@ -221,35 +222,35 @@ CLI Only
 python cli.py
 ```
 
-### Commands
+### Audio Commands
 
 - You have 5 secs to talk, if there is silence then it's the AI's turn to talk
-- Say any of the following - "what's on my screen", 
+- Say any of the following to have the AI look at your screen - "what's on my screen", 
         "take a screenshot", 
         "show me my screen", 
         "analyze my screen", 
         "what do you see on my screen", 
         "screen capture", 
         "screenshot" to have the AI explain what it is seeing in detail.
-- To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also)
+- To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also in terminal )
 
 ### ElevenLabs
 
-Add names and voice id's - in the webui you can select them in dropdown menu
+Add names and voice id's in `elevenlabs_voices.json` - in the webui you can select them in dropdown menu.
 
 ```json
 {
     "voices": [
         {
-            "id": "8qUUChaaaaaaaaa",
+            "id": "8qaaaaaaaaa",
             "name": "Joe - cool, calm, deep"
         },
         {
-            "id": "JqseNaaaaaaaaaa",
+            "id": "Jqaaaaaaaaaa",
             "name": "Joanne - pensive, introspective"
         },
         {
-            "id": "L5iaaaaaaaaa",
+            "id": "L5aaaaaaaaa",
             "name": "Victoria - Classy British Mature"
         }    
     ]
@@ -260,19 +261,19 @@ For the CLI the voice id in the .env will be used
 
 ## Adding New Characters
 
-1. Create a new folder for the character in the project's characters directory.
-2. Add a text file with the character's prompt (e.g., `wizard/wizard.txt`).
-3. Add a JSON file with mood prompts (e.g., `wizard/prompts.json`).
+1. Create a new folder for the character in the project's characters directory, (e.g. `character/wizard`).
+2. Add a text file with the character's prompt (e.g., `character/wizard/wizard.txt`).
+3. Add a JSON file with mood prompts (e.g., `character/wizard/prompts.json`).
 
 ## Example Character Configuration
 
-`wizard/wizard.txt`
+`wizard.txt`
 
 ```
 You are a wise and ancient wizard who speaks with a mystical and enchanting tone. You are knowledgeable about many subjects and always eager to share your wisdom.
 ```
 
-`wizard/prompts.json`
+`prompts.json`
 
 ```json
 {
