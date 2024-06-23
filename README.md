@@ -150,44 +150,52 @@ In the docker folder there is also some scripts to update the model and tts prov
 1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
 
 ```env
-# Conditional API Usage: Depending on the value of MODEL_PROVIDER, that's what will be used when run.
-# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc.
+# Conditional API Usage:
+# Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
+# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc. You have to shutdown server when switching between tts providers and model providers but all other options can be updated when server is running in webui.
 
 # Model Provider: openai or ollama
+# Once set, if run webui can't change in UI until you stop server and restart
 MODEL_PROVIDER=ollama
 
-# Character to use - Options: samantha, wizard, pirate, valleygirl, newscaster1920s, alien_scientist, cyberpunk, detective
-CHARACTER_NAME=wizard
+# Character Configuration:
+# Character to use - Options: samantha, wizard, pirate, valleygirl, newscaster1920s, alien_scientist, cyberpunk, detective, mouse, conandoyle, shakespeare, einstein, nerd
+CHARACTER_NAME=nerd
 
-# Text-to-Speech Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs (add voice names and id's to elevenlabs_voices.json)
-TTS_PROVIDER=xtts
+# Text-to-Speech (TTS) Configuration:
+# TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs
+# Once set, if run webui can't change in UI until you stop server and restart
+TTS_PROVIDER=elevenlabs
 
-# OpenAI TTS Voice - When TTS_PROVIDER is set to openai above, it will use the chosen voice.
-# If MODEL_PROVIDER is ollama, then it will use the .wav in the character folder.
+# OpenAI TTS Voice - Used when TTS_PROVIDER is set to openai above
 # Voice options: alloy, echo, fable, onyx, nova, shimmer
 OPENAI_TTS_VOICE=onyx
 
-# Endpoints (set these below and no need to change often)
+# ElevenLabs Configuration:
+ELEVENLABS_API_KEY=49b111111111
+# Default voice ID
+ELEVENLABS_TTS_VOICE=VgPpppppppp
+
+# XTTS Configuration:
+# The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
+XTTS_SPEED=1.2
+
+# OpenAI Configuration:
+# OpenAI API Key for models and speech (replace with your actual API key)
+OPENAI_API_KEY=sk-proj-1111111
+# Models to use - OPTIONAL: For screen analysis, if MODEL_PROVIDER is ollama, llava will be used by default.
+# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o works well.
+OPENAI_MODEL=gpt-4o
+
+# Endpoints:
+# Set these below and no need to change often
 OPENAI_BASE_URL=https://api.openai.com/v1/chat/completions
 OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
 OLLAMA_BASE_URL=http://localhost:11434
 
-# OpenAI API Key for models and speech (replace with your actual API key)
-OPENAI_API_KEY=sk-proj-1111111111
-
-ELEVENLABS_API_KEY=49b111111111
-
-# Default voice ID - add voice id's and names in elevenlabs_voices.json for dropdown list in webui
-ELEVENLABS_TTS_VOICE=VgPpppppppp
-
+# Models Configuration:
 # Models to use - llama3 works well for local usage.
-# OPTIONAL: For screen analysis, if MODEL_PROVIDER is ollama, llava will be used by default.
-# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o works well.
-OPENAI_MODEL=gpt-4o
 OLLAMA_MODEL=llama3
-
-# The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
-XTTS_SPEED=1.2
 
 # NOTES:
 # List of trigger phrases to have the model view your desktop (desktop, browser, images, etc.).
