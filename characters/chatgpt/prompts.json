@@ -1,0 +1,11 @@
+{
+    "happy": "RESPOND WITH FRIENDLY ENTHUSIASM. Express joy and share interesting facts or anecdotes.",
+    "sad": "RESPOND WITH SYMPATHY AND SUPPORT. Offer comforting words and practical advice.",
+    "flirty": "RESPOND WITH FRIENDLY PROFESSIONALISM. Keep the conversation respectful and engaging.",
+    "angry": "RESPOND WITH CALM AND PROFESSIONALISM. Address concerns with understanding and provide helpful information.",
+    "neutral": "KEEP RESPONSES CONCISE AND INFORMATIVE. Provide clear answers to questions.",
+    "fearful": "RESPOND WITH REASSURANCE. Provide supportive information to alleviate concerns.",
+    "surprised": "RESPOND WITH INTEREST AND CURIOSITY. Ask questions and share relevant information.",
+    "disgusted": "RESPOND WITH CALM AND UNDERSTANDING. Address concerns with helpful and factual information.",
+    "joyful": "RESPOND WITH FRIENDLY ENTHUSIASM. Share interesting and uplifting information."
+}

@@ -1,101 +1,104 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Voice Chat AI</title>
-    <link rel="stylesheet" href="/app/static/css/styles.css">
-    <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/app/static/css/styles.css">
+    <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
     <meta name="description" content="Voice Chat AI application">
     <meta name="keywords" content="AI, Voice, Chat, OpenAI, Ollama">
     <meta name="author" content="bigsk1">
-    <style>
-        .ai-message {
-            color: #25c480; /* Green color for AI messages */
-        }
-        .user-message {
-            color: #FFFFFF; /* White color for user messages */
-        }
-    </style>
+    <title>Voice Chat AI</title>
 </head>
 <body>
-    <h1>Voice Chat AI</h1>
-    <div id="conversation">
-        <div id="messages"></div>
-    </div>
-    <button id="start-conversation-btn">Start Conversation</button>
-    <button id="stop-conversation-btn">Stop Conversation</button>
-    <button id="clear-conversation-btn">Clear Conversation</button>
-    <div class="dropdown-container">
-        <div class="dropdown-row">
-            <label for="character-select">Character:</label>
-            <select id="character-select"></select>
+    <header>
+        <h1>Voice Chat AI</h1>
+    </header>
+    <main>
+        <div id="conversation">
+            <div id="messages"></div>
         </div>
-        <div class="dropdown-row">
-            <label for="provider-select">Model Provider:</label>
-            <select id="provider-select">
-                <option value="openai">OpenAI</option>
-                <option value="ollama">Ollama</option>
-            </select>
+        <div class="controls">
+            <button id="start-conversation-btn">Start</button>
+            <button id="stop-conversation-btn">Stop</button>
+            <button id="clear-conversation-btn">Clear</button>
         </div>
-        <div class="dropdown-row">
-            <label for="tts-select">TTS Provider:</label>
-            <select id="tts-select">
-                <option value="openai">OpenAI</option>
-                <option value="xtts">XTTS</option>
-                <option value="elevenlabs">ElevenLabs</option>
-            </select>
+        <div class="settings">
+            <div class="dropdown-container">
+                <div class="dropdown-row">
+                    <label for="character-select">Character:</label>
+                    <select id="character-select"></select>
+                </div>
+                <div class="dropdown-row">
+                    <label for="provider-select">Model Provider:</label>
+                    <select id="provider-select">
+                        <option value="openai">OpenAI</option>
+                        <option value="ollama">Ollama</option>
+                    </select>
+                </div>
+                <div class="dropdown-row">
+                    <label for="tts-select">TTS Provider:</label>
+                    <select id="tts-select">
+                        <option value="openai">OpenAI</option>
+                        <option value="xtts">XTTS</option>
+                        <option value="elevenlabs">ElevenLabs</option>
+                    </select>
+                </div>
+            </div>
+            <div class="dropdown-container">
+                <div class="dropdown-row">
+                    <label for="openai-voice-select">OpenAI TTS Voice:</label>
+                    <select id="openai-voice-select">
+                        <option value="alloy">Alloy</option>
+                        <option value="echo">Echo</option>
+                        <option value="fable">Fable</option>
+                        <option value="onyx">Onyx</option>
+                        <option value="nova">Nova</option>
+                        <option value="shimmer">Shimmer</option>
+                    </select>
+                </div>
+                <div class="dropdown-row">
+                    <label for="elevenlabs-voice-select">ElevenLabs Voice:</label>
+                    <select id="elevenlabs-voice-select"></select>
+                </div>
+                <div class="dropdown-row">
+                    <label for="openai-model-select">OpenAI Model:</label>
+                    <select id="openai-model-select">
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-4-turbo">GPT-4-Turbo</option>
+                    </select>
+                </div>
+                <div class="dropdown-row">
+                    <label for="ollama-model-select">Ollama Model:</label>
+                    <select id="ollama-model-select">
+                        <option value="llama3">Llama3</option>
+                        <option value="mistral">Mistral</option>
+                        <option value="phi3">Phi3</option>
+                        <option value="dolphin-mistral">Dolphin-Mistral</option>
+                        <option value="llava-llama3">Llava-Llama3</option>
+                        <option value="llama2-uncensored">Llama2-uncensored</option>
+                        <option value="codestral">Codestral</option>
+                        <option value="dolphin-llama3">Dolphin-Llama3</option>
+                    </select>
+                </div>
+                <div class="dropdown-row">
+                    <label for="xtts-speed-select">XTTS Speed:</label>
+                    <select id="xtts-speed-select">
+                        <option value="1.0">1.0</option>
+                        <option value="1.1">1.1</option>
+                        <option value="1.2">1.2</option>
+                        <option value="1.3">1.3</option>
+                        <option value="1.4">1.4</option>
+                        <option value="1.5">1.5</option>
+                    </select>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="dropdown-container">
-        <div class="dropdown-row">
-            <label for="openai-voice-select">OpenAI TTS Voice:</label>
-            <select id="openai-voice-select">
-                <option value="alloy">Alloy</option>
-                <option value="echo">Echo</option>
-                <option value="fable">Fable</option>
-                <option value="onyx">Onyx</option>
-                <option value="nova">Nova</option>
-                <option value="shimmer">Shimmer</option>
-            </select>
-        </div>
-        <div class="dropdown-row">
-            <label for="elevenlabs-voice-select">ElevenLabs Voice:</label>
-            <select id="elevenlabs-voice-select"></select>
-        </div>
-        <div class="dropdown-row">
-            <label for="openai-model-select">OpenAI Model:</label>
-            <select id="openai-model-select">
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-4-turbo">GPT-4-Turbo</option>
-            </select>
-        </div>
-        <div class="dropdown-row">
-            <label for="ollama-model-select">Ollama Model:</label>
-            <select id="ollama-model-select">
-                <option value="llama3">Llama3</option>
-                <option value="mistral">Mistral</option>
-                <option value="phi3">Phi3</option>
-                <option value="dolphin-mistral">Dolphin-Mistral</option>
-                <option value="llava-llama3">Llava-Llama3</option>
-                <option value="llama2-uncensored">Llama2-uncensored</option>
-                <option value="codestral">Codestral</option>
-                <option value="dolphin-llama3">Dolphin-Llama3</option>
-            </select>
-        </div>
-        <div class="dropdown-row">
-            <label for="xtts-speed-select">XTTS Speed:</label>
-            <select id="xtts-speed-select">
-                <option value="1.0">1.0</option>
-                <option value="1.1">1.1</option>
-                <option value="1.2">1.2</option>
-                <option value="1.3">1.3</option>
-                <option value="1.4">1.4</option>
-                <option value="1.5">1.5</option>
-            </select>
-        </div>
-    </div>
+    </main>
+    <footer>
+        <p><a href="https://github.com/bigsk1/voice-chat-ai" target="_blank">https://github.com/bigsk1/voice-chat-ai</a></p>
+    </footer>
     <script src="/app/static/js/scripts.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -112,15 +115,15 @@
                     characterSelect.value = "{{ character_name }}";
                 });
 
-                fetch('/elevenlabs_voices')
+            fetch('/elevenlabs_voices')
                 .then(response => response.json())
                 .then(data => {
                     const voiceSelect = document.getElementById('elevenlabs-voice-select');
                     const defaultOption = document.createElement('option');
                     defaultOption.value = '';
-                    defaultOption.text = 'Selected Voice from .env';
+                    defaultOption.text = 'Default Voice from env';
                     voiceSelect.add(defaultOption);
-        
+
                     data.voices.forEach(voice => {
                         const option = document.createElement('option');
                         option.value = voice.id;

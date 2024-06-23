@@ -74,6 +74,26 @@ xtts_model = Xtts.init_from_config(xtts_config)
 xtts_model.load_checkpoint(xtts_config, checkpoint_dir=xtts_checkpoint_dir, eval=True)
 xtts_model.cuda()  # Move the model to GPU if available
 
+# Function to display ElevenLabs quota
+def display_elevenlabs_quota():
+    try:
+        response = requests.get(
+            "https://api.elevenlabs.io/v1/user",
+            headers={"xi-api-key": ELEVENLABS_API_KEY},
+            timeout=30
+        )
+        response.raise_for_status()
+        user_data = response.json()
+        character_count = user_data['subscription']['character_count']
+        character_limit = user_data['subscription']['character_limit']
+        print(f"{NEON_GREEN}ElevenLabs Character Usage: {character_count} / {character_limit}{RESET_COLOR}")
+    except Exception as e:
+        print(f"{YELLOW}Could not fetch ElevenLabs quota: {e}{RESET_COLOR}")
+
+if TTS_PROVIDER == "elevenlabs":
+    display_elevenlabs_quota()
+
+
 # Function to open a file and return its contents as a string
 def open_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as infile:

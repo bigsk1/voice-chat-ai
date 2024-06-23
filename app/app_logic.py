@@ -25,11 +25,12 @@ continue_conversation = False
 conversation_history = []
 clients = []
 
-current_character = "pirate"  # Default character
+current_character = "pirate"  # Default character as placeholder is nothing selected
 
 def set_character(character):
     global current_character
     current_character = character
+
 
 def record_audio_and_transcribe():
     audio_file = "temp_recording.wav"

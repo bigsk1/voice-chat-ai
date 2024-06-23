@@ -1,9 +1,12 @@
 
 [![Python application](https://github.com/bigsk1/voice-chat-ai/actions/workflows/python-app.yml/badge.svg)](https://github.com/bigsk1/voice-chat-ai/actions/workflows/python-app.yml)
+[![License](https://img.shields.io/github/license/bigsk1/voice-chat-ai)](https://github.com/bigsk1/voice-chat-ai/blob/main/LICENSE)
 
-# Voice Chat AI
+# Voice Chat AI 🎙️
 
-Voice Chat AI is a project that allows you to interact with different AI characters using speech. You can choose between various characters, each with unique personalities and voices. You can run all locally, you can use openai for chat and voice, you can mix between the two.
+Voice Chat AI is a project that allows you to interact with different AI characters using speech. You can choose between various characters, each with unique personalities and voices. Have a serious conversation with Albert Einstein or role play with the OS from the movie HER. 
+
+You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at. 
 
 ![Ai-Speech](https://imagedelivery.net/WfhVb8dSNAAvdXUdMfBuPQ/ed0edfea-265d-4c23-d11d-0b5ba0f02d00/public)
 
@@ -25,7 +28,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 - Python 3.10
 - CUDA-enabled GPU
 - Ollama models or Openai API for chat
-- XTTS or Openai API or ElevenLabs API for speech
+- Local XTTS or Openai API or ElevenLabs API for speech
 - Microsoft C++ Build Tools on windows
 - Microphone
 - A sense of humor
@@ -39,14 +42,14 @@ Voice Chat AI is a project that allows you to interact with different AI charact
    cd voice-chat-ai
    ```
 
-2. Create a virtual environment:
+2. Create a virtual environment: 🐍
 
    ```bash
    python -m venv venv
    source venv/bin/activate   # On Windows use `venv\Scripts\Activate`
    ```
 
-   or use conda just make it python 3.10
+   or use `conda` just make it python 3.10
 
    ```bash
    conda create --name voice-chat-ai python=3.10
@@ -121,7 +124,7 @@ unzip XTTS-v2.zip -d .
 
 ## Docker - Experimental
 
-This image is huge when built because of all the checkpoints, base image, build tools and audio tools - 40gb - there maybe a way to get it smaller I haven't tried yet
+This image is huge when built because of all the checkpoints, base image, build tools and audio tools - 40gb - there maybe a way to get it smaller I haven't tried yet, was just an experiment to see if I could get it to work! 
 
 Docker run command allows you to use microphone in docker container 
 
@@ -142,7 +145,7 @@ docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubunt
 
 In the docker folder there is also some scripts to update the model and tts provider into the container, so you can change from openai to ollama and back again if you like, instead of exec into the container and making changes manually. 
 
-## Configuration
+## Configuration ⚙️
 
 1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
 
@@ -174,7 +177,7 @@ OPENAI_API_KEY=sk-proj-1111111111
 
 ELEVENLABS_API_KEY=49b111111111
 
-# Default voice ID
+# Default voice ID - add voice id's and names in elevenlabs_voices.json for dropdown list in webui
 ELEVENLABS_TTS_VOICE=VgPpppppppp
 
 # Models to use - llama3 works well for local usage.
@@ -195,7 +198,7 @@ XTTS_SPEED=1.2
 
 ## Usage
 
-Run the application:
+Run the application: 🏃
 
 Web UI
 ```bash

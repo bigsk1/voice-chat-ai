@@ -20,6 +20,7 @@ import re
 import io
 from pydub import AudioSegment
 
+
 # Load environment variables
 load_dotenv()
 
@@ -98,18 +99,36 @@ def init_xtts_speed(speed_value):
     XTTS_SPEED = speed_value
     print(f"Switched to XTTS speed: {speed_value}")
 
-
 # Initial model and TTS voice setup
 if MODEL_PROVIDER == "openai":
     init_openai_model(OPENAI_MODEL)  
-    init_openai_tts_voice(OPENAI_TTS_VOICE)
+    #init_openai_tts_voice(OPENAI_TTS_VOICE)
 elif MODEL_PROVIDER == "ollama":
     init_ollama_model(OLLAMA_MODEL)
 
 if TTS_PROVIDER == "elevenlabs":
-    init_elevenlabs_tts_voice(ELEVENLABS_TTS_VOICE) 
- 
+    init_elevenlabs_tts_voice(ELEVENLABS_TTS_VOICE)
 
+
+# Function to display ElevenLabs quota
+def display_elevenlabs_quota():
+    try:
+        response = requests.get(
+            "https://api.elevenlabs.io/v1/user",
+            headers={"xi-api-key": ELEVENLABS_API_KEY},
+            timeout=30
+        )
+        response.raise_for_status()
+        user_data = response.json()
+        character_count = user_data['subscription']['character_count']
+        character_limit = user_data['subscription']['character_limit']
+        print(f"{NEON_GREEN}ElevenLabs Character Usage: {character_count} / {character_limit}{RESET_COLOR}")
+    except Exception as e:
+        print(f"{YELLOW}Could not fetch ElevenLabs quota: {e}{RESET_COLOR}")
+
+if TTS_PROVIDER == "elevenlabs":
+    display_elevenlabs_quota()
+    
 # Function to open a file and return its contents as a string
 def open_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as infile:
@@ -464,14 +483,19 @@ def execute_once(question_prompt):
     # Determine the audio file format based on the TTS provider
     if TTS_PROVIDER == 'elevenlabs':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.mp3')  # Use mp3 for ElevenLabs
+        max_char_length = 500  # Set a higher limit for ElevenLabs
+    elif TTS_PROVIDER == 'openai':
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for OpenAI
+        max_char_length = 500  # Set a higher limit for OpenAI
     else:
-        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for others
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for XTTS
+        max_char_length = 250  # Set a lower limit for XTTS
 
     image_path = take_screenshot(temp_image_path)
     response = analyze_image(image_path, question_prompt)
     text_response = response.get('choices', [{}])[0].get('message', {}).get('content', 'No response received.')
 
-    max_char_length = 350
+    # Truncate response based on the TTS provider's limit
     if len(text_response) > max_char_length:
         text_response = text_response[:max_char_length] + "..."
 

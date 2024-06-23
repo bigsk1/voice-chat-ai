@@ -38,6 +38,10 @@ document.addEventListener("DOMContentLoaded", function() {
         } else {
             messages.innerHTML += `<p class="user-message">${formattedMessage}</p>`;
         }
+
+        // Scroll to the bottom of the messages div
+        const conversation = document.getElementById('conversation');
+        conversation.scrollTop = conversation.scrollHeight;
     };
 
     document.getElementById('start-conversation-btn').addEventListener('click', function() {
