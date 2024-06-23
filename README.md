@@ -323,6 +323,48 @@ Docker - ollama - xtts-v2
 
 Click on the thumbnail to open the video☝️
 
+---
+
+## Additional Details
+
+### Console output 
+
+Detailed output in terminal while running the app. 
+
+When using Elevenlabs on first start of server you get details about your usage limits to help you know how much you have been using.
+
+```bash
+(voice-chat-ai) X:\voice-chat-ai>uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+Switched to ElevenLabs TTS voice: VgPqCpkdPQacBNNIsAqI
+ElevenLabs Character Usage: 33796 / 100027
+
+Using device: cuda
+Model provider: openai
+Model: gpt-4o
+Character: Nerd
+Text-to-Speech provider: elevenlabs
+To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...
+INFO:     Started server process [12752]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62671 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62671 - "GET /app/static/css/styles.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62672 - "GET /app/static/js/scripts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62672 - "GET /characters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62671 - "GET /app/static/favicon.ico HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62673 - "GET /elevenlabs_voices HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 62674) - "WebSocket /ws" [accepted]
+INFO:     connection open
+```
+
+### Web ui Chat Area
+
+If you ask for code examples in webui the code will be displayed in a code block in a different color and formatted correctly. 
+
+
+
 ## License
 
 This project is licensed under the MIT License.

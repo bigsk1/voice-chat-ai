@@ -41,7 +41,7 @@ h1 {
     margin-bottom: 20px;
     margin-top: 20px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    text-align: center;
+    text-align: left;
 }
 
 
@@ -110,14 +110,17 @@ pre {
 code {
     font-family: Consolas, "Courier New", monospace;
     color: #07f107;
+    text-align: left;
 }
 
 .ai-message {
     color: #25c480;
     margin: 5px 0;
+    text-align: left;
 }
 
 .user-message {
     color: #ffffff;
     margin: 5px 0;
+    text-align: left;
 }
