@@ -290,7 +290,6 @@ You are a wise and ancient wizard who speaks with a mystical and enchanting tone
 
 For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
 
-
 ## Watch the Demos
 
 Webui - OpenAI and Ollama
