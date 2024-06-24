@@ -258,6 +258,17 @@ Add names and voice id's in `elevenlabs_voices.json` - in the webui you can sele
 ```
 For the CLI the voice id in the .env will be used
 
+---
+
+### Web View - Visual and Audio input / output
+
+Press start to start talking. Take a break hit stop, when ready again hit start again. Press stop to change characters and voices in dropdown. Saying Exit, Leave or Quit is like pressing stop. To change model or speech providers stop server, update env and start again. 
+
+http://localhost:8000/
+
+
+![Webui](https://imagedelivery.net/WfhVb8dSNAAvdXUdMfBuPQ/1c7ca45a-ddb3-4e93-ed6a-65a444b55200/public)
+
 
 ## Adding New Characters
 
@@ -292,9 +303,10 @@ For XTTS find a .wav voice and add it to the wizard folder and name it as wizard
 
 ## Watch the Demos
 
-Webui - OpenAI and Ollama
 
-[![Watch the video](https://img.youtube.com/vi/bgdQkzGltdk/maxresdefault.jpg)](https://youtu.be/bgdQkzGltdk)
+
+
+[![Watch the video](https://img.youtube.com/vi/jKaZkSt2mww/maxresdefault.jpg)](https://youtu.be/jKaZkSt2mww)
 
 
 Click on the thumbnail to open the video☝️
