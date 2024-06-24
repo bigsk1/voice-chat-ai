@@ -524,7 +524,7 @@ def execute_screenshot_and_analyze():
 def take_screenshot(temp_image_path):
     time.sleep(5)
     screenshot = ImageGrab.grab()
-    screenshot = screenshot.resize((512, 512))
+    screenshot = screenshot.resize((1024, 1024))
     screenshot.save(temp_image_path, 'JPEG')
     return temp_image_path
 
@@ -544,7 +544,7 @@ def analyze_image(image_path, question_prompt):
             "stream": False
         }
         try:
-            response = requests.post(f'{OLLAMA_BASE_URL}/api/generate', headers=headers, json=payload, timeout=20)
+            response = requests.post(f'{OLLAMA_BASE_URL}/api/generate', headers=headers, json=payload, timeout=30)
             print(f"Response status code: {response.status_code}")
             if response.status_code == 200:
                 return {"choices": [{"message": {"content": response.json().get('response', 'No response received.')}}]}
