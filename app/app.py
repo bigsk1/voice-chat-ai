@@ -99,15 +99,25 @@ def init_xtts_speed(speed_value):
     XTTS_SPEED = speed_value
     print(f"Switched to XTTS speed: {speed_value}")
 
-# Initial model and TTS voice setup
-if MODEL_PROVIDER == "openai":
-    init_openai_model(OPENAI_MODEL)  
-    #init_openai_tts_voice(OPENAI_TTS_VOICE)
-elif MODEL_PROVIDER == "ollama":
-    init_ollama_model(OLLAMA_MODEL)
+def init_set_tts(set_tts):
+    global TTS_PROVIDER
+    TTS_PROVIDER = set_tts
+    print(f"Switched to TTS Provider: {set_tts}")
 
-if TTS_PROVIDER == "elevenlabs":
-    init_elevenlabs_tts_voice(ELEVENLABS_TTS_VOICE)
+def init_set_provider(set_provider):
+    global MODEL_PROVIDER
+    MODEL_PROVIDER = set_provider
+    print(f"Switched to Model Provider: {set_provider}")
+    
+# Initial model and TTS voice setup
+# if MODEL_PROVIDER == "openai":
+#     init_openai_model(OPENAI_MODEL)  
+#     #init_openai_tts_voice(OPENAI_TTS_VOICE)
+# elif MODEL_PROVIDER == "ollama":
+#     init_ollama_model(OLLAMA_MODEL)
+
+# if TTS_PROVIDER == "elevenlabs":
+#     init_elevenlabs_tts_voice(ELEVENLABS_TTS_VOICE)
 
 
 # Function to display ElevenLabs quota

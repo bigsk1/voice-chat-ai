@@ -262,7 +262,7 @@ For the CLI the voice id in the .env will be used
 
 ### Web View - Visual and Audio input / output
 
-Press start to start talking. Take a break hit stop, when ready again hit start again. Press stop to change characters and voices in dropdown. Saying Exit, Leave or Quit is like pressing stop. To change model or speech providers stop server, update env and start again. 
+Press start to start talking. Take a break hit stop, when ready again hit start again. Press stop to change characters and voices in dropdown. You can also select the Model Provider and TTS Provider you want in the dropdown menu and it will update and use the selected provider moving forward. Saying Exit, Leave or Quit is like pressing stop. 
 
 http://localhost:8000/
 

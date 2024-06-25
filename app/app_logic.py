@@ -17,9 +17,12 @@ from .app import (
     init_openai_tts_voice,
     init_elevenlabs_tts_voice,
     init_xtts_speed,
+    init_set_tts,
+    init_set_provider,
 )
 
 router = APIRouter()
+
 
 continue_conversation = False
 conversation_history = []
@@ -52,7 +55,7 @@ def process_text(user_input):
     conversation_history.append({"role": "assistant", "content": chatbot_response})
     sanitized_response = sanitize_response(chatbot_response)
     if len(sanitized_response) > 400:  # Limit response length for audio generation
-        sanitized_response = sanitized_response[:400] + "..."
+        sanitized_response = sanitized_response[:500] + "..."
     prompt2 = sanitized_response
     process_and_play(prompt2, character_audio_file)
     return chatbot_response
@@ -125,3 +128,7 @@ def set_env_variable(key: str, value: str):
         init_elevenlabs_tts_voice(value)  # Reinitialize Elevenlabs TTS voice
     if key == "XTTS_SPEED":
         init_xtts_speed(value)  # Reinitialize XTTS speed
+    if key == "TTS_PROVIDER":
+        init_set_tts(value)      # Reinitialize TTS Providers
+    if key == "MODEL_PROVIDER":
+        init_set_provider(value)  # Reinitialize Model Providers

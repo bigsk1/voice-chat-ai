@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function() {
-    const websocket = new WebSocket("ws://localhost:8000/ws");
+    const websocket = new WebSocket("ws://localhost:8000/ws"); // can also use `ws://${window.location.hostname}:8000/ws`
 
     websocket.onopen = function(event) {
         console.log("WebSocket is open now.");
