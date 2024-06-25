@@ -267,7 +267,8 @@ Press start to start talking. Take a break hit stop, when ready again hit start 
 http://localhost:8000/
 
 
-![Webui](https://imagedelivery.net/WfhVb8dSNAAvdXUdMfBuPQ/1c7ca45a-ddb3-4e93-ed6a-65a444b55200/public)
+[![Watch the video](https://img.youtube.com/vi/Ii3vYg-CzKE/maxresdefault.jpg)](https://youtu.be/Ii3vYg-CzKE)
+
 
 
 ## Adding New Characters
