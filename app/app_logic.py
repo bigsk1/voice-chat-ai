@@ -2,6 +2,7 @@ import os
 import asyncio
 from threading import Thread
 from fastapi import APIRouter
+from .shared import clients, continue_conversation, conversation_history, get_current_character
 from .app import (
     transcribe_with_whisper,
     analyze_mood,
@@ -23,18 +24,6 @@ from .app import (
 
 router = APIRouter()
 
-
-continue_conversation = False
-conversation_history = []
-clients = []
-
-current_character = "pirate"  # Default character as placeholder is nothing selected
-
-def set_character(character):
-    global current_character
-    current_character = character
-
-
 def record_audio_and_transcribe():
     audio_file = "temp_recording.wav"
     record_audio(audio_file)
@@ -42,7 +31,8 @@ def record_audio_and_transcribe():
     os.remove(audio_file)  # Clean up the temporary audio file
     return user_input
 
-def process_text(user_input):
+async def process_text(user_input):
+    current_character = get_current_character()
     character_folder = os.path.join('characters', current_character)
     character_prompt_file = os.path.join(character_folder, f"{current_character}.txt")
     character_audio_file = os.path.join(character_folder, f"{current_character}.wav")
@@ -57,7 +47,7 @@ def process_text(user_input):
     if len(sanitized_response) > 400:  # Limit response length for audio generation
         sanitized_response = sanitized_response[:500] + "..."
     prompt2 = sanitized_response
-    process_and_play(prompt2, character_audio_file)
+    await process_and_play(prompt2, character_audio_file)
     return chatbot_response
 
 quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave."]
@@ -87,7 +77,7 @@ async def stop_conversation():
 
 async def send_message_to_clients(message: str):
     for client in clients:
-        await client.send_text(message)
+        await client.send_json({"message": message})
 
 async def conversation_loop():
     global continue_conversation
@@ -107,12 +97,13 @@ async def conversation_loop():
             continue
 
         try:
-            chatbot_response = process_text(user_input)
+            chatbot_response = await process_text(user_input)
         except Exception as e:
             chatbot_response = f"An error occurred: {e}"
             print(chatbot_response)
 
         conversation_history.append({"role": "assistant", "content": chatbot_response})
+        current_character = get_current_character()
         await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}")
         print(f"{current_character.capitalize()}: {chatbot_response}")
 

@@ -21,3 +21,4 @@ requests
 fastapi
 uvicorn
 elevenlabs
+aiohttp

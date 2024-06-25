@@ -8,13 +8,8 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from .app_logic import (
-    start_conversation,
-    stop_conversation,
-    set_character,
-    set_env_variable,
-    clients,
-)
+from .shared import clients, get_current_character, set_current_character
+from .app_logic import start_conversation, stop_conversation, set_env_variable
 
 app = FastAPI()
 
@@ -33,7 +28,7 @@ app.add_middleware(
 @app.get("/")
 async def get(request: Request):
     model_provider = os.getenv("MODEL_PROVIDER")
-    character_name = os.getenv("CHARACTER_NAME")
+    character_name = get_current_character()
     tts_provider = os.getenv("TTS_PROVIDER")
     openai_tts_voice = os.getenv("OPENAI_TTS_VOICE")
     openai_model = os.getenv("OPENAI_MODEL")
@@ -86,8 +81,11 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message["action"] == "start":
                 selected_character = message["character"]
                 await stop_conversation()  # Ensure any running conversation stops
-                set_character(selected_character)
+                set_current_character(selected_character)
                 await start_conversation()
+            elif message["action"] == "set_character":
+                set_current_character(message["character"])
+                await websocket.send_json({"message": f"Character set to {message['character']}"})
             elif message["action"] == "set_provider":
                 set_env_variable("MODEL_PROVIDER", message["provider"])
             elif message["action"] == "set_tts":

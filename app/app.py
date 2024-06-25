@@ -1,6 +1,8 @@
 import os
 import torch
 import time
+import aiohttp
+import asyncio
 import pyaudio
 import numpy as np
 import wave
@@ -9,7 +11,7 @@ import json
 import base64
 from PIL import ImageGrab
 from dotenv import load_dotenv
-from openai import OpenAI, OpenAIError
+from openai import OpenAI
 from faster_whisper import WhisperModel
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
@@ -19,6 +21,7 @@ from pathlib import Path
 import re
 import io
 from pydub import AudioSegment
+from .shared import clients
 
 
 # Load environment variables
@@ -145,7 +148,12 @@ def open_file(filepath):
         return infile.read()
 
 # Function to play audio using PyAudio
-def play_audio(file_path):
+async def play_audio(file_path):
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, sync_play_audio, file_path)
+
+def sync_play_audio(file_path):
+    print("Starting audio playback")
     file_extension = Path(file_path).suffix.lstrip('.').lower()
     
     temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
@@ -168,6 +176,9 @@ def play_audio(file_path):
     stream.stop_stream()
     stream.close()
     p.terminate()
+    print("Finished audio playback")
+
+    pass
 
 # Model and device setup
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -181,29 +192,33 @@ print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print("To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...")
 
-def process_and_play(prompt, audio_file_pth):
+async def process_and_play(prompt, audio_file_pth):
     if TTS_PROVIDER == 'openai':
         output_path = os.path.join(output_dir, 'output.wav')
-        openai_text_to_speech(prompt, output_path)
+        await openai_text_to_speech(prompt, output_path)
         print(f"Generated audio file at: {output_path}")
         if os.path.exists(output_path):
             print("Playing generated audio...")
-            play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
         else:
             print("Error: Audio file not found.")
     elif TTS_PROVIDER == 'elevenlabs':
         output_path = os.path.join(output_dir, 'output.mp3')
-        elevenlabs_text_to_speech(prompt, output_path)
+        await elevenlabs_text_to_speech(prompt, output_path)
         print(f"Generated audio file at: {output_path}")
         if os.path.exists(output_path):
             print("Playing generated audio...")
-            play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
         else:
             print("Error: Audio file not found.")
     else:
         tts_model = xtts_model
         try:
-            outputs = tts_model.synthesize(
+            outputs = await tts_model.synthesize(
                 prompt,
                 xtts_config,
                 speaker_wav=audio_file_pth,
@@ -217,9 +232,16 @@ def process_and_play(prompt, audio_file_pth):
             sample_rate = xtts_config.audio.sample_rate
             sf.write(src_path, synthesized_audio, sample_rate)
             print("Audio generated successfully with XTTS.")
-            play_audio(src_path)
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(src_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
         except Exception as e:
             print(f"Error during XTTS audio generation: {e}")
+
+
+async def send_message_to_clients(message):
+    for client in clients:
+        await client.send_text(message)
 
 def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2):
     with wave.open(file_path, 'wb') as wav_file:
@@ -228,54 +250,50 @@ def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, c
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(pcm_data)
 
-def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str) -> bytes:
-    client = OpenAI()
+async def openai_text_to_speech(prompt, output_path):
+    file_extension = Path(output_path).suffix.lstrip('.').lower()
+
+    async with aiohttp.ClientSession() as session:
+        if file_extension == 'wav':
+            pcm_data = await fetch_pcm_audio("tts-1", OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL, session)
+            save_pcm_as_wav(pcm_data, output_path)
+        else:
+            try:
+                async with session.post(
+                    url=OPENAI_TTS_URL,
+                    headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                    json={"model": "tts-1", "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension},
+                    timeout=30
+                ) as response:
+                    response.raise_for_status()
+                    with open(output_path, 'wb') as f:
+                        async for chunk in response.content.iter_chunked(8192):
+                            f.write(chunk)
+
+                print("Audio generated successfully with OpenAI.")
+            except aiohttp.ClientError as e:
+                print(f"Error during OpenAI TTS: {e}")
+
+async def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str, session: aiohttp.ClientSession) -> bytes:
     pcm_data = io.BytesIO()
     
     try:
-        response = requests.post(
+        async with session.post(
             url=api_url,
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
             json={"model": model, "voice": voice, "input": input_text, "response_format": 'pcm'},
-            stream=True,
             timeout=30
-        )
-        response.raise_for_status()
-        for chunk in response.iter_content(chunk_size=8192):
-            pcm_data.write(chunk)
-    except OpenAIError as e:
+        ) as response:
+            response.raise_for_status()
+            async for chunk in response.content.iter_chunked(8192):
+                pcm_data.write(chunk)
+    except aiohttp.ClientError as e:
         print(f"An error occurred while trying to fetch the audio stream: {e}")
         raise
 
     return pcm_data.getvalue()
 
-def openai_text_to_speech(prompt, output_path):
-    file_extension = Path(output_path).suffix.lstrip('.').lower()
-
-    if file_extension == 'wav':
-        pcm_data = fetch_pcm_audio("tts-1", OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL)
-        save_pcm_as_wav(pcm_data, output_path)
-    else:
-        try:
-            response = requests.post(
-                url=OPENAI_TTS_URL,
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "tts-1", "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension},
-                stream=True,
-                timeout=30
-            )
-            response.raise_for_status()
-
-            with open(output_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-
-            print("Audio generated successfully with OpenAI.")
-            play_audio(output_path)
-        except requests.HTTPError as e:
-            print(f"Error during OpenAI TTS: {e}")
-
-def elevenlabs_text_to_speech(text, output_path):
+async def elevenlabs_text_to_speech(text, output_path):
     CHUNK_SIZE = 1024
     tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_TTS_VOICE}/stream"
 
@@ -295,15 +313,15 @@ def elevenlabs_text_to_speech(text, output_path):
         }
     }
 
-    response = requests.post(tts_url, headers=headers, json=data, stream=True, timeout=30)
-
-    if response.ok:
-        with open(output_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
-                f.write(chunk)
-        print("Audio stream saved successfully.")
-    else:
-        print("Error generating speech:", response.text)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(tts_url, headers=headers, json=data, timeout=30) as response:
+            if response.status == 200:
+                with open(output_path, "wb") as f:
+                    async for chunk in response.content.iter_chunked(CHUNK_SIZE):
+                        f.write(chunk)
+                print("Audio stream saved successfully.")
+            else:
+                print("Error generating speech:", await response.text())
 
 def sanitize_response(response):
     response = re.sub(r'\*.*?\*', '', response)

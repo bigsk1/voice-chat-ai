@@ -1,61 +1,92 @@
 document.addEventListener("DOMContentLoaded", function() {
-    const websocket = new WebSocket("ws://localhost:8000/ws"); // can also use `ws://${window.location.hostname}:8000/ws`
+    const websocket = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
+    const themeToggle = document.getElementById('theme-toggle');
+    const body = document.body;
+    const voiceAnimation = document.getElementById('voice-animation');
+    const startButton = document.getElementById('start-conversation-btn');
+    const stopButton = document.getElementById('stop-conversation-btn');
+    const clearButton = document.getElementById('clear-conversation-btn');
+    const messages = document.getElementById('messages');
 
     websocket.onopen = function(event) {
         console.log("WebSocket is open now.");
+        startButton.disabled = false;
     };
 
     websocket.onclose = function(event) {
         console.log("WebSocket is closed now.");
+        startButton.disabled = true;
     };
 
     websocket.onerror = function(event) {
         console.error("WebSocket error observed:", event);
+        startButton.disabled = true;
     };
 
     websocket.onmessage = function(event) {
-        const messages = document.getElementById('messages');
         console.log("Received message:", event.data); // Debugging line
+        let data;
+        try {
+            data = JSON.parse(event.data);
+        } catch (e) {
+            console.error("Error parsing JSON:", e);
+            data = { message: event.data };
+        }
 
-        // Check if the message contains a code block and format it
-        let formattedMessage = event.data;
+        if (data.action === "ai_start_speaking") {
+            showVoiceAnimation();
+        } else if (data.action === "ai_stop_speaking") {
+            hideVoiceAnimation();
+        } else if (data.message) {
+            displayMessage(data.message);
+        } else {
+            displayMessage(event.data);
+        }
+    };
+
+    function displayMessage(message) {
+        let formattedMessage = message;
         if (formattedMessage.includes('```')) {
             formattedMessage = formattedMessage.replace(/```(.*?)```/gs, function(match, p1) {
                 return `<pre><code>${p1}</code></pre>`;
             });
         }
 
-        // Determine if the message is from the AI or the user
-        const userMessagePrefix = "You";
-        const messageParts = formattedMessage.split(":");
-        if (messageParts.length > 1) {
-            const sender = messageParts[0].trim();
-            if (sender === userMessagePrefix) {
-                messages.innerHTML += `<p class="user-message">${formattedMessage}</p>`;
-            } else {
-                messages.innerHTML += `<p class="ai-message">${formattedMessage}</p>`;
-            }
+        const messageElement = document.createElement('p');
+        if (formattedMessage.startsWith('You:')) {
+            messageElement.className = 'user-message';
         } else {
-            messages.innerHTML += `<p class="user-message">${formattedMessage}</p>`;
+            messageElement.className = 'ai-message';
         }
+        messageElement.innerHTML = formattedMessage;
+        messages.appendChild(messageElement);
 
-        // Scroll to the bottom of the messages div
         const conversation = document.getElementById('conversation');
         conversation.scrollTop = conversation.scrollHeight;
-    };
+    }
 
-    document.getElementById('start-conversation-btn').addEventListener('click', function() {
+    startButton.addEventListener('click', function() {
         const selectedCharacter = document.getElementById('character-select').value;
         websocket.send(JSON.stringify({ action: "start", character: selectedCharacter }));
+        console.log("Start conversation message sent");
     });
 
-    document.getElementById('stop-conversation-btn').addEventListener('click', function() {
+    stopButton.addEventListener('click', function() {
         websocket.send(JSON.stringify({ action: "stop" }));
+        console.log("Stop conversation message sent");
     });
 
-    document.getElementById('clear-conversation-btn').addEventListener('click', function() {
-        document.getElementById('messages').innerHTML = '';
+    clearButton.addEventListener('click', function() {
+        messages.innerHTML = '';
     });
+
+    function showVoiceAnimation() {
+        voiceAnimation.classList.remove('hidden');
+    }
+    
+    function hideVoiceAnimation() {
+        voiceAnimation.classList.add('hidden');
+    }
 
     function setProvider() {
         const selectedProvider = document.getElementById('provider-select').value;
@@ -92,6 +123,11 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_elevenlabs_voice", voice: selectedVoice }));
     }
 
+    document.getElementById('character-select').addEventListener('change', function() {
+        const selectedCharacter = this.value;
+        websocket.send(JSON.stringify({ action: "set_character", character: selectedCharacter }));
+    });
+
     document.getElementById('provider-select').addEventListener('change', setProvider);
     document.getElementById('tts-select').addEventListener('change', setTTS);
     document.getElementById('openai-voice-select').addEventListener('change', setOpenAIVoice);
@@ -99,4 +135,31 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('ollama-model-select').addEventListener('change', setOllamaModel);
     document.getElementById('xtts-speed-select').addEventListener('change', setXTTSSpeed);
     document.getElementById('elevenlabs-voice-select').addEventListener('change', setElevenLabsVoice);
+
+    // Theme toggle functionality
+    themeToggle.addEventListener('click', function() {
+        body.classList.toggle('dark-mode');
+        updateThemeIcon();
+        saveThemePreference();
+    });
+
+    function updateThemeIcon() {
+        const isDarkMode = body.classList.contains('dark-mode');
+        themeToggle.innerHTML = isDarkMode 
+            ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>'
+            : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+    }
+
+    function saveThemePreference() {
+        const isDarkMode = body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDarkMode);
+    }
+
+    function loadThemePreference() {
+        const isDarkMode = localStorage.getItem('darkMode') === 'true';
+        body.classList.toggle('dark-mode', isDarkMode);
+        updateThemeIcon();
+    }
+
+    loadThemePreference();
 });
