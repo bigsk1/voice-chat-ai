@@ -269,6 +269,7 @@ http://localhost:8000/
 
 [![Watch the video](https://img.youtube.com/vi/Ii3vYg-CzKE/maxresdefault.jpg)](https://youtu.be/Ii3vYg-CzKE)
 
+Click on the thumbnail to open the video☝️
 
 
 ## Adding New Characters
@@ -338,21 +339,11 @@ Alien conversation using openai gpt4o and openai speech for tts.
 
 Click on the thumbnail to open the video☝️
 
----
 
-
-Docker - ollama - xtts-v2
-
-[![Watch the video](https://img.youtube.com/vi/wG4-Djicuf4/maxresdefault.jpg)](https://youtu.be/wG4-Djicuf4)
-
-
-Click on the thumbnail to open the video☝️
-
----
 
 ## Additional Details
 
-### Console output 
+### Console output
 
 Detailed output in terminal while running the app. 
 
