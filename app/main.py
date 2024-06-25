@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from .shared import clients, get_current_character, set_current_character
 from .app_logic import start_conversation, stop_conversation, set_env_variable
+# from .app import user_chatbot_conversation
 
 app = FastAPI()
 
@@ -24,6 +25,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# @app.on_event("startup")
+# async def startup_event():
+#     asyncio.create_task(user_chatbot_conversation())
 
 @app.get("/")
 async def get(request: Request):
@@ -85,7 +90,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await start_conversation()
             elif message["action"] == "set_character":
                 set_current_character(message["character"])
-                await websocket.send_json({"message": f"Character set to {message['character']}"})
+                await websocket.send_json({"message": f"Character: {message['character']}"})
             elif message["action"] == "set_provider":
                 set_env_variable("MODEL_PROVIDER", message["provider"])
             elif message["action"] == "set_tts":

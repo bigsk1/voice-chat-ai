@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", function() {
     const clearButton = document.getElementById('clear-conversation-btn');
     const messages = document.getElementById('messages');
 
+    let aiMessageQueue = [];
+    let isAISpeaking = false;
+
     websocket.onopen = function(event) {
         console.log("WebSocket is open now.");
         startButton.disabled = false;
@@ -24,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     websocket.onmessage = function(event) {
-        console.log("Received message:", event.data); // Debugging line
+        console.log("Received message:", event.data);
         let data;
         try {
             data = JSON.parse(event.data);
@@ -34,15 +37,50 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         if (data.action === "ai_start_speaking") {
+            isAISpeaking = true;
             showVoiceAnimation();
+            setTimeout(processQueuedMessages, 100);
         } else if (data.action === "ai_stop_speaking") {
+            isAISpeaking = false;
             hideVoiceAnimation();
+            processQueuedMessages();
         } else if (data.message) {
-            displayMessage(data.message);
+            if (data.message.startsWith('You:')) {
+                displayMessage(data.message);
+            } else {
+                aiMessageQueue.push(data.message);
+                if (!isAISpeaking) {
+                    processQueuedMessages();
+                }
+            }
         } else {
             displayMessage(event.data);
         }
     };
+
+    function processQueuedMessages() {
+        while (aiMessageQueue.length > 0 && !isAISpeaking) {
+            displayMessage(aiMessageQueue.shift());
+        }
+    }
+
+    function showVoiceAnimation() {
+        voiceAnimation.classList.remove('hidden');
+        adjustScrollPosition();
+    }
+
+    function hideVoiceAnimation() {
+        voiceAnimation.classList.add('hidden');
+        adjustScrollPosition();
+        processQueuedMessages();
+    }
+
+    function adjustScrollPosition() {
+        const conversation = document.getElementById('conversation');
+        if (isAISpeaking) {
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+    }
 
     function displayMessage(message) {
         let formattedMessage = message;
@@ -60,9 +98,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         messageElement.innerHTML = formattedMessage;
         messages.appendChild(messageElement);
-
-        const conversation = document.getElementById('conversation');
-        conversation.scrollTop = conversation.scrollHeight;
+        adjustScrollPosition();
     }
 
     startButton.addEventListener('click', function() {
@@ -80,13 +116,13 @@ document.addEventListener("DOMContentLoaded", function() {
         messages.innerHTML = '';
     });
 
-    function showVoiceAnimation() {
-        voiceAnimation.classList.remove('hidden');
-    }
-    
-    function hideVoiceAnimation() {
-        voiceAnimation.classList.add('hidden');
-    }
+    messages.addEventListener('scroll', function() {
+        if (isAISpeaking) {
+            const conversation = document.getElementById('conversation');
+            const isScrolledToBottom = conversation.scrollHeight - conversation.clientHeight <= conversation.scrollTop + 1;
+            voiceAnimation.style.opacity = isScrolledToBottom ? '1' : '0';
+        }
+    });
 
     function setProvider() {
         const selectedProvider = document.getElementById('provider-select').value;

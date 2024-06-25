@@ -93,7 +93,7 @@ async def conversation_loop():
             break
 
         if any(phrase in user_input.lower() for phrase in screenshot_phrases):
-            execute_screenshot_and_analyze()
+            await execute_screenshot_and_analyze()
             continue
 
         try:
