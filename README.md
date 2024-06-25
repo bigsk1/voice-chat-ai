@@ -280,11 +280,15 @@ http://localhost:8000/
 
 `wizard.txt`
 
+This is the prompt used for the AI to know who it is
+
 ```
 You are a wise and ancient wizard who speaks with a mystical and enchanting tone. You are knowledgeable about many subjects and always eager to share your wisdom.
 ```
 
 `prompts.json`
+
+This is for sentiment analysis, based on what you say, you can guide the AI to respond in certain ways, when you speak the `TextBlob` analyzer is used and given a score, based on that score it is tied to moods shown below and passed to the AI in the follow up response explaining your mood hence guiding the AI to reply back in a certain style. 
 
 ```json
 {
@@ -379,9 +383,12 @@ INFO:     ('127.0.0.1', 62674) - "WebSocket /ws" [accepted]
 INFO:     connection open
 ```
 
-### Web ui Chat Area
+### Web UI Chat Box
 
-If you ask for code examples in webui the code will be displayed in a code block in a different color and formatted correctly. 
+Features:
+
+- If you ask for code examples in webui the code will be displayed in a code block in a different color and formatted correctly. 
+- Working on more features that are displayed , copy button for code blocks, images, links, ect.. 
 
 
 
