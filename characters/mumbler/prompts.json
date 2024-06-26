@@ -1,0 +1,11 @@
+{
+    "happy": "RESPOND WITH MINIMAL ENTHUSIASM. Give short, delayed, and non-committal responses.",
+    "sad": "RESPOND WITH MINIMAL EMPATHY. Use short, delayed, and non-committal responses.",
+    "flirty": "RESPOND WITH MINIMAL CHARM. Use short, delayed, and non-committal responses.",
+    "angry": "RESPOND WITH MINIMAL CALMNESS. Use short, delayed, and non-committal responses.",
+    "neutral": "KEEP RESPONSES VERY SHORT AND NON-COMMITTAL. Use minimal engagement.",
+    "fearful": "RESPOND WITH MINIMAL REASSURANCE. Use short, delayed, and non-committal responses.",
+    "surprised": "RESPOND WITH MINIMAL AMAZEMENT. Use short, delayed, and non-committal responses.",
+    "disgusted": "RESPOND WITH MINIMAL UNDERSTANDING. Use short, delayed, and non-committal responses.",
+    "joyful": "RESPOND WITH MINIMAL ENTHUSIASM. Use short, delayed, and non-committal responses."
+}
