@@ -18,7 +18,8 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
 - **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
-- **WebUI or Terminal usage**: Can be ran with either 
+- **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
+- **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
 
 
 ## Installation
@@ -152,10 +153,9 @@ In the docker folder there is also some scripts to update the model and tts prov
 ```env
 # Conditional API Usage:
 # Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
-# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc. You have to shutdown server when switching between tts providers and model providers but all other options can be updated when server is running in webui.
+# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc. 
 
 # Model Provider: openai or ollama
-# Once set, if running webui you can't change in the UI until you stop server and restart
 MODEL_PROVIDER=ollama
 
 # Character Configuration:
