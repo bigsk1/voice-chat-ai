@@ -42,6 +42,10 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
    git clone https://github.com/bigsk1/voice-chat-ai.git
    cd voice-chat-ai
    ```
+   
+    For CPU-only version: clone the cpu-only branch
+   https://github.com/bigsk1/voice-chat-ai/tree/cpu-only
+
 
 2. Create a virtual environment: 🐍
 
@@ -55,20 +59,18 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
    ```bash
    conda create --name voice-chat-ai python=3.10
    conda activate voice-chat-ai
-
-   # Install CUDA-enabled PyTorch and other dependencies
-   pip install torch==2.3.1+cu121 torchaudio==2.3.1+cu121 torchvision==0.18.1+cu121 -f https://download.pytorch.org/whl/torch_stable.html
-   pip install -r requirements.txt
-
-   # For CPU-only installations, use:
-   pip install -r cpu_requirements.txt
    ```
 
 3. Install dependencies:
 
+
    For GPU (CUDA) version: RECOMMEND
 
-   ```bash
+    Install CUDA-enabled PyTorch and other dependencies
+
+    ```bash
+   pip install torch==2.3.1+cu121 torchaudio==2.3.1+cu121 torchvision==0.18.1+cu121 -f https://download.pytorch.org/whl/torch_stable.html
+   
    pip install -r requirements.txt
    ```
 
@@ -76,6 +78,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
    https://github.com/bigsk1/voice-chat-ai/tree/cpu-only
 
    ```bash
+   # For CPU-only installations, use:
    pip install -r cpu_requirements.txt
    ```
 
@@ -164,7 +167,6 @@ CHARACTER_NAME=nerd
 
 # Text-to-Speech (TTS) Configuration:
 # TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs
-# Once set, if run webui can't change in UI until you stop server and restart
 TTS_PROVIDER=elevenlabs
 
 # OpenAI TTS Voice - Used when TTS_PROVIDER is set to openai above
