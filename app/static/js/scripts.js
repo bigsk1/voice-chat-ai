@@ -121,9 +121,10 @@ document.addEventListener("DOMContentLoaded", function() {
         console.log("Stop conversation message sent");
     });
 
-    clearButton.addEventListener('click', function() {
+    clearButton.addEventListener('click', async function() {
         messages.innerHTML = '';
-        fetch('/clear_history', { method: 'POST' });
+        await fetch('/clear_history', { method: 'POST' });
+        console.log("Conversation history cleared.");
     });
     
 

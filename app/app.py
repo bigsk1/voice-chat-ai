@@ -111,16 +111,6 @@ def init_set_provider(set_provider):
     MODEL_PROVIDER = set_provider
     print(f"Switched to Model Provider: {set_provider}")
     
-# Initial model and TTS voice setup
-# if MODEL_PROVIDER == "openai":
-#     init_openai_model(OPENAI_MODEL)  
-#     #init_openai_tts_voice(OPENAI_TTS_VOICE)
-# elif MODEL_PROVIDER == "ollama":
-#     init_ollama_model(OLLAMA_MODEL)
-
-# if TTS_PROVIDER == "elevenlabs":
-#     init_elevenlabs_tts_voice(ELEVENLABS_TTS_VOICE)
-
 
 # Function to display ElevenLabs quota
 def display_elevenlabs_quota():
@@ -194,7 +184,7 @@ async def process_and_play(prompt, audio_file_pth):
     if TTS_PROVIDER == 'openai':
         output_path = os.path.join(output_dir, 'output.wav')
         await openai_text_to_speech(prompt, output_path)
-        print(f"Generated audio file at: {output_path}")
+        # print(f"Generated audio file at: {output_path}")
         if os.path.exists(output_path):
             print("Playing generated audio...")
             await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
@@ -205,7 +195,7 @@ async def process_and_play(prompt, audio_file_pth):
     elif TTS_PROVIDER == 'elevenlabs':
         output_path = os.path.join(output_dir, 'output.mp3')
         await elevenlabs_text_to_speech(prompt, output_path)
-        print(f"Generated audio file at: {output_path}")
+        # print(f"Generated audio file at: {output_path}")
         if os.path.exists(output_path):
             print("Playing generated audio...")
             await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
@@ -498,7 +488,6 @@ def save_conversation_history(conversation_history):
             role = message["role"].capitalize()
             content = message["content"]
             file.write(f"{role}: {content}\n")
-
 
 def transcribe_with_whisper(audio_file):
     segments, info = whisper_model.transcribe(audio_file, beam_size=5)

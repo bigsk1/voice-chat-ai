@@ -27,9 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# @app.on_event("startup")
-# async def startup_event():
-#     asyncio.create_task(user_chatbot_conversation())
 
 @app.get("/")
 async def get(request: Request):
@@ -84,8 +81,8 @@ async def download_history():
 @app.post("/clear_history")
 async def clear_history():
     global conversation_history
-    conversation_history = []
-    save_conversation_history(conversation_history)
+    conversation_history.clear()  # Clear the in-memory conversation history
+    save_conversation_history(conversation_history)  # Save the cleared state to the file
     return {"status": "cleared"}
 
 

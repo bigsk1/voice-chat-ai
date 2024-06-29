@@ -109,7 +109,7 @@ async def conversation_loop():
 
         current_character = get_current_character()
         await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}")
-        print(f"{current_character.capitalize()}: {chatbot_response}")
+        # print(f"{current_character.capitalize()}: {chatbot_response}")
 
 def set_env_variable(key: str, value: str):
     os.environ[key] = value
