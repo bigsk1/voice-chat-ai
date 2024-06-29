@@ -48,7 +48,6 @@ body {
 
 header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     padding: 1rem;
     background-color: var(--secondary-color);
@@ -58,12 +57,34 @@ header {
 .header-controls {
     display: flex;
     align-items: center;
+    margin-left: auto;
 }
 
 h1 {
     margin: 0;
     font-size: 1.5rem;
+    padding-right: 1rem;
+    display: flex;
+    align-items: center;
 }
+
+#mic-icon {
+    font-size: 38px; 
+    /* cursor: pointer; */
+    color: var(--text-color);
+    transition: color 0.3s;
+    margin-left: 12px; 
+}
+
+
+#mic-icon.mic-on {
+    color: red;
+}
+
+#mic-icon.mic-off {
+    color: inherit;
+}
+
 
 main {
     flex-grow: 1;
@@ -196,18 +217,13 @@ a:hover {
     text-decoration: underline;
 }
 
-h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    padding-right: 1rem; /* Add some space to the right of the title */
-}
 
 #theme-toggle {
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
-    margin-left: 10px;
+    margin-right: 20px;
 }
 
 #theme-toggle svg {
@@ -222,6 +238,21 @@ h1 {
     height: 40px;
     margin: 0 1rem;
 } */
+
+#download-history {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 20px;
+}
+
+#download-history svg {
+    width: 20px;
+    height: 20px;
+    color: var(--text-color);
+}
+
 
 #voice-animation {
     position: sticky;

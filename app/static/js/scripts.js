@@ -1,12 +1,14 @@
 document.addEventListener("DOMContentLoaded", function() {
     const websocket = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
     const themeToggle = document.getElementById('theme-toggle');
+    const downloadButton = document.getElementById('download-button');
     const body = document.body;
     const voiceAnimation = document.getElementById('voice-animation');
     const startButton = document.getElementById('start-conversation-btn');
     const stopButton = document.getElementById('stop-conversation-btn');
     const clearButton = document.getElementById('clear-conversation-btn');
     const messages = document.getElementById('messages');
+    const micIcon = document.getElementById('mic-icon');
 
     let aiMessageQueue = [];
     let isAISpeaking = false;
@@ -53,6 +55,12 @@ document.addEventListener("DOMContentLoaded", function() {
                     processQueuedMessages();
                 }
             }
+        } else if (data.action === "recording_started") {
+            micIcon.classList.remove('mic-off');
+            micIcon.classList.add('mic-on');
+        } else if (data.action === "recording_stopped") {
+            micIcon.classList.remove('mic-on');
+            micIcon.classList.add('mic-off');
         } else {
             displayMessage(event.data);
         }
@@ -93,6 +101,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const messageElement = document.createElement('p');
         if (formattedMessage.startsWith('You:')) {
             messageElement.className = 'user-message';
+            formattedMessage = formattedMessage.replace('You:', '').trim(); // Remove 'You:' 
         } else {
             messageElement.className = 'ai-message';
         }
@@ -114,7 +123,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     clearButton.addEventListener('click', function() {
         messages.innerHTML = '';
+        fetch('/clear_history', { method: 'POST' });
     });
+    
 
     messages.addEventListener('scroll', function() {
         if (isAISpeaking) {
@@ -172,6 +183,24 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('xtts-speed-select').addEventListener('change', setXTTSSpeed);
     document.getElementById('elevenlabs-voice-select').addEventListener('change', setElevenLabsVoice);
 
+    async function downloadHistory() {
+        const response = await fetch('/download_history');
+        if (response.status === 200) {
+            const historyText = await response.text();
+            const blob = new Blob([historyText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'conversation_history.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        } else {
+            alert("Failed to download conversation history.");
+        }
+    }
+
+    downloadButton.addEventListener('click', downloadHistory);
+    
     // Theme toggle functionality
     themeToggle.addEventListener('click', function() {
         body.classList.toggle('dark-mode');

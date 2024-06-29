@@ -20,16 +20,18 @@ from .app import (
     init_xtts_speed,
     init_set_tts,
     init_set_provider,
+    save_conversation_history,
 )
 
 router = APIRouter()
 
-def record_audio_and_transcribe():
+async def record_audio_and_transcribe():
     audio_file = "temp_recording.wav"
-    record_audio(audio_file)
+    await record_audio(audio_file)
     user_input = transcribe_with_whisper(audio_file)
     os.remove(audio_file)  # Clean up the temporary audio file
     return user_input
+
 
 async def process_text(user_input):
     current_character = get_current_character()
@@ -42,12 +44,14 @@ async def process_text(user_input):
     mood_prompt = adjust_prompt(mood)
 
     chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
-    conversation_history.append({"role": "assistant", "content": chatbot_response})
     sanitized_response = sanitize_response(chatbot_response)
     if len(sanitized_response) > 400:  # Limit response length for audio generation
         sanitized_response = sanitized_response[:500] + "..."
     prompt2 = sanitized_response
     await process_and_play(prompt2, character_audio_file)
+
+    conversation_history.append({"role": "assistant", "content": chatbot_response})
+    save_conversation_history(conversation_history)
     return chatbot_response
 
 quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave."]
@@ -82,8 +86,9 @@ async def send_message_to_clients(message: str):
 async def conversation_loop():
     global continue_conversation
     while continue_conversation:
-        user_input = record_audio_and_transcribe()
+        user_input = await record_audio_and_transcribe() 
         conversation_history.append({"role": "user", "content": user_input})
+        save_conversation_history(conversation_history)
         await send_message_to_clients(f"You: {user_input}")
         print(f"You: {user_input}")
 
@@ -102,7 +107,6 @@ async def conversation_loop():
             chatbot_response = f"An error occurred: {e}"
             print(chatbot_response)
 
-        conversation_history.append({"role": "assistant", "content": chatbot_response})
         current_character = get_current_character()
         await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}")
         print(f"{current_character.capitalize()}: {chatbot_response}")

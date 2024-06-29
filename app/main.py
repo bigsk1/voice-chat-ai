@@ -4,13 +4,14 @@ import signal
 import sys
 import uvicorn
 import asyncio
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from .shared import clients, get_current_character, set_current_character
+from fastapi.responses import FileResponse
+from .shared import clients, get_current_character, set_current_character, conversation_history
 from .app_logic import start_conversation, stop_conversation, set_env_variable
-# from .app import user_chatbot_conversation
+from .app import save_conversation_history
 
 app = FastAPI()
 
@@ -73,6 +74,21 @@ async def get_elevenlabs_voices():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/download_history")
+async def download_history():
+    file_path = "conversation_history.txt"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Conversation history file not found.")
+    return FileResponse(path=file_path, filename="conversation_history.txt", media_type='text/plain')
+
+@app.post("/clear_history")
+async def clear_history():
+    global conversation_history
+    conversation_history = []
+    save_conversation_history(conversation_history)
+    return {"status": "cleared"}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -105,6 +121,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("XTTS_SPEED", message["speed"])
             elif message["action"] == "set_elevenlabs_voice":
                 set_env_variable("ELEVENLABS_TTS_VOICE", message["voice"])
+            elif message["action"] == "clear":
+                conversation_history.clear()
+                await websocket.send_json({"message": "Conversation history cleared."})
     except WebSocketDisconnect:
         if websocket in clients:
             clients.remove(websocket)

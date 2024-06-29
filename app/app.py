@@ -492,6 +492,14 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
     print(f"Debug: chatgpt_streamed completed. Response length: {len(full_response)}")
     return full_response
 
+def save_conversation_history(conversation_history):
+    with open("conversation_history.txt", "w", encoding="utf-8") as file:
+        for message in conversation_history:
+            role = message["role"].capitalize()
+            content = message["content"]
+            file.write(f"{role}: {content}\n")
+
+
 def transcribe_with_whisper(audio_file):
     segments, info = whisper_model.transcribe(audio_file, beam_size=5)
     transcription = ""
@@ -503,11 +511,12 @@ def detect_silence(data, threshold=1000, chunk_size=1024):
     audio_data = np.frombuffer(data, dtype=np.int16)
     return np.mean(np.abs(audio_data)) < threshold
 
-def record_audio(file_path, silence_threshold=512, silence_duration=4.0, chunk_size=1024):
+async def record_audio(file_path, silence_threshold=512, silence_duration=4.0, chunk_size=1024):
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=chunk_size)
     frames = []
     print("Recording...")
+    await send_message_to_clients(json.dumps({"action": "recording_started"}))  # Notify frontend
     silent_chunks = 0
     speaking_chunks = 0
     while True:
@@ -523,6 +532,7 @@ def record_audio(file_path, silence_threshold=512, silence_duration=4.0, chunk_s
         if speaking_chunks > silence_duration * (16000 / chunk_size) * 10:
             break
     print("Recording stopped.")
+    await send_message_to_clients(json.dumps({"action": "recording_stopped"}))  # Notify frontend
     stream.stop_stream()
     stream.close()
     p.terminate()
@@ -711,8 +721,13 @@ async def user_chatbot_conversation():
             await process_and_play(prompt2, character_audio_file)  # Note the 'await' here
             if len(conversation_history) > 20:
                 conversation_history = conversation_history[-20:]
+
+            # Save conversation history after each message exchange
+            save_conversation_history(conversation_history)
+
     except KeyboardInterrupt:
         print("Quitting the conversation...")
 
 if __name__ == "__main__":
     asyncio.run(user_chatbot_conversation())
+
