@@ -217,3 +217,5 @@ temp_output.mp3
 
 #elevenlabs_voices.json
 #elevenlabs_voices.json.bak
+
+conversation_history.txt
