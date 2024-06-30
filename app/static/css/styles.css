@@ -20,7 +20,7 @@
 .dark-mode {
     --bg-color: #121212;
     --text-color: #ffffff;
-    --primary-color: #646464;
+    --primary-color: #333333;
     --secondary-color: #1e1e1e;
     --border-color: #333333;
     --shadow-color: rgba(255, 255, 255, 0.1);

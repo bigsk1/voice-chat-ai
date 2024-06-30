@@ -203,6 +203,16 @@ document.addEventListener("DOMContentLoaded", function() {
     downloadButton.addEventListener('click', downloadHistory);
     
     // Theme toggle functionality
+    function setDarkModeDefault() {
+        const isDarkMode = localStorage.getItem('darkMode');
+        if (isDarkMode === null) {
+            body.classList.add('dark-mode');
+        } else {
+            body.classList.toggle('dark-mode', isDarkMode === 'true');
+        }
+        updateThemeIcon();
+    }
+
     themeToggle.addEventListener('click', function() {
         body.classList.toggle('dark-mode');
         updateThemeIcon();
@@ -228,4 +238,5 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     loadThemePreference();
+    setDarkModeDefault();
 });
