@@ -293,17 +293,40 @@ def sanitize_response(response):
 def analyze_mood(user_input):
     analysis = TextBlob(user_input)
     polarity = analysis.sentiment.polarity
-    print(f"Sentiment polarity: {polarity}")  # Debugging statement
+    print(f"Sentiment polarity: {polarity}")
 
-    # Custom keyword lists for detecting specific emotions
-    flirty_keywords = ["flirt", "love", "crush", "charming", "amazing", "attractive"]
-    angry_keywords = ["angry", "furious", "mad", "annoyed", "pissed off"]
-    sad_keywords = ["sad", "depressed", "down", "unhappy", "crying"]
-    fearful_keywords = ["scared", "afraid", "fear", "terrified", "nervous"]
-    surprised_keywords = ["surprised", "amazed", "astonished", "shocked"]
-    disgusted_keywords = ["disgusted", "revolted", "sick", "nauseated"]
-    joyful_keywords = ["joyful", "happy", "elated", "glad", "delighted"]
-    neutral_keywords = ["okay", "alright", "fine", "neutral"]
+    flirty_keywords = [
+        "flirt", "love", "crush", "charming", "amazing", "attractive",
+        "cute", "sweet", "darling", "adorable", "alluring", "seductive"
+    ]
+    angry_keywords = [
+        "angry", "furious", "mad", "annoyed", "pissed off", "irate",
+        "enraged", "livid", "outraged", "frustrated", "infuriated"
+    ]
+    sad_keywords = [
+        "sad", "depressed", "down", "unhappy", "crying", "miserable",
+        "heartbroken", "sorrowful", "gloomy", "melancholy", "despondent"
+    ]
+    fearful_keywords = [
+        "scared", "afraid", "fear", "terrified", "nervous", "anxious",
+        "worried", "frightened", "alarmed", "panicked", "horrified"
+    ]
+    surprised_keywords = [
+        "surprised", "amazed", "astonished", "shocked", "stunned",
+        "flabbergasted", "astounded", "speechless", "startled"
+    ]
+    disgusted_keywords = [
+        "disgusted", "revolted", "sick", "nauseated", "repulsed",
+        "grossed out", "appalled", "offended", "detested"
+    ]
+    joyful_keywords = [
+        "joyful", "happy", "elated", "glad", "delighted", "pleased",
+        "cheerful", "content", "satisfied", "thrilled", "ecstatic"
+    ]
+    neutral_keywords = [
+        "okay", "alright", "fine", "neutral", "so-so", "indifferent",
+        "meh", "unremarkable", "average", "mediocre"
+    ]
 
     if any(keyword in user_input.lower() for keyword in flirty_keywords):
         return "flirty"
