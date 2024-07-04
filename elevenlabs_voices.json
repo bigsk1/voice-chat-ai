@@ -1,84 +1,88 @@
 {
     "voices": [
         {
-            "id": "8qUUChhCKi1VbKWq0QPN",
-            "name": "Wayne - cool, calm, deep"
-        },
-        {
-            "id": "JqseNhWbQb1GDNNS1Ga1",
-            "name": "Joanne - pensive, introspective"
-        },
-        {
-            "id": "L5iegTeymjgxJAU7dOrN",
-            "name": "Victoria - Classy British Mature"
-        },
-        {
-            "id": "MMHtVLagjZxJ53v4Wj8o",
-            "name": "Paddington - British narrator"
-        },
-        {
-            "id": "vVgPqCpkdPQacBNNIsAqI",
-            "name": "Default - Caroline - WOW"
-        },
-        {
-            "id": "ZAIfZW1JbeDCmunfBv4m",
-            "name": "Tally: EROTIC, ADULT, SENSUAL"
-        },
-        {
-            "id": "EiNlNiXeDU1pqqOPrYMO",
-            "name": "John Doe - Deep"
-        },
-        {
-            "id": "eVItLK1UvXctxuaRV2Oq",
-            "name": "Sexy Female Villain Voice"
+            "id": "2bk7ULW9HfwvcIbMWod0",
+            "name": "Female - Bianca - City girl"
         },
         {
             "id": "MwxR6MTQizZcwvekg0wc",
-            "name": "Carmen - very realistic, causal, lovely"
+            "name": "Female - Carmen - Very realistic, casual, lovely"
         },
         {
-            "id": "X2fgamX81ujcxLKXzLnD",
-            "name": "W Voice"
-        },
-        {
-            "id": "pgCnBQgKPGkIP8fJuita",
-            "name": "Jarvis"
-        },
-        {
-            "id": "kz8mB8WAwV9lZ0fuDqel",
-            "name": "Nigel - Mysterious Intriguing"
-        },
-        {
-            "id": "NYC9WEgkq1u4jiqBseQ9",
-            "name": "Russell - Dramatic British TV"
-        },
-        {
-            "id": "2bk7ULW9HfwvcIbMWod0",
-            "name": "Bianca - City girl"
-        },
-        {
-            "id": "2zRM7PkgwBPiau2jvVXc",
-            "name": "Monika Sogam  Female Indian"
-        },
-        {
-            "id": "b0uJ9TWzQss61d8f2OWX",
-            "name": "Lucy - sweet and sensual"
+            "id": "vVgPqCpkdPQacBNNIsAqI",
+            "name": "Female - Default - Caroline - Sweet"
         },
         {
             "id": "nDJIICjR9zfJExIFeSCN",
-            "name": "Emmaline - young British girl"
+            "name": "Female - Emmaline - Young British girl"
         },
         {
-            "id": "DJDkcaY4POaxra3iaZ5b",
-            "name": "Natasha - Energetic Hindi Voice"
+            "id": "JqseNhWbQb1GDNNS1Ga1",
+            "name": "Female - Joanne - Pensive, introspective"
+        },
+        {
+            "id": "b0uJ9TWzQss61d8f2OWX",
+            "name": "Female - Lucy - Sweet and sensual"
+        },
+        {
+            "id": "2zRM7PkgwBPiau2jvVXc",
+            "name": "Female - Monika Sogam - Female Indian"
+        },
+        {
+            "id": "eVItLK1UvXctxuaRV2Oq",
+            "name": "Female - Sexy Villain Voice"
+        },
+        {
+            "id": "ZAIfZW1JbeDCmunfBv4m",
+            "name": "Female - Tally - Erotic, adult, sensual"
+        },
+        {
+            "id": "L5iegTeymjgxJAU7dOrN",
+            "name": "Female - Victoria - Classy British mature"
+        },
+        {
+            "id": "X2fgamX81ujcxLKXzLnD",
+            "name": "Male - Bigsk1 voice"
         },
         {
             "id": "Mg1264PmwVoIedxsF9nu",
-            "name": "Dr. Von Fusion crazy mad scientist"
+            "name": "Male - Dr. Von Fusion - Crazy mad scientist"
+        },
+        {
+            "id": "2pF3fJJNnWg1nDwUW5CW",
+            "name": "Male - Eustis - Fast speaking"
+        },
+        {
+            "id": "pgCnBQgKPGkIP8fJuita",
+            "name": "Male - Jarvis - Tony Stark AI"
+        },
+        {
+            "id": "EiNlNiXeDU1pqqOPrYMO",
+            "name": "Male - John Doe - Deep"
+        },
+        {
+            "id": "kz8mB8WAwV9lZ0fuDqel",
+            "name": "Male - Nigel - Mysterious intriguing"
+        },
+        {
+            "id": "MMHtVLagjZxJ53v4Wj8o",
+            "name": "Male - Paddington - British narrator"
+        },
+        {
+            "id": "fJE3lSefh7YI494JMYYz",
+            "name": "Male - Richard Yu - Fast nerdy"
+        },
+        {
+            "id": "NYC9WEgkq1u4jiqBseQ9",
+            "name": "Male - Russell - Dramatic British TV"
+        },
+        {
+            "id": "8qUUChhCKi1VbKWq0QPN",
+            "name": "Male - Wayne - Cool, calm, deep"
         },
         {
             "id": "22FgtP4D63L7UXvnTmGf",
-            "name": "Wildebeest - Deep male voice"
+            "name": "Male - Wildebeest - Deep male voice"
         }
     ]
 }
