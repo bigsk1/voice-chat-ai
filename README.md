@@ -161,8 +161,10 @@ In the docker folder there is also some scripts to update the model and tts prov
 # Model Provider: openai or ollama
 MODEL_PROVIDER=ollama
 
-# Character Configuration:
-# Character to use - Options: samantha, wizard, pirate, valleygirl, newscaster1920s, alien_scientist, cyberpunk, detective, mouse, conandoyle, shakespeare, einstein, nerd
+# Character to use - Options: alien_scientist, anarchist, bigfoot, chatgpt, clumsyhero, conandoyle, conspiracy, cyberpunk,
+# detective, dog, dream_weaver, einstein, elon_musk, fight_club, fress_trainer, ghost, granny, haunted_teddybear, insult, joker, morpheus,
+# mouse, mumbler, nebula_barista, nerd, newscaster_1920s, paradox, pirate, revenge_deer, samantha, shakespeare, split, telemarketer,
+# terminator, valleygirl, vampire, vegetarian_vampire, wizard, zombie_therapist
 CHARACTER_NAME=nerd
 
 # Text-to-Speech (TTS) Configuration:
@@ -186,8 +188,8 @@ XTTS_SPEED=1.2
 # OpenAI API Key for models and speech (replace with your actual API key)
 OPENAI_API_KEY=sk-proj-1111111
 # Models to use - OPTIONAL: For screen analysis, if MODEL_PROVIDER is ollama, llava will be used by default.
-# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o works well.
-OPENAI_MODEL=gpt-4o
+# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o-mini works well.
+OPENAI_MODEL=gpt-4o-mini
 
 # Endpoints:
 # Set these below and no need to change often
