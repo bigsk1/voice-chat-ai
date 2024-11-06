@@ -154,7 +154,7 @@ In the docker folder there is also some scripts to update the model and tts prov
 ```env
 # Conditional API Usage:
 # Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
-# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc. 
+# You can mix and match, use Ollama with OpenAI speech or use OpenAI chat model with local XTTS or xAI chat etc.. 
 
 # Model Provider: openai or ollama or xai
 MODEL_PROVIDER=ollama
@@ -162,8 +162,8 @@ MODEL_PROVIDER=ollama
 # Character to use - Options: alien_scientist, anarchist, bigfoot, chatgpt, clumsyhero, conandoyle, conspiracy, cyberpunk,
 # detective, dog, dream_weaver, einstein, elon_musk, fight_club, fress_trainer, ghost, granny, haunted_teddybear, insult, joker, morpheus,
 # mouse, mumbler, nebula_barista, nerd, newscaster_1920s, paradox, pirate, revenge_deer, samantha, shakespeare, split, telemarketer,
-# terminator, valleygirl, vampire, vegetarian_vampire, wizard, zombie_therapist
-CHARACTER_NAME=nerd
+# terminator, valleygirl, vampire, vegetarian_vampire, wizard, zombie_therapist, grok_xai
+CHARACTER_NAME=pirate
 
 # Text-to-Speech (TTS) Configuration:
 # TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs
@@ -174,9 +174,9 @@ TTS_PROVIDER=elevenlabs
 OPENAI_TTS_VOICE=onyx
 
 # ElevenLabs Configuration:
-ELEVENLABS_API_KEY=49b111111111
+ELEVENLABS_API_KEY=your_api_key_here
 # Default voice ID
-ELEVENLABS_TTS_VOICE=VgPpppppppp
+ELEVENLABS_TTS_VOICE=pgCnBQgKPGkIP8fJuita
 
 # XTTS Configuration:
 # The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
@@ -184,9 +184,9 @@ XTTS_SPEED=1.2
 
 # OpenAI Configuration:
 # OpenAI API Key for models and speech (replace with your actual API key)
-OPENAI_API_KEY=sk-proj-1111111
+OPENAI_API_KEY=your_api_key_here
 # Models to use - OPTIONAL: For screen analysis, if MODEL_PROVIDER is ollama, llava will be used by default.
-# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o-mini works well.
+# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o-mini works well. xai not supported yet falls back to openai if xai is selected and you ask for screen analysis.
 OPENAI_MODEL=gpt-4o-mini
 
 # Endpoints:
@@ -196,8 +196,8 @@ OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
 OLLAMA_BASE_URL=http://localhost:11434
 
 # Models Configuration:
-# Models to use - llama3 works well for local usage.
-OLLAMA_MODEL=llama3
+# Models to use - llama3.2 works well for local usage.
+OLLAMA_MODEL=llama3.2
 
 # xAI Configuration
 XAI_MODEL=grok-beta
@@ -249,20 +249,41 @@ Add names and voice id's in `elevenlabs_voices.json` - in the webui you can sele
 {
     "voices": [
         {
-            "id": "8qaaaaaaaaa",
-            "name": "Joe - cool, calm, deep"
+            "id": "2bk7ULW9HfwvcIbMWod0",
+            "name": "Female - Bianca - City girl"
         },
         {
-            "id": "Jqaaaaaaaaaa",
-            "name": "Joanne - pensive, introspective"
+            "id": "JqseNhWbQb1GDNNS1Ga1",
+            "name": "Female - Joanne - Pensive, introspective"
         },
         {
-            "id": "L5aaaaaaaaa",
-            "name": "Victoria - Classy British Mature"
-        }    
+            "id": "b0uJ9TWzQss61d8f2OWX",
+            "name": "Female - Lucy - Sweet and sensual"
+        },
+        {
+            "id": "2pF3fJJNnWg1nDwUW5CW",
+            "name": "Male - Eustis - Fast speaking"
+        },
+        {
+            "id": "pgCnBQgKPGkIP8fJuita",
+            "name": "Male - Jarvis - Tony Stark AI"
+        },
+        {
+            "id": "kz8mB8WAwV9lZ0fuDqel",
+            "name": "Male - Nigel - Mysterious intriguing"
+        },
+        {
+            "id": "MMHtVLagjZxJ53v4Wj8o",
+            "name": "Male - Paddington - British narrator"
+        },
+        {
+            "id": "22FgtP4D63L7UXvnTmGf",
+            "name": "Male - Wildebeest - Deep male voice"
+        }
     ]
 }
 ```
+
 For the CLI the voice id in the .env will be used
 
 ---
