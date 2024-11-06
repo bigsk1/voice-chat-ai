@@ -158,7 +158,7 @@ In the docker folder there is also some scripts to update the model and tts prov
 # Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
 # You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc. 
 
-# Model Provider: openai or ollama
+# Model Provider: openai or ollama or xai
 MODEL_PROVIDER=ollama
 
 # Character to use - Options: alien_scientist, anarchist, bigfoot, chatgpt, clumsyhero, conandoyle, conspiracy, cyberpunk,
