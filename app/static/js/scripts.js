@@ -161,6 +161,11 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_ollama_model", model: selectedModel }));
     }
 
+    function setXAIModel() {
+        const selectedModel = document.getElementById('xai-model-select').value;
+        websocket.send(JSON.stringify({ action: "set_xai_model", model: selectedModel }));
+    }
+
     function setXTTSSpeed() {
         const selectedSpeed = document.getElementById('xtts-speed-select').value;
         websocket.send(JSON.stringify({ action: "set_xtts_speed", speed: selectedSpeed }));
@@ -181,6 +186,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('openai-voice-select').addEventListener('change', setOpenAIVoice);
     document.getElementById('openai-model-select').addEventListener('change', setOpenAIModel);
     document.getElementById('ollama-model-select').addEventListener('change', setOllamaModel);
+    document.getElementById('xai-model-select').addEventListener('change', setXAIModel);
     document.getElementById('xtts-speed-select').addEventListener('change', setXTTSSpeed);
     document.getElementById('elevenlabs-voice-select').addEventListener('change', setElevenLabsVoice);
 

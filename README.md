@@ -12,7 +12,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 
 ## Features
 
-- **Supports both OpenAI and Ollama language models**: Choose the model that best fits your needs.
+- **Supports OpenAI, xAI or Ollama language models**: Choose the model that best fits your needs.
 - **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
 - **No typing needed, just speak**: Hands-free interaction makes conversations smooth and effortless.
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
@@ -28,7 +28,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 
 - Python 3.10
 - CUDA-enabled GPU
-- Ollama models or Openai API for chat
+- Ollama models or Openai API or xAI for chat
 - Local XTTS or Openai API or ElevenLabs API for speech
 - Microsoft C++ Build Tools on windows
 - Microphone
@@ -200,6 +200,11 @@ OLLAMA_BASE_URL=http://localhost:11434
 # Models Configuration:
 # Models to use - llama3 works well for local usage.
 OLLAMA_MODEL=llama3
+
+# xAI Configuration
+XAI_MODEL=grok-beta
+XAI_API_KEY=your_api_key_here
+XAI_BASE_URL=https://api.x.ai/v1
 
 # NOTES:
 # List of trigger phrases to have the model view your desktop (desktop, browser, images, etc.).

@@ -15,6 +15,7 @@ from .app import (
     open_file,
     init_ollama_model,
     init_openai_model,
+    init_xai_model,
     init_openai_tts_voice,
     init_elevenlabs_tts_voice,
     init_xtts_speed,
@@ -117,6 +118,8 @@ def set_env_variable(key: str, value: str):
         init_ollama_model(value)  # Reinitialize Ollama model
     if key == "OPENAI_MODEL":
         init_openai_model(value)  # Reinitialize OpenAI model
+    if key == "XAI_MODEL":
+        init_xai_model(value)  # Reinitialize XAI model
     if key == "OPENAI_TTS_VOICE":
         init_openai_tts_voice(value)  # Reinitialize OpenAI TTS voice
     if key == "ELEVENLABS_TTS_VOICE":

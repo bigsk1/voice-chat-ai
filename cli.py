@@ -33,6 +33,9 @@ OPENAI_TTS_VOICE = os.getenv('OPENAI_TTS_VOICE', 'alloy')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
+XAI_API_KEY = os.getenv('XAI_API_KEY')
+XAI_MODEL = os.getenv('XAI_MODEL')
+XAI_BASE_URL = os.getenv('XAI_BASE_URL')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
@@ -131,7 +134,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 print(f"Using device: {device}")
 print(f"Model provider: {MODEL_PROVIDER}")
-print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else OLLAMA_MODEL}")
+print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print("To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...")
@@ -416,6 +419,37 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             print(NEON_GREEN + line_buffer + RESET_COLOR)
             full_response += line_buffer
         return full_response
+    
+    elif MODEL_PROVIDER == 'xai':
+        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
+        headers = {
+            'Authorization': f'Bearer {XAI_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+        payload = {
+            "model": XAI_MODEL,
+            "messages": messages,
+            "stream": True
+        }
+        response = requests.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, stream=True, timeout=30)
+        response.raise_for_status()
+
+        full_response = ""
+        print("Starting XAI stream...")
+        for line in response.iter_lines(decode_unicode=True):
+            if line.startswith("data:"):
+                line = line[5:].strip() 
+            if line:
+                try:
+                    chunk = json.loads(line)
+                    delta_content = chunk['choices'][0]['delta'].get('content', '')
+                    if delta_content:
+                        print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
+                        full_response += delta_content
+                except json.JSONDecodeError:
+                    continue
+        print("\nXAI stream complete.")
+        return full_response
 
     elif MODEL_PROVIDER == 'openai':
         messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
@@ -563,10 +597,12 @@ def analyze_image(image_path, question_prompt):
         except requests.exceptions.RequestException as e:
             print(f"Request failed: {e}")  # Debugging statement
             return {"choices": [{"message": {"content": "Failed to process the image with the llava model."}}]}
-    else:
+    
+    elif MODEL_PROVIDER == 'xai':
+        # First try XAI image analysis
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {OPENAI_API_KEY}"
+            "Authorization": f"Bearer {XAI_API_KEY}"
         }
         message = {
             "role": "user",
@@ -576,18 +612,53 @@ def analyze_image(image_path, question_prompt):
             ]
         }
         payload = {
-            "model": OPENAI_MODEL,
+            "model": XAI_MODEL,
             "temperature": 0.5,
             "messages": [message],
             "max_tokens": 1000
         }
+        
         try:
-            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
-            return response.json()
+            response = requests.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print("XAI image analysis failed or not supported, falling back to OpenAI")
+                # Fall back to OpenAI image analysis
+                return analyze_image_with_openai(encoded_image, question_prompt)
         except requests.exceptions.RequestException as e:
-            print(f"Request failed: {e}")  # Debugging statement
-            return {"choices": [{"message": {"content": "Failed to process the image with the OpenAI model."}}]}
+            print(f"XAI image analysis failed: {e}, falling back to OpenAI")
+            return analyze_image_with_openai(encoded_image, question_prompt)
+    
+    else:
+        return analyze_image_with_openai(encoded_image, question_prompt)
+
+# Add helper function for OpenAI image analysis fallback
+def analyze_image_with_openai(encoded_image, question_prompt):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {OPENAI_API_KEY}"
+    }
+    message = {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": question_prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "low"}}
+        ]
+    }
+    payload = {
+        "model": OPENAI_MODEL,
+        "temperature": 0.5,
+        "messages": [message],
+        "max_tokens": 1000
+    }
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"OpenAI request failed: {e}")
+        return {"choices": [{"message": {"content": "Failed to process the image with both XAI and OpenAI models."}}]}
 
 
 def generate_speech(text, temp_audio_path):
