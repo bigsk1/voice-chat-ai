@@ -26,6 +26,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 
 - Python 3.10
 - CUDA-enabled GPU
+- ffmpeg
 - Ollama models or Openai API or xAI for chat
 - Local XTTS or Openai API or ElevenLabs API for speech
 - Microsoft C++ Build Tools on windows
@@ -61,6 +62,8 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 
 3. Install dependencies:
 
+    Windows Only: Need to have Microsoft C++ 14.0 or greater Build Tools on windows for TTS
+    [Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
    For GPU (CUDA) version: RECOMMEND
 
@@ -80,8 +83,10 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
    pip install -r cpu_requirements.txt
    ```
 
-Need to have Microsoft C++ Build Tools on windows for TTS
-[Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+    Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
+
+    Local TTS you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
+is in system PATH
 
 ### Download Checkpoints
 
@@ -334,6 +339,55 @@ This is for sentiment analysis, based on what you say, you can guide the AI to r
 ```
 
 For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
+
+
+## Troubleshooting
+
+### Could not locate cudnn_ops64_9.dll
+
+```bash
+Could not locate cudnn_ops64_9.dll. Please make sure it is in your library path!
+Invalid handle. Cannot load symbol cudnnCreateTensorDescriptor
+```
+To resolve this:
+
+Install cuDNN: Download cuDNN from the NVIDIA cuDNN page https://developer.nvidia.com/cudnn
+
+Here’s how to add it to the PATH:
+
+Open System Environment Variables:
+
+Press Win + R, type sysdm.cpl, and hit Enter.
+Go to the Advanced tab, and click on Environment Variables.
+Edit the System PATH Variable:
+
+In the System variables section, find the Path variable, select it, and click Edit.
+Click New and add the path to the bin directory where cudnn_ops64_9.dll is located. Based on your setup, you would add:
+
+```bash
+C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
+```
+
+Apply and Restart:
+
+Click OK to close all dialog boxes, then restart your terminal (or any running applications) to apply the changes.
+Verify the Change:
+
+Open a new terminal and run
+
+```bash
+where cudnn_ops64_9.dll
+```
+
+### Unanticipated host error
+
+```bash
+File "C:\Users\someguy\miniconda3\envs\voice-chat-ai\lib\site-packages\pyaudio\__init__.py", line 441, in __init__
+    self._stream = pa.open(**arguments)
+OSError: [Errno -9999] Unanticipated host error
+```
+
+Make sure ffmpeg is installed and added to PATH, on windows terminal ( winget install ffmpeg ) also make sure your microphone privacy settings on windows are ok and you set the microphone to the default device. I had this issue when using bluetooth apple airpods and this solved it.
 
 ## Watch the Demos
 
