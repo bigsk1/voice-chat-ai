@@ -237,7 +237,7 @@ python cli.py
 
 ### Audio Commands
 
-- You have 5 secs to talk, if there is silence then it's the AI's turn to talk
+- You have 3 secs to talk, if there is silence then it's the AI's turn to talk
 - Say any of the following to have the AI look at your screen - "what's on my screen", 
         "take a screenshot", 
         "show me my screen", 
