@@ -1,4 +1,5 @@
 [![Python application](https://github.com/bigsk1/voice-chat-ai/actions/workflows/python-app.yml/badge.svg)](https://github.com/bigsk1/voice-chat-ai/actions/workflows/python-app.yml)
+![Docker support](https://img.shields.io/badge/docker-supported-blue)
 [![License](https://img.shields.io/github/license/bigsk1/voice-chat-ai)](https://github.com/bigsk1/voice-chat-ai/blob/main/LICENSE)
 
 # Voice Chat AI 🎙️
@@ -19,6 +20,9 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
 - **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
+
+
+
 
 
 ## Installation
@@ -86,12 +90,12 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
-    Local TTS you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
-is in system PATH
+    Local XTTS you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
+is in system PATH or whatever version you downloaded
 
 ### Download Checkpoints
 
-You need to download the checkpoints for the models used in this project. You can download them from the GitHub releases page and extract the zip into the project folder.
+You need to download the checkpoints for the models used in this project ( unless you are only using docker ). You can download them from the GitHub releases page and extract the zip and put into the project folder.
 
 - [Download Checkpoint](https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip)
 - [Download XTTS-v2](https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip)
@@ -113,28 +117,91 @@ voice-chat-ai/
 │   ├── other_xtts_files...
 ```
 
-#### Linux CLI Instructions
+## Usage
 
-You can use the following commands to download and extract the files directly into the project directory:
+Run the application: 🏃
 
-```sh
-# Navigate to the project directory
-cd /path/to/your/voice-chat-ai
+Web UI
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+Find on http://localhost:8000/
 
-# Download and extract checkpoints.zip
-wget https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip
-unzip checkpoints.zip -d .
 
-# Download and extract XTTS-v2.zip
-wget https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip
-unzip XTTS-v2.zip -d .
+CLI Only
+
+```bash
+python cli.py
 ```
 
-## Docker - Experimental
+## Docker - large image download - Experimental
 
-This image is huge when built because of all the checkpoints, base image, build tools and audio tools - 40gb - there maybe a way to get it smaller I haven't tried yet, was just an experiment to see if I could get it to work! 
+[![Docker Image Size](https://img.shields.io/docker/image-size/bigsk1/podcast-ai)](https://hub.docker.com/r/bigsk1/voice-chat-ai)
 
-Docker run command allows you to use microphone in docker container 
+This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS, if your not using XTTS for speech it should still work but it is just a large docker image and will take awhile, if you don't want to deal with that then run the app natively and don't use docker.
+
+This guide will help you quickly set up and run the **Voice Chat AI** Docker container. Ensure you have Docker installed and that your `.env` file is placed in the same directory as the commands are run. If you get cuda errors make sure to install nvidia toolkit for docker and cudnn is installed in your path.
+
+---
+
+## 📄 Prerequisites
+1. Docker installed on your system.
+2. A `.env` file in the same folder as the `docker run` command. This file should contain all necessary environment variables for the application.
+
+---
+
+## 🖥️ Run on Windows using WSL
+On windows docker desktop using wsl - run in Windows terminal:
+
+```bash
+docker run -d --gpus all \
+    -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
+    -v /mnt/wslg/:/mnt/wslg/ \
+    --env-file .env \
+    --name voice-chat-ai \
+    -p 8000:8000 \
+    bigsk1/voice-chat-ai:latest
+```
+
+## 🐧 Run on WSL Native
+For a native WSL environment (like Ubuntu on WSL), use this command:
+
+```bash
+docker run -d --gpus all \
+    -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
+    -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ \
+    --env-file .env \
+    --name voice-chat-ai \
+    -p 8000:8000 \
+    bigsk1/voice-chat-ai:latest
+```
+
+## 🐧 Run on Ubuntu/Debian
+
+```bash
+docker run -d --gpus all \
+    -e PULSE_SERVER=unix:/tmp/pulse/native \
+    -v ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro \
+    -v /run/user/$(id -u)/pulse:/tmp/pulse:ro \
+    --env-file .env \
+    --name voice-chat-ai \
+    -p 8000:8000 \
+    bigsk1/voice-chat-ai:latest
+```
+🔗 Access the Application
+URL: http://localhost:8000
+
+To remove use: 
+
+```bash
+docker stop voice-chat-ai
+```
+
+```bash
+docker rm voice-chat-ai
+```
+
+## Build it yourself: 
 
 ```bash
 docker build -t voice-chat-ai .
@@ -150,8 +217,6 @@ Running from wsl
 ```bash
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
 ```
-
-In the docker folder there is also some scripts to update the model and tts provider into the container, so you can change from openai to ollama and back again if you like, instead of exec into the container and making changes manually. 
 
 ## Configuration ⚙️
 
@@ -218,22 +283,6 @@ XAI_BASE_URL=https://api.x.ai/v1
 # To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also)
 ```
 
-## Usage
-
-Run the application: 🏃
-
-Web UI
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-Find on http://localhost:8000/
-
-
-CLI Only
-
-```bash
-python cli.py
-```
 
 ### Audio Commands
 
