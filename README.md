@@ -138,6 +138,8 @@ python cli.py
 
 [![Docker Image Size](https://img.shields.io/docker/image-size/bigsk1/podcast-ai)](https://hub.docker.com/r/bigsk1/voice-chat-ai)
 
+This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
+
 This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS, if your not using XTTS for speech it should still work but it is just a large docker image and will take awhile, if you don't want to deal with that then run the app natively and don't use docker.
 
 This guide will help you quickly set up and run the **Voice Chat AI** Docker container. Ensure you have Docker installed and that your `.env` file is placed in the same directory as the commands are run. If you get cuda errors make sure to install nvidia toolkit for docker and cudnn is installed in your path.
@@ -151,17 +153,19 @@ This guide will help you quickly set up and run the **Voice Chat AI** Docker con
 ---
 
 ## 🖥️ Run on Windows using WSL
-On windows docker desktop using wsl - run in Windows terminal:
-
+On windows using docker desktop - run in Windows terminal:
+add your username and make sure .env is in same folder you are running this from
 ```bash
-docker run -d --gpus all \
-    -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
-    -v /mnt/wslg/:/mnt/wslg/ \
-    --env-file .env \
-    --name voice-chat-ai \
-    -p 8000:8000 \
+docker run -d --gpus all ^
+    -e "PULSE_SERVER=/mnt/wslg/PulseServer" ^
+    -v C:\Users\<YourUsername>\wslg:/mnt/wslg ^
+    --env-file .env ^
+    --name voice-chat-ai ^
+    -p 8000:8000 ^
     bigsk1/voice-chat-ai:latest
 ```
+
+Use `docker logs -f voice-chat-ai` to see the logs
 
 ## 🐧 Run on WSL Native
 For a native WSL environment (like Ubuntu on WSL), use this command:
@@ -169,7 +173,7 @@ For a native WSL environment (like Ubuntu on WSL), use this command:
 ```bash
 docker run -d --gpus all \
     -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
-    -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ \
+    -v /mnt/wslg/:/mnt/wslg/ \
     --env-file .env \
     --name voice-chat-ai \
     -p 8000:8000 \
