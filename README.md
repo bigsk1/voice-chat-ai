@@ -152,7 +152,7 @@ This guide will help you quickly set up and run the **Voice Chat AI** Docker con
 
 ---
 
-## 🖥️ Run on Windows using WSL
+## 🖥️ Run on Windows using docker desktop
 On windows using docker desktop - run in Windows terminal:
 add your username and make sure .env is in same folder you are running this from
 ```bash
@@ -167,8 +167,10 @@ docker run -d --gpus all ^
 
 Use `docker logs -f voice-chat-ai` to see the logs
 
-## 🐧 Run on WSL Native
+## 🐧 Run on WSL Native - best option
 For a native WSL environment (like Ubuntu on WSL), use this command:
+
+make sure .env is in same folder you are running this from
 
 ```bash
 docker run -d --gpus all \
