@@ -22,7 +22,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
 
 
-
+https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 
 
 ## Installation
