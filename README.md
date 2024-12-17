@@ -525,3 +525,14 @@ Features:
 ## License
 
 This project is licensed under the MIT License.
+
+
+## Star History
+
+<a href="https://star-history.com/#bigsk1/voice-chat-ai&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=bigsk1/voice-chat-ai&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=bigsk1/voice-chat-ai&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=bigsk1/voice-chat-ai&type=Date" />
+ </picture>
+</a>
