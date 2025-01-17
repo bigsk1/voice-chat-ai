@@ -134,7 +134,7 @@ CLI Only
 python cli.py
 ```
 
-## Docker - large image download - Experimental
+## Docker - large image - Experimental!
 
 [![Docker Image Size](https://img.shields.io/docker/image-size/bigsk1/podcast-ai)](https://hub.docker.com/r/bigsk1/voice-chat-ai)
 
@@ -154,15 +154,15 @@ This guide will help you quickly set up and run the **Voice Chat AI** Docker con
 
 ## 🖥️ Run on Windows using docker desktop
 On windows using docker desktop - run in Windows terminal:
-add your username and make sure .env is in same folder you are running this from
+make sure .env is in same folder you are running this from
 ```bash
-docker run -d --gpus all ^
-    -e "PULSE_SERVER=/mnt/wslg/PulseServer" ^
-    -v C:\Users\<YourUsername>\wslg:/mnt/wslg ^
-    --env-file .env ^
-    --name voice-chat-ai ^
-    -p 8000:8000 ^
-    bigsk1/voice-chat-ai:latest
+docker run -d --gpus all
+   -e "PULSE_SERVER=/mnt/wslg/PulseServer"
+   -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/
+   --env-file .env
+   --name voice-chat-ai
+   -p 8000:8000
+   bigsk1/voice-chat-ai:latest
 ```
 
 Use `docker logs -f voice-chat-ai` to see the logs
