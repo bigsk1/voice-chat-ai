@@ -80,13 +80,9 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
    pip install -r requirements.txt
    ```
 
-   For CPU-only version: clone the cpu-only branch
+   For CPU-only version (No UI) : clone the cpu-only branch
    https://github.com/bigsk1/voice-chat-ai/tree/cpu-only
 
-   ```bash
-   # For CPU-only installations, use:
-   pip install -r cpu_requirements.txt
-   ```
 
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
