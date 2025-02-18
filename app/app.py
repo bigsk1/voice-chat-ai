@@ -70,14 +70,23 @@ character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 # Load XTTS configuration
 xtts_config_path = os.path.join(project_dir, "XTTS-v2", "config.json")
 xtts_checkpoint_dir = os.path.join(project_dir, "XTTS-v2")
+xtts_available = os.path.exists(xtts_config_path) and os.path.exists(xtts_checkpoint_dir)
 
 xtts_config = XttsConfig()
-xtts_config.load_json(xtts_config_path)
 
 # Initialize XTTS model
-xtts_model = Xtts.init_from_config(xtts_config)
-xtts_model.load_checkpoint(xtts_config, checkpoint_dir=xtts_checkpoint_dir, eval=True)
-xtts_model.cuda()  # Move the model to GPU if available
+xtts_model = None
+if TTS_PROVIDER == 'xtts':
+    if xtts_available:
+        xtts_config = XttsConfig()
+        xtts_config.load_json(xtts_config_path)
+        xtts_model = Xtts.init_from_config(xtts_config)
+        xtts_model.load_checkpoint(xtts_config, checkpoint_dir=xtts_checkpoint_dir, eval=True)
+        xtts_model.cuda()  # Move to GPU if available
+    else:
+        print("XTTS files not found. Please download the XTTS-v2 checkpoints to use local TTS.")
+        TTS_PROVIDER = 'openai'  # Fallback to a default provider
+        print("Switched to default TTS provider: openai")
 
 def init_ollama_model(model_name):
     global OLLAMA_MODEL
@@ -110,9 +119,29 @@ def init_xtts_speed(speed_value):
     print(f"Switched to XTTS speed: {speed_value}")
 
 def init_set_tts(set_tts):
-    global TTS_PROVIDER
-    TTS_PROVIDER = set_tts
-    print(f"Switched to TTS Provider: {set_tts}")
+    global TTS_PROVIDER, xtts_model
+    if set_tts == 'xtts':
+        if xtts_available:
+            TTS_PROVIDER = set_tts
+            if xtts_model is None:
+                # Load XTTS model if not already loaded
+                xtts_config = XttsConfig()
+                xtts_config.load_json(xtts_config_path)
+                xtts_model = Xtts.init_from_config(xtts_config)
+                xtts_model.load_checkpoint(xtts_config, checkpoint_dir=xtts_checkpoint_dir, eval=True)
+                xtts_model.cuda()
+            print(f"Switched to TTS Provider: {set_tts}")
+        else:
+            print("XTTS files not found. Cannot switch to XTTS.")
+            # Schedule the coroutine in the existing event loop
+            loop = asyncio.get_running_loop()
+            loop.create_task(send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "XTTS files not found. Please download the XTTS-v2 checkpoints to use local TTS."
+            })))
+    else:
+        TTS_PROVIDER = set_tts
+        print(f"Switched to TTS Provider: {set_tts}")
 
 def init_set_provider(set_provider):
     global MODEL_PROVIDER
@@ -211,28 +240,33 @@ async def process_and_play(prompt, audio_file_pth):
             await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
         else:
             print("Error: Audio file not found.")
-    else:  # XTTS
-        try:
-            tts_model = xtts_model
-            outputs = await asyncio.to_thread(tts_model.synthesize,
-                prompt,
-                xtts_config,
-                speaker_wav=audio_file_pth,
-                gpt_cond_len=24,
-                temperature=0.2,
-                language='en',
-                speed=float(XTTS_SPEED)
-            )
-            synthesized_audio = outputs['wav']
-            src_path = os.path.join(output_dir, 'output.wav')
-            sample_rate = xtts_config.audio.sample_rate
-            sf.write(src_path, synthesized_audio, sample_rate)
-            print("Audio generated successfully with XTTS.")
-            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
-            await play_audio(src_path)
-            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
-        except Exception as e:
-            print(f"Error during XTTS audio generation: {e}")
+    elif TTS_PROVIDER == 'xtts':
+        if xtts_model is not None:
+            try:
+                outputs = await asyncio.to_thread(xtts_model.synthesize,
+                    prompt,
+                    xtts_config,
+                    speaker_wav=audio_file_pth,
+                    gpt_cond_len=24,
+                    temperature=0.2,
+                    language='en',
+                    speed=float(XTTS_SPEED)
+                )
+                synthesized_audio = outputs['wav']
+                src_path = os.path.join(output_dir, 'output.wav')
+                sample_rate = xtts_config.audio.sample_rate
+                sf.write(src_path, synthesized_audio, sample_rate)
+                print("Audio generated successfully with XTTS.")
+                await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+                await play_audio(src_path)
+                await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+            except Exception as e:
+                print(f"Error during XTTS audio generation: {e}")
+        else:
+            print("XTTS model is not loaded. Please check the configuration or download the XTTS-v2 checkpoints.")
+            # Optionally, fallback to another TTS provider
+    else:
+        print(f"Unknown TTS provider: {TTS_PROVIDER}")
 
 
 async def send_message_to_clients(message):

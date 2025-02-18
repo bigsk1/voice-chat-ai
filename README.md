@@ -67,7 +67,7 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 
 3. Install dependencies:
 
-    Windows Only: Need to have Microsoft C++ 14.0 or greater Build Tools on windows for TTS
+    Windows Only: Need to have Microsoft C++ 14.0 or greater Build Tools on windows.
     [Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
    For GPU (CUDA) version: RECOMMEND
@@ -89,9 +89,9 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
     Local XTTS you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
 is in system PATH or whatever version you downloaded
 
-### Download Checkpoints
+### Optional - Download Checkpoints - ONLY IF YOU ARE USING THE LOCAL TTS
 
-You need to download the checkpoints for the models used in this project ( unless you are only using docker ). You can download them from the GitHub releases page and extract the zip and put into the project folder.
+If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS download the checkpoints for the models used in this project ( the docker image has the local xtts in it already ). You can download them from the GitHub releases page and extract the zip and put into the project folder.
 
 - [Download Checkpoint](https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip)
 - [Download XTTS-v2](https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip)
@@ -131,8 +131,6 @@ python cli.py
 ```
 
 ## Docker - large image - Experimental!
-
-[![Docker Image Size](https://img.shields.io/docker/image-size/bigsk1/podcast-ai)](https://hub.docker.com/r/bigsk1/voice-chat-ai)
 
 This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
 
@@ -395,7 +393,7 @@ For XTTS find a .wav voice and add it to the wizard folder and name it as wizard
 
 ## Troubleshooting
 
-### Could not locate cudnn_ops64_9.dll
+### Could not locate cudnn_ops64_9.dll or Unable to load any of libcudnn_ops.so.9.1.0
 
 ```bash
 Could not locate cudnn_ops64_9.dll. Please make sure it is in your library path!

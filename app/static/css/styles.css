@@ -136,6 +136,12 @@ main {
     margin-left: 60%;
 }
 
+.error-message {
+    color: red;
+    font-weight: bold;
+    font-style: italic;
+}
+
 #messages {
     padding-bottom: 20px; /* Add padding to the bottom of the messages container */
 }

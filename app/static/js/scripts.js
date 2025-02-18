@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error("Error parsing JSON:", e);
             data = { message: event.data };
         }
-
+    
         if (data.action === "ai_start_speaking") {
             isAISpeaking = true;
             showVoiceAnimation();
@@ -46,6 +46,9 @@ document.addEventListener("DOMContentLoaded", function() {
             isAISpeaking = false;
             hideVoiceAnimation();
             processQueuedMessages();
+        } else if (data.action === "error") {
+            console.error("Error from server:", data.message);
+            displayMessage(data.message, 'error-message');
         } else if (data.message) {
             if (data.message.startsWith('You:')) {
                 displayMessage(data.message);
@@ -90,18 +93,20 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    function displayMessage(message) {
+    function displayMessage(message, className = '') {
         let formattedMessage = message;
         if (formattedMessage.includes('```')) {
             formattedMessage = formattedMessage.replace(/```(.*?)```/gs, function(match, p1) {
                 return `<pre><code>${p1}</code></pre>`;
             });
         }
-
+    
         const messageElement = document.createElement('p');
-        if (formattedMessage.startsWith('You:')) {
+        if (className) {
+            messageElement.className = className;
+        } else if (formattedMessage.startsWith('You:')) {
             messageElement.className = 'user-message';
-            formattedMessage = formattedMessage.replace('You:', '').trim(); // Remove 'You:' 
+            formattedMessage = formattedMessage.replace('You:', '').trim();
         } else {
             messageElement.className = 'ai-message';
         }
