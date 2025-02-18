@@ -91,7 +91,7 @@ is in system PATH or whatever version you downloaded
 
 ### Optional - Download Checkpoints - ONLY IF YOU ARE USING THE LOCAL TTS
 
-If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS download the checkpoints for the models used in this project ( the docker image has the local xtts in it already ). You can download them from the GitHub releases page and extract the zip and put into the project folder.
+If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS download the checkpoints for the models used in this project ( the docker image has the local xtts and checkpoints in it already ). You can download them from the GitHub releases page and extract the zip and put into the project folder.
 
 - [Download Checkpoint](https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip)
 - [Download XTTS-v2](https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip)
@@ -134,7 +134,7 @@ python cli.py
 
 This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
 
-This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS, if your not using XTTS for speech it should still work but it is just a large docker image and will take awhile, if you don't want to deal with that then run the app natively and don't use docker.
+This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS, if your not using XTTS for speech it should still work but it is just a large docker image and will take awhile, if you don't want to deal with that then run the app natively or build your own image without the xtts and checkpoints folders, if you are not using the local TTS.
 
 This guide will help you quickly set up and run the **Voice Chat AI** Docker container. Ensure you have Docker installed and that your `.env` file is placed in the same directory as the commands are run. If you get cuda errors make sure to install nvidia toolkit for docker and cudnn is installed in your path.
 
@@ -146,7 +146,7 @@ This guide will help you quickly set up and run the **Voice Chat AI** Docker con
 
 ---
 
-## 🖥️ Run on Windows using docker desktop
+## 🖥️ Run on Windows using docker desktop - prebuilt image
 On windows using docker desktop - run in Windows terminal:
 make sure .env is in same folder you are running this from
 ```bash
@@ -201,7 +201,7 @@ docker stop voice-chat-ai
 docker rm voice-chat-ai
 ```
 
-## Build it yourself: 
+## Build it yourself with cuda: 
 
 ```bash
 docker build -t voice-chat-ai .
@@ -216,6 +216,36 @@ Running from wsl
 
 ```bash
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+```
+
+## Docker build without local xtts and no cuda
+
+```bash
+docker build -t voice-chat-ai-no-xtts -f no-xtts-Dockerfile .
+```
+
+In Windows command prompt
+
+```bash
+docker run -d
+   -e "PULSE_SERVER=/mnt/wslg/PulseServer"
+   -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/
+   --env-file .env
+   --name voice-chat-ai-no-xtts
+   -p 8000:8000
+   voice-chat-ai-no-xtts:latest
+```
+
+In WSL2 Ubuntu 
+
+```bash
+docker run -d \
+    -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
+    -v /mnt/wslg/:/mnt/wslg/ \
+    --env-file .env \
+    --name voice-chat-ai-no-xtts \
+    -p 8000:8000 \
+    voice-chat-ai-no-xtts:latest
 ```
 
 ## Configuration ⚙️
@@ -265,6 +295,8 @@ OPENAI_MODEL=gpt-4o-mini
 OPENAI_BASE_URL=https://api.openai.com/v1/chat/completions
 OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
 OLLAMA_BASE_URL=http://localhost:11434
+# IF RUNNING IN DOCKER CHANGE OLLAMA BASE URL TO THE ONE BELOW
+# OLLAMA_BASE_URL=http://host.docker.internal:11434
 
 # Models Configuration:
 # Models to use - llama3.2 works well for local usage.

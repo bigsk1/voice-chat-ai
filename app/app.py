@@ -57,9 +57,25 @@ RESET_COLOR = '\033[0m'
 # Capitalize the first letter of the character name
 character_display_name = CHARACTER_NAME.capitalize()
 
-# Set up the faster-whisper model
+# Check for CUDA availability
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# Default model size (adjust as needed)
 model_size = "medium.en"
-whisper_model = WhisperModel(model_size, device="cuda", compute_type="float16")
+
+try:
+    print(f"Attempting to load Faster-Whisper on {device}...")
+    whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+    print("Faster-Whisper initialized successfully.")
+except Exception as e:
+    print(f"Error initializing Faster-Whisper on {device}: {e}")
+    print("Falling back to CPU mode...")
+
+    # Force CPU fallback
+    device = "cpu"
+    model_size = "tiny.en"  # Use a smaller model for CPU performance
+    whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    print("Faster-Whisper initialized on CPU successfully.")
 
 # Paths for character-specific files
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -206,7 +222,7 @@ def sync_play_audio(file_path):
     pass
 
 # Model and device setup
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# device = 'cuda' if torch.cuda.is_available() else 'cpu'
 output_dir = os.path.join(project_dir, 'outputs')
 os.makedirs(output_dir, exist_ok=True)
 
