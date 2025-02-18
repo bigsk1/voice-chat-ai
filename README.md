@@ -30,7 +30,7 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 ### Requirements
 
 - Python 3.10
-- CUDA-enabled GPU
+- CUDA-enabled GPU - only for local tts
 - ffmpeg
 - Ollama models or Openai API or xAI for chat
 - Local XTTS or Openai API or ElevenLabs API for speech

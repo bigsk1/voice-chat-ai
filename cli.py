@@ -55,9 +55,25 @@ RESET_COLOR = '\033[0m'
 # Capitalize the first letter of the character name
 character_display_name = CHARACTER_NAME.capitalize()
 
-# Set up the faster-whisper model
+# Check for CUDA availability
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# Default model size (adjust as needed)
 model_size = "medium.en"
-whisper_model = WhisperModel(model_size, device="cuda", compute_type="float16")
+
+try:
+    print(f"Attempting to load Faster-Whisper on {device}...")
+    whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+    print("Faster-Whisper initialized successfully.")
+except Exception as e:
+    print(f"Error initializing Faster-Whisper on {device}: {e}")
+    print("Falling back to CPU mode...")
+
+    # Force CPU fallback
+    device = "cpu"
+    model_size = "tiny.en"  # Use a smaller model for CPU performance
+    whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    print("Faster-Whisper initialized on CPU successfully.")
 
 # Paths for character-specific files
 project_dir = os.path.dirname(os.path.abspath(__file__))
@@ -68,14 +84,23 @@ character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 # Load XTTS configuration
 xtts_config_path = os.path.join(project_dir, "XTTS-v2", "config.json")
 xtts_checkpoint_dir = os.path.join(project_dir, "XTTS-v2")
+xtts_available = os.path.exists(xtts_config_path) and os.path.exists(xtts_checkpoint_dir)
 
 xtts_config = XttsConfig()
-xtts_config.load_json(xtts_config_path)
 
 # Initialize XTTS model
-xtts_model = Xtts.init_from_config(xtts_config)
-xtts_model.load_checkpoint(xtts_config, checkpoint_dir=xtts_checkpoint_dir, eval=True)
-xtts_model.cuda()  # Move the model to GPU if available
+xtts_model = None
+if TTS_PROVIDER == 'xtts':
+    if xtts_available:
+        xtts_config = XttsConfig()
+        xtts_config.load_json(xtts_config_path)
+        xtts_model = Xtts.init_from_config(xtts_config)
+        xtts_model.load_checkpoint(xtts_config, checkpoint_dir=xtts_checkpoint_dir, eval=True)
+        xtts_model.cuda()  # Move to GPU if available
+    else:
+        print("XTTS files not found. Please download the XTTS-v2 checkpoints to use local TTS.")
+        TTS_PROVIDER = 'openai'  # Fallback to a default provider
+        print("Switched to default TTS provider: openai")
 
 # Function to display ElevenLabs quota
 def display_elevenlabs_quota():
@@ -128,7 +153,7 @@ def play_audio(file_path):
     p.terminate()
 
 # Model and device setup
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# device = 'cuda' if torch.cuda.is_available() else 'cpu'
 output_dir = os.path.join(project_dir, 'outputs')
 os.makedirs(output_dir, exist_ok=True)
 
