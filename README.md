@@ -82,7 +82,7 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
     Local XTTS you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
 is in system PATH or whatever version you downloaded
 
-### Optional - Download Checkpoints - ONLY IF YOU ARE USING THE LOCAL TTS
+### Optional - Download Checkpoints - ONLY IF YOU ARE USING THE LOCAL XTTS
 
 If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS download the checkpoints for the models used in this project ( the docker image has the local xtts and checkpoints in it already ). You can download them from the GitHub releases page and extract the zip and put into the project folder.
 
@@ -211,7 +211,9 @@ Running from wsl
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
 ```
 
-## Docker build without local xtts and no cuda - Recommended - 6 GB image
+## Build without local xtts and no cuda - 5 GB image - Recommended 
+
+This is for when you only want to use Openai or Elevenlabs for speech. No need to download checkpoints, cuda and cudnn not required. Uses cpu for faster whisper. So no gpu needed. 
 
 ```bash
 docker build -t voice-chat-ai-no-xtts -f no-xtts-Dockerfile .
