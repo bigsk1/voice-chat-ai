@@ -22,6 +22,8 @@ import torch
 from pydub import AudioSegment
 from .shared import clients
 
+import logging
+logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
 
 # Load environment variables
 load_dotenv()
@@ -59,6 +61,9 @@ character_display_name = CHARACTER_NAME.capitalize()
 
 # Check for CUDA availability
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# Disable CuDNN explicitly - enable this if you get cudnn errors or change in xtts-v2/config.json
+# torch.backends.cudnn.enabled = False
 
 # Default model size (adjust as needed)
 model_size = "medium.en"
@@ -221,8 +226,6 @@ def sync_play_audio(file_path):
 
     pass
 
-# Model and device setup
-# device = 'cuda' if torch.cuda.is_available() else 'cpu'
 output_dir = os.path.join(project_dir, 'outputs')
 os.makedirs(output_dir, exist_ok=True)
 

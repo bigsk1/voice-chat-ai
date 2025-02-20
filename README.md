@@ -80,7 +80,7 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
     Local XTTS you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
-is in system PATH or whatever version you downloaded
+is in system PATH or whatever version you downloaded, you can also disable cudnn in the XTTS-V2/config.json to "cudnn_enable": false, if you don't want to use it. 
 
 ### Optional - Download Checkpoints - ONLY IF YOU ARE USING THE LOCAL XTTS
 
@@ -427,6 +427,10 @@ Could not locate cudnn_ops64_9.dll. Please make sure it is in your library path!
 Invalid handle. Cannot load symbol cudnnCreateTensorDescriptor
 ```
 To resolve this:
+
+You can disable cudnn in the XTTS-V2/config.json and set to "cudnn_enable": false,
+
+or
 
 Install cuDNN: Download cuDNN from the NVIDIA cuDNN page https://developer.nvidia.com/cudnn
 
