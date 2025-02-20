@@ -123,7 +123,7 @@ CLI Only
 python cli.py
 ```
 
-## Docker - prebuilt large image - Experimental!
+## Docker - prebuilt large image 40 GB - Experimental!
 
 This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
 
@@ -143,13 +143,7 @@ This guide will help you quickly set up and run the **Voice Chat AI** Docker con
 On windows using docker desktop - run in Windows terminal:
 make sure .env is in same folder you are running this from
 ```bash
-docker run -d --gpus all
-   -e "PULSE_SERVER=/mnt/wslg/PulseServer"
-   -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/
-   --env-file .env
-   --name voice-chat-ai
-   -p 8000:8000
-   bigsk1/voice-chat-ai:latest
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 bigsk1/voice-chat-ai:latest
 ```
 
 Use `docker logs -f voice-chat-ai` to see the logs
