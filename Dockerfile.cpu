@@ -4,6 +4,7 @@ FROM python:3.10-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/root/.local/bin:$PATH"
+ENV COQUI_TOS_AGREED=1
 
 # Create a working directory
 WORKDIR /app
@@ -36,7 +37,7 @@ RUN mkdir -p /usr/share/alsa/alsa.conf.d && \
     echo "defaults.ctl.card 0" >> /usr/share/alsa/alsa.conf.d/99-pulseaudio-defaults.conf
 
 # Copy only necessary files (EXCLUDING large checkpoint and XTTS-v2)
-COPY requirements_no_xtts.txt /app/requirements.txt
+COPY requirements_cpu.txt /app/requirements.txt
 COPY app /app/app
 COPY characters /app/characters
 COPY outputs /app/outputs

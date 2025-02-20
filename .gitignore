@@ -219,4 +219,4 @@ temp_output.mp3
 #elevenlabs_voices.json.bak
 
 conversation_history.txt
-requirements_frozen.txt
+freeze_requiremenets.txt

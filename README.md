@@ -20,6 +20,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
 - **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
+- **Docker Support**: Build yor own image with or without nvidia cuda. Can run on CPU only. 
 
 
 https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
@@ -30,7 +31,6 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 ### Requirements
 
 - Python 3.10
-- CUDA-enabled GPU - only for local tts
 - ffmpeg
 - Ollama models or Openai API or xAI for chat
 - Local XTTS or Openai API or ElevenLabs API for speech
@@ -51,8 +51,9 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 
    ```bash
    python -m venv venv
-   source venv/bin/activate   # On Windows use `venv\Scripts\Activate`
+   source venv/bin/activate 
    ```
+    On Windows use `venv\Scripts\Activate`
 
    or use `conda` just make it python 3.10
 
@@ -79,32 +80,12 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
-    Local XTTS you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
-is in system PATH or whatever version you downloaded, you can also disable cudnn in the XTTS-V2/config.json to "cudnn_enable": false, if you don't want to use it. 
+    Local XTTS can run on cpu but is slow, if using a enabled cuda gpu you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure `C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6`
+is in system PATH or whatever version you downloaded, you can also disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` to `"cudnn_enable": false`, if you don't want to use it. 
 
-### Optional - Download Checkpoints - ONLY IF YOU ARE USING THE LOCAL XTTS
+### Optional - XTTS for local voices
 
-If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS download the checkpoints for the models used in this project ( the docker image has the local xtts and checkpoints in it already ). You can download them from the GitHub releases page and extract the zip and put into the project folder.
-
-- [Download Checkpoint](https://github.com/bigsk1/voice-chat-ai/releases/download/models/checkpoints.zip)
-- [Download XTTS-v2](https://github.com/bigsk1/voice-chat-ai/releases/download/models/XTTS-v2.zip)
-
-After downloading, place the folders as follows:
-
-```bash
-voice-chat-ai/
-├── checkpoints/
-│   ├── base_speakers/
-│   │   ├── EN/
-│   │   │   └── checkpoint.pth
-│   │   ├── ZH/
-│   │   │   └── checkpoint.pth
-│   ├── converter/
-│   │   └── checkpoint.pth
-├── XTTS-v2/
-│   ├── config.json
-│   ├── other_xtts_files...
-```
+If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS the first time you select XTTS the model will download and be ready to use, if your device is cuda enabled it will load into cuda if not will fall back to cpu. 
 
 ## Usage
 
@@ -123,30 +104,65 @@ CLI Only
 python cli.py
 ```
 
-## Docker - prebuilt large image 40 GB - Experimental!
 
-This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
+## 🐳 Docker
 
-This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS, if your not using XTTS for speech it should still work but it is just a large docker image and will take awhile, if you don't want to deal with that then run the app natively or build your own image without the xtts and checkpoints folders, if you are not using the local TTS.
 
-This guide will help you quickly set up and run the **Voice Chat AI** Docker container. Ensure you have Docker installed and that your `.env` file is placed in the same directory as the commands are run. If you get cuda errors make sure to install nvidia toolkit for docker and cudnn is installed in your path.
-
----
-
-## 📄 Prerequisites
+### 📄 Prerequisites
 1. Docker installed on your system.
 2. A `.env` file in the same folder as the `docker run` command. This file should contain all necessary environment variables for the application.
 
 ---
 
+### Build without Nvidia Cuda - 5 GB image - Recommended 
+
+Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. 
+
+```bash
+docker build -t voice-chat-ai -f Dockerfile.cpu .
+```
+
+In Windows command prompt - paste in one line
+
+```bash
+docker run -d
+   -e "PULSE_SERVER=/mnt/wslg/PulseServer"
+   -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/
+   --env-file .env
+   --name voice-chat-ai-cpu
+   -p 8000:8000
+   voice-chat-ai:latest
+```
+
+In WSL2 Ubuntu 
+
+```bash
+docker run -d \
+    -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
+    -v /mnt/wslg/:/mnt/wslg/ \
+    --env-file .env \
+    --name voice-chat-ai-cpu \
+    -p 8000:8000 \
+    voice-chat-ai:latest
+```
+
+### Docker - prebuilt large image 40 GB - Experimental!
+
+> This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
+
+This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS with cuda in an nvidia cudnn base image.
+
+ Ensure you have Docker installed and that your `.env` file is placed in the same directory as the commands are run. If you get cuda errors make sure to install nvidia toolkit for docker and cudnn is installed in your path.
+
+
 ## 🖥️ Run on Windows using docker desktop - prebuilt image
 On windows using docker desktop - run in Windows terminal:
 make sure .env is in same folder you are running this from
 ```bash
-docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 bigsk1/voice-chat-ai:latest
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
 ```
 
-Use `docker logs -f voice-chat-ai` to see the logs
+Use `docker logs -f voice-chat-ai-cuda` to see the logs
 
 ## 🐧 Run on WSL Native - best option
 For a native WSL environment (like Ubuntu on WSL), use this command:
@@ -158,9 +174,9 @@ docker run -d --gpus all \
     -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
     -v /mnt/wslg/:/mnt/wslg/ \
     --env-file .env \
-    --name voice-chat-ai \
+    --name voice-chat-ai-cuda \
     -p 8000:8000 \
-    bigsk1/voice-chat-ai:latest
+    bigsk1/voice-chat-ai:cuda
 ```
 
 ## 🐧 Run on Ubuntu/Debian
@@ -171,9 +187,9 @@ docker run -d --gpus all \
     -v ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro \
     -v /run/user/$(id -u)/pulse:/tmp/pulse:ro \
     --env-file .env \
-    --name voice-chat-ai \
+    --name voice-chat-ai-cuda \
     -p 8000:8000 \
-    bigsk1/voice-chat-ai:latest
+    bigsk1/voice-chat-ai:cuda
 ```
 🔗 Access the Application
 URL: http://localhost:8000
@@ -181,60 +197,28 @@ URL: http://localhost:8000
 To remove use: 
 
 ```bash
-docker stop voice-chat-ai
+docker stop voice-chat-ai-cuda
 ```
 
 ```bash
-docker rm voice-chat-ai
+docker rm voice-chat-ai-cuda
 ```
 
-## Build it yourself with cuda: 
+## Build it yourself with Nvidia Cuda: 
 
 ```bash
-docker build -t voice-chat-ai .
+docker build -t voice-chat-ai:cuda .
 ```
 On windows docker desktop using wsl - run in windows
 
 ```bash
-wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
 
 Running from wsl
 
 ```bash
-docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
-```
-
-## Build without local xtts and no cuda - 5 GB image - Recommended 
-
-This is for when you only want to use Openai or Elevenlabs for speech. No need to download checkpoints, cuda and cudnn not required. Uses cpu for faster whisper. So no gpu needed. 
-
-```bash
-docker build -t voice-chat-ai-no-xtts -f no-xtts-Dockerfile .
-```
-
-In Windows command prompt
-
-```bash
-docker run -d
-   -e "PULSE_SERVER=/mnt/wslg/PulseServer"
-   -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/
-   --env-file .env
-   --name voice-chat-ai-no-xtts
-   -p 8000:8000
-   voice-chat-ai-no-xtts:latest
-```
-
-In WSL2 Ubuntu 
-
-```bash
-docker run -d \
-    -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
-    -v /mnt/wslg/:/mnt/wslg/ \
-    --env-file .env \
-    --name voice-chat-ai-no-xtts \
-    -p 8000:8000 \
-    voice-chat-ai-no-xtts:latest
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
 
 ## Configuration ⚙️
@@ -271,6 +255,7 @@ ELEVENLABS_TTS_VOICE=pgCnBQgKPGkIP8fJuita
 # XTTS Configuration:
 # The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
 XTTS_SPEED=1.2
+COQUI_TOS_AGREED=1
 
 # OpenAI Configuration:
 # OpenAI API Key for models and speech (replace with your actual API key)
@@ -422,9 +407,11 @@ Invalid handle. Cannot load symbol cudnnCreateTensorDescriptor
 ```
 To resolve this:
 
-You can disable cudnn in the XTTS-V2/config.json and set to "cudnn_enable": false,
+Option 1
 
-or
+You can disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` or `equivalent ~/.cache/tts/ on Linux/Mac` and set to "cudnn_enable": false,
+
+Option 2
 
 Install cuDNN: Download cuDNN from the NVIDIA cuDNN page https://developer.nvidia.com/cudnn
 

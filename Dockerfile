@@ -5,6 +5,7 @@ FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/root/.local/bin:$PATH"
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+ENV COQUI_TOS_AGREED=1
 
 # Create a working directory
 WORKDIR /app
