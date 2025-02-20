@@ -13,8 +13,7 @@ from PIL import ImageGrab
 from dotenv import load_dotenv
 from openai import OpenAI, OpenAIError
 from faster_whisper import WhisperModel
-from TTS.tts.configs.xtts_config import XttsConfig
-from TTS.tts.models.xtts import Xtts
+from TTS.api import TTS
 import soundfile as sf
 from textblob import TextBlob
 from pathlib import Path
@@ -41,6 +40,7 @@ OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1')
+os.environ["COQUI_TOS_AGREED"] = "1"
 
 # Initialize OpenAI API key
 OpenAI.api_key = OPENAI_API_KEY
@@ -81,25 +81,16 @@ characters_folder = os.path.join(project_dir, 'characters', CHARACTER_NAME)
 character_prompt_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.txt")
 character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 
-# Load XTTS configuration
-xtts_config_path = os.path.join(project_dir, "XTTS-v2", "config.json")
-xtts_checkpoint_dir = os.path.join(project_dir, "XTTS-v2")
-xtts_available = os.path.exists(xtts_config_path) and os.path.exists(xtts_checkpoint_dir)
-
-xtts_config = XttsConfig()
-
-# Initialize XTTS model
-xtts_model = None
+# Initialize TTS model
+tts = None
 if TTS_PROVIDER == 'xtts':
-    if xtts_available:
-        xtts_config = XttsConfig()
-        xtts_config.load_json(xtts_config_path)
-        xtts_model = Xtts.init_from_config(xtts_config)
-        xtts_model.load_checkpoint(xtts_config, checkpoint_dir=xtts_checkpoint_dir, eval=True)
-        xtts_model.cuda()  # Move to GPU if available
-    else:
-        print("XTTS files not found. Please download the XTTS-v2 checkpoints to use local TTS.")
-        TTS_PROVIDER = 'openai'  # Fallback to a default provider
+    print("Initializing XTTS model (may download on first run)...")
+    try:
+        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+        print("XTTS model loaded successfully.")
+    except Exception as e:
+        print(f"Failed to load XTTS model: {e}")
+        TTS_PROVIDER = 'openai'  # Fallback to OpenAI
         print("Switched to default TTS provider: openai")
 
 # Function to display ElevenLabs quota
@@ -187,26 +178,23 @@ def process_and_play(prompt, audio_file_pth):
             play_audio(temp_wav_path)
         else:
             print("Error: Audio file not found.")
-    else:
-        tts_model = xtts_model
-        try:
-            outputs = tts_model.synthesize(
-                prompt,
-                xtts_config,
-                speaker_wav=audio_file_pth,
-                gpt_cond_len=24,
-                temperature=0.2,
-                language='en',
-                speed=float(XTTS_SPEED)
-            )
-            synthesized_audio = outputs['wav']
-            src_path = os.path.join(output_dir, 'output.wav')
-            sample_rate = xtts_config.audio.sample_rate
-            sf.write(src_path, synthesized_audio, sample_rate)
-            print("Audio generated successfully with XTTS.")
-            play_audio(src_path)
-        except Exception as e:
-            print(f"Error during XTTS audio generation: {e}")
+    elif TTS_PROVIDER == 'xtts':
+        if tts is not None:
+            try:
+                wav = tts.tts(
+                    text=prompt,
+                    speaker_wav=audio_file_pth,  # For voice cloning
+                    language="en",
+                    speed=float(XTTS_SPEED)
+                )
+                src_path = os.path.join(output_dir, 'output.wav')
+                sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
+                print("Audio generated successfully with XTTS.")
+                play_audio(src_path)
+            except Exception as e:
+                print(f"Error during XTTS audio generation: {e}")
+        else:
+            print("XTTS model is not loaded. Please ensure initialization succeeded.")
 
 def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2):
     """ Saves PCM data as a WAV file. """
@@ -706,24 +694,21 @@ def generate_speech(text, temp_audio_path):
             print(f"Failed to generate speech: {response.status_code} - {response.text}")
     elif TTS_PROVIDER == 'elevenlabs':
         elevenlabs_text_to_speech(text, temp_audio_path)
-    else:
-        tts_model = xtts_model
-        try:
-            outputs = tts_model.synthesize(
-                text,
-                xtts_config,
-                speaker_wav=character_audio_file,
-                gpt_cond_len=24,
-                temperature=0.2,
-                language='en',
-                speed=float(XTTS_SPEED)
-            )
-            synthesized_audio = outputs['wav']
-            sample_rate = xtts_config.audio.sample_rate
-            sf.write(temp_audio_path, synthesized_audio, sample_rate)
-            print("Audio generated successfully with XTTS.")
-        except Exception as e:
-            print(f"Error during XTTS audio generation: {e}")
+    else:  # XTTS
+        if tts is not None:
+            try:
+                wav = tts.tts(
+                    text=text,
+                    speaker_wav=character_audio_file,
+                    language="en",
+                    speed=float(XTTS_SPEED)
+                )
+                sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
+                print("Audio generated successfully with XTTS.")
+            except Exception as e:
+                print(f"Error during XTTS audio generation: {e}")
+        else:
+            print("XTTS model is not loaded.")
 
 def user_chatbot_conversation():
     conversation_history = []
