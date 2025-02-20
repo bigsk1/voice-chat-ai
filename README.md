@@ -20,7 +20,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
 - **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
-- **Docker Support**: Build yor own image with or without nvidia cuda. Can run on CPU only. 
+- **Docker Support**: Build yor own image with or without nvidia cuda. Can run on CPU only.
 
 
 https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
