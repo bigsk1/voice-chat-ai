@@ -43,9 +43,9 @@ COPY characters /app/characters
 COPY outputs /app/outputs
 COPY cli.py /app/cli.py
 COPY elevenlabs_voices.json /app/elevenlabs_voices.json
-COPY elevenlabs_voices.json.sample /app/elevenlabs_voices.json.sample
 COPY .env.sample /app/.env.sample
 COPY README.md /app/README.md
+COPY LICENSE /app/LICENSE
 
 # Install Python dependencies (without cache to reduce image size)
 RUN pip install --upgrade pip && pip install --no-cache-dir -r /app/requirements.txt
