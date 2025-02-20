@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  voice-chat-ai:
+    image: bigsk1/voice-chat-ai:latest
+    container_name: voice-chat-ai
+    environment:
+      - PULSE_SERVER=/mnt/wslg/PulseServer  # Default: WSL2 PulseAudio server (Windows CMD or WSL2 Ubuntu)
+      # - PULSE_SERVER=unix:/tmp/pulse/native  # Uncomment for native Ubuntu/Debian with PulseAudio
+    env_file:
+      - .env  # Loads app config (e.g., TTS_PROVIDER, API keys)
+    volumes:
+      - \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/  # Default: WSL2 audio mount for Windows CMD with Docker Desktop
+      # - /mnt/wslg/:/mnt/wslg/  # Uncomment for WSL2 Ubuntu (running Docker inside WSL2 distro)
+      # - ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro  # Uncomment for native Ubuntu/Debian
+      # - /run/user/1000/pulse:/tmp/pulse:ro  # Uncomment and adjust UID (e.g., 1000) for native Ubuntu/Debian
+    ports:
+      - "8000:8000"  # Expose web UI or API port
+    restart: unless-stopped  # Restart unless manually stopped
+    tty: true  # Enable CLI interactivity (e.g., cli.py)
+    stdin_open: true  # Keep STDIN open for interactive use

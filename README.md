@@ -20,7 +20,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
 - **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
-- **Docker Support**: Build yor own image with or without nvidia cuda. Can run on CPU only.
+- **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
 
 https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
@@ -83,7 +83,7 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
     Local XTTS can run on cpu but is slow, if using a enabled cuda gpu you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure `C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6`
 is in system PATH or whatever version you downloaded, you can also disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` to `"cudnn_enable": false`, if you don't want to use it. 
 
-### Optional - XTTS for local voices
+###  XTTS for local voices - Optional
 
 If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS the first time you select XTTS the model will download and be ready to use, if your device is cuda enabled it will load into cuda if not will fall back to cpu. 
 
@@ -98,7 +98,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 Find on http://localhost:8000/
 
 
-CLI Only
+CLI Only - `also works in docker`
 
 ```bash
 python cli.py
@@ -110,13 +110,24 @@ python cli.py
 
 ### 📄 Prerequisites
 1. Docker installed on your system.
-2. A `.env` file in the same folder as the `docker run` command. This file should contain all necessary environment variables for the application.
+2. A `.env` file in the same folder as the command. This file should contain all necessary environment variables for the application.
 
 ---
 
-### Build without Nvidia Cuda - 5 GB image - Recommended 
+## 🐳 Docker compose
+uncomment the lines needed in the docker-compose.yml depending on your host system, image pulls latest from dockerhub
+```bash
+docker-compose up -d
+```
 
-Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. 
+### Run or Build without Nvidia Cuda - CPU mode
+
+Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription
+
+```bash
+docker pull bigsk1/voice-chat-ai:latest
+```
+or 
 
 ```bash
 docker build -t voice-chat-ai -f Dockerfile.cpu .
@@ -129,9 +140,9 @@ docker run -d
    -e "PULSE_SERVER=/mnt/wslg/PulseServer"
    -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/
    --env-file .env
-   --name voice-chat-ai-cpu
+   --name voice-chat-ai
    -p 8000:8000
-   voice-chat-ai:latest
+   voice-chat-ai:latest  # prebuilt image use bigsk1/voice-chat-ai:latest
 ```
 
 In WSL2 Ubuntu 
@@ -141,12 +152,12 @@ docker run -d \
     -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
     -v /mnt/wslg/:/mnt/wslg/ \
     --env-file .env \
-    --name voice-chat-ai-cpu \
+    --name voice-chat-ai \
     -p 8000:8000 \
-    voice-chat-ai:latest
+    voice-chat-ai:latest  # prebuilt image use bigsk1/voice-chat-ai:latest
 ```
 
-### Docker - prebuilt large image 40 GB - Experimental!
+### Nvidia Cuda large image!
 
 > This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
 
@@ -204,7 +215,7 @@ docker stop voice-chat-ai-cuda
 docker rm voice-chat-ai-cuda
 ```
 
-## Build it yourself with Nvidia Cuda: 
+### Build it yourself using Nvidia Cuda: 
 
 ```bash
 docker build -t voice-chat-ai:cuda .
@@ -304,7 +315,7 @@ XAI_BASE_URL=https://api.x.ai/v1
 
 ### ElevenLabs
 
-Add names and voice id's in `elevenlabs_voices.json` - in the webui you can select them in dropdown menu.
+Add names and voice id's in `elevenlabs_voices.json` - in the webui you can select them in dropdown menu. Add your own as shown below.
 
 ```json
 {
@@ -320,22 +331,6 @@ Add names and voice id's in `elevenlabs_voices.json` - in the webui you can sele
         {
             "id": "b0uJ9TWzQss61d8f2OWX",
             "name": "Female - Lucy - Sweet and sensual"
-        },
-        {
-            "id": "2pF3fJJNnWg1nDwUW5CW",
-            "name": "Male - Eustis - Fast speaking"
-        },
-        {
-            "id": "pgCnBQgKPGkIP8fJuita",
-            "name": "Male - Jarvis - Tony Stark AI"
-        },
-        {
-            "id": "kz8mB8WAwV9lZ0fuDqel",
-            "name": "Male - Nigel - Mysterious intriguing"
-        },
-        {
-            "id": "MMHtVLagjZxJ53v4Wj8o",
-            "name": "Male - Paddington - British narrator"
         },
         {
             "id": "22FgtP4D63L7UXvnTmGf",
@@ -441,7 +436,7 @@ Open a new terminal and run
 where cudnn_ops64_9.dll
 ```
 
-### Unanticipated host error
+### Unanticipated host error OSError 9999
 
 ```bash
 File "C:\Users\someguy\miniconda3\envs\voice-chat-ai\lib\site-packages\pyaudio\__init__.py", line 441, in __init__
@@ -450,6 +445,16 @@ OSError: [Errno -9999] Unanticipated host error
 ```
 
 Make sure ffmpeg is installed and added to PATH, on windows terminal ( winget install ffmpeg ) also make sure your microphone privacy settings on windows are ok and you set the microphone to the default device. I had this issue when using bluetooth apple airpods and this solved it.
+
+###  OSError 9996
+
+```bash
+ALSA lib pulse.c:242:(pulse_connect) PulseAudio: Unable to connect: Connection refused
+Cannot connect to server socket err = No such file or directory
+OSError: [Errno -9996] Invalid input device (no default output device)
+```
+
+PulseAudio Failure: The container’s PulseAudio client can’t connect to a server (Connection refused), meaning no host PulseAudio socket is accessible. Make sure you if running docker your volume mapping is correct to the audio device on your host. 
 
 ## Watch the Demos
 
