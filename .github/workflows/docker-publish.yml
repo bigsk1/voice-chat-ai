@@ -72,7 +72,7 @@ jobs:
           sbom: true
           provenance: mode=max
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,scope=${{ github.sha }}  # Avoid cache conflicts
 
       - name: Export SBOM
         run: |
