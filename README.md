@@ -8,6 +8,17 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at. 
 
+## Quick Start
+
+Get up and running fast with Voice Chat AI!:
+
+- [**Install Locally**](#installation): Set up with Python 3.10 on Windows or Linux.
+- [**Run with Docker**](#install-with-docker): Use Docker run or Docker Compose
+- [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env`.
+- [**Watch the Demos**](#watch-the-demos): Youtube demos
+- [**Troubleshooting**](#troubleshooting): Fix common audio or CUDA errors.
+
+
 ![Ai-Speech](https://imagedelivery.net/WfhVb8dSNAAvdXUdMfBuPQ/ed0edfea-265d-4c23-d11d-0b5ba0f02d00/public)
 
 ## Features
@@ -51,8 +62,9 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 
    ```bash
    python -m venv venv
-   source venv/bin/activate 
+   source venv/bin/activate
    ```
+
     On Windows use `venv\Scripts\Activate`
 
    or use `conda` just make it python 3.10
@@ -73,10 +85,17 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
 
     ```bash
    pip install torch==2.3.1+cu121 torchaudio==2.3.1+cu121 torchvision==0.18.1+cu121 -f https://download.pytorch.org/whl/torch_stable.html
-   
+   ```
+
+   ```bash
    pip install -r requirements.txt
    ```
 
+    To install cpu use only use:
+
+    ```bash
+    pip install -r requirements_cpu.txt
+    ```
 
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
@@ -105,7 +124,7 @@ python cli.py
 ```
 
 
-## 🐳 Docker
+## Install with Docker
 
 
 ### 📄 Prerequisites
@@ -114,13 +133,37 @@ python cli.py
 
 ---
 
-## 🐳 Docker compose
+### 🐳 Docker compose
 uncomment the lines needed in the docker-compose.yml depending on your host system, image pulls latest from dockerhub
+
+```yaml
+services:
+  voice-chat-ai:
+    image: bigsk1/voice-chat-ai:latest
+    container_name: voice-chat-ai
+    environment:
+      - PULSE_SERVER=/mnt/wslg/PulseServer  # Default: WSL2 PulseAudio server (Windows CMD or WSL2 Ubuntu)
+      # - PULSE_SERVER=unix:/tmp/pulse/native  # Uncomment for native Ubuntu/Debian with PulseAudio
+    env_file:
+      - .env
+    volumes:
+      - \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/  # Default: WSL2 audio mount for Windows CMD with Docker Desktop
+      # - /mnt/wslg/:/mnt/wslg/  # Uncomment for WSL2 Ubuntu (running Docker inside WSL2 distro)
+      # - ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro  # Uncomment for native Ubuntu/Debian
+      # - /run/user/1000/pulse:/tmp/pulse:ro  # Uncomment and adjust UID (e.g., 1000) for native Ubuntu/Debian
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    tty: true  # Enable CLI interactivity (e.g., cli.py)
+    stdin_open: true  # Keep STDIN open for interactive use
+```
+
 ```bash
 docker-compose up -d
 ```
 
-### Run or Build without Nvidia Cuda - CPU mode
+### 🐳 Docker run
+### without Nvidia Cuda - cpu mode
 
 Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription
 
@@ -232,7 +275,7 @@ Running from wsl
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
 
-## Configuration ⚙️
+## Configuration
 
 1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
 
