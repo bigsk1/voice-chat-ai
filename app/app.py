@@ -28,7 +28,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ 
 load_dotenv()
 
 MODEL_PROVIDER = os.getenv('MODEL_PROVIDER')
-CHARACTER_NAME = os.getenv('CHARACTER_NAME')
+CHARACTER_NAME = os.getenv('CHARACTER_NAME', 'wizard')
 TTS_PROVIDER = os.getenv('TTS_PROVIDER')
 OPENAI_TTS_URL = os.getenv('OPENAI_TTS_URL')
 OPENAI_TTS_VOICE = os.getenv('OPENAI_TTS_VOICE', 'alloy')
