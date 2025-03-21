@@ -162,18 +162,27 @@ def adjust_prompt(mood):
     # Look for character-specific prompts first
     character_prompts_path = os.path.join(characters_folder, current_character, 'prompts.json')
     
+    # Control output verbosity using the DEBUG flag from enhanced_logic.py
     try:
+        # Import DEBUG flag if it exists
+        try:
+            from .enhanced_logic import DEBUG
+        except ImportError:
+            DEBUG = False  # Default to False if not available
+            
         # Try to load character-specific prompts
         if os.path.exists(character_prompts_path):
             with open(character_prompts_path, 'r', encoding='utf-8') as f:
                 mood_prompts = json.load(f)
-                print(f"Loaded mood prompts for character: {current_character}")
+                if DEBUG:
+                    print(f"Loaded mood prompts for character: {current_character}")
         else:
             # Fall back to global prompts
             prompts_path = os.path.join(characters_folder, 'prompts.json')
             with open(prompts_path, 'r', encoding='utf-8') as f:
                 mood_prompts = json.load(f)
-                print(f"Using global prompts.json - character-specific prompts not found")
+                if DEBUG:
+                    print(f"Using global prompts.json - character-specific prompts not found")
     except FileNotFoundError:
         print(f"Error loading prompts: character or global prompts.json not found. Using default prompts.")
         mood_prompts = {
@@ -191,10 +200,15 @@ def adjust_prompt(mood):
         print(f"Error loading prompts: {e}")
         mood_prompts = {}
 
+    # The key issue: we only want to log the mood, not the entire prompt
+    # Just print the mood name, not the full prompt text
     print(f"Detected mood: {mood}")
+    
+    # Get the mood prompt but don't print it in normal logging
     mood_prompt = mood_prompts.get(mood, "")
     
-    # Debug output
-    print(f"Selected prompt for {current_character} ({mood}): {mood_prompt}")
+    # Debug output only if DEBUG is enabled
+    if 'DEBUG' in locals() and DEBUG:
+        print(f"Selected prompt for {current_character} ({mood}): {mood_prompt[:50]}...")
     
     return mood_prompt

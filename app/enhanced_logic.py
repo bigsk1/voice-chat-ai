@@ -19,12 +19,14 @@ router = APIRouter()
 enhanced_conversation_active = False
 enhanced_conversation_thread = None
 enhanced_speed = "1.0"
-enhanced_voice = os.getenv("OPENAI_TTS_VOICE", "alloy")
+enhanced_voice = os.getenv("OPENAI_TTS_VOICE", "coral")
 enhanced_model = os.getenv("OPENAI_MODEL", "gpt-4o")
 enhanced_tts_model = os.getenv("OPENAI_MODEL_TTS", "gpt-4o-mini-tts")
 enhanced_transcription_model = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
-# Debug flag to control verbose output
+
+# Debug flags to control verbose output
 DEBUG_AUDIO_LEVELS = False  # Set to True to see audio level output in the console
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"  # Control detailed debug output
 
 # Quit phrases that will stop the conversation when detected
 QUIT_PHRASES = ["quit", "exit", "leave", "stop", "end", "bye", "goodbye"]
@@ -294,77 +296,92 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
         character_name = get_current_character()
         character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
         
-        # Extract more comprehensive character information from the character prompt file
-        character_persona = ""
+        # Extract voice instructions from the character prompt file
+        base_voice_instructions = {}
         try:
             if os.path.exists(character_prompt_file):
                 with open(character_prompt_file, 'r', encoding='utf-8') as f:
                     character_content = f.read()
                     
-                    # Get the first 5 lines which usually contain the main character description
-                    # This covers more than just the first paragraph and includes key character traits
-                    lines = character_content.strip().split('\n')
-                    relevant_lines = [line for line in lines[:5] if line.strip() and not line.startswith("RESPOND") and not line.startswith("ADAPT")]
-                    
-                    # Also look for specific instruction lines that might define character traits
-                    trait_markers = ["Act like", "You are", "YOUR PERSONALITY", "YOUR CHARACTER"]
-                    for line in lines:
-                        if any(marker.lower() in line.lower() for marker in trait_markers):
-                            if line not in relevant_lines:
-                                relevant_lines.append(line)
-                    
-                    character_persona = " ".join(relevant_lines)
-                    
-                    # Limit size to avoid making the voice_instructions too large
-                    if len(character_persona) > 250:
-                        character_persona = character_persona[:250]
+                    # Look for VOICE INSTRUCTIONS section
+                    if "VOICE INSTRUCTIONS:" in character_content:
+                        voice_section = character_content.split("VOICE INSTRUCTIONS:")[1].strip()
+                        # Extract up to the next major section (usually marked by ALL CAPS)
+                        next_section = None
+                        for line in voice_section.split('\n\n'):
+                            if line and line == line.upper() and len(line) > 10:
+                                next_section = line
+                                break
+                                
+                        if next_section:
+                            voice_section = voice_section.split(next_section)[0].strip()
                         
-                    print(f"Extracted character persona: {character_persona}")
+                        # Parse the structured instructions
+                        current_key = None
+                        for line in voice_section.split('\n'):
+                            line = line.strip()
+                            if not line:
+                                continue
+                                
+                            if ":" in line and line.split(":")[0].strip() in ["Voice", "Pacing", "Pronunciation", 
+                                                                            "Emotion", "Inflection", "Word Choice"]:
+                                current_key = line.split(":")[0].strip()
+                                base_voice_instructions[current_key] = line.split(":", 1)[1].strip()
+                            elif current_key:
+                                # Continuation of previous key
+                                base_voice_instructions[current_key] += " " + line
         except Exception as e:
-            print(f"Error reading character file: {e}")
+            print(f"Error parsing voice instructions: {e}")
         
-        # For gpt-4o-mini-tts, add voice instructions based on the detected mood
-        voice_instructions = ""
-        
-        # Use the mood that was already detected in the conversation loop
-        if model == "gpt-4o-mini-tts" and detected_mood:
-            # Get character name for voice instruction
-            character_display_name = character_name.replace('_', ' ')
-            
-            # Get character-specific prompt for the mood from the character's prompts.json
-            character_prompts_path = os.path.join(characters_folder, character_name, 'prompts.json')
-            character_mood_prompt = ""
-            
-            try:
+        # Get character-specific mood prompt from the character's prompts.json
+        mood_voice_instructions = {}
+        try:
+            if detected_mood:
+                character_prompts_path = os.path.join(characters_folder, character_name, 'prompts.json')
                 if os.path.exists(character_prompts_path):
                     with open(character_prompts_path, 'r', encoding='utf-8') as f:
                         mood_prompts = json.load(f)
-                        character_mood_prompt = mood_prompts.get(detected_mood, "")
-            except Exception as e:
-                print(f"Error loading character mood prompts: {e}")
+                        mood_prompt = mood_prompts.get(detected_mood, "")
+                        
+                        # Parse the structured mood-specific instructions
+                        for segment in mood_prompt.split(". "):
+                            if "Voice:" in segment:
+                                mood_voice_instructions["Voice"] = segment.split("Voice:")[1].strip()
+                            elif "Pacing:" in segment:
+                                mood_voice_instructions["Pacing"] = segment.split("Pacing:")[1].strip()
+                            elif "Emotion:" in segment:
+                                mood_voice_instructions["Emotion"] = segment.split("Emotion:")[1].strip()
+                            elif "Inflection:" in segment:
+                                mood_voice_instructions["Inflection"] = segment.split("Inflection:")[1].strip()
+                            elif "Pronunciation:" in segment:
+                                mood_voice_instructions["Pronunciation"] = segment.split("Pronunciation:")[1].strip()
+        except Exception as e:
+            print(f"Error parsing mood instructions: {e}")
+        
+        # Build the final structured voice instructions for the TTS model
+        structured_instructions = []
+        
+        # Add character identity
+        character_display_name = character_name.replace('_', ' ')
+        structured_instructions.append(f"Character: {character_display_name}")
+        
+        # Priority: mood-specific instructions override base instructions
+        for key in ["Voice", "Pacing", "Pronunciation", "Emotion", "Inflection"]:
+            if key in mood_voice_instructions:
+                structured_instructions.append(f"{key}: {mood_voice_instructions[key]}")
+            elif key in base_voice_instructions:
+                structured_instructions.append(f"{key}: {base_voice_instructions[key]}")
+        
+        # Add mood context
+        if detected_mood:
+            structured_instructions.append(f"Current Mood: {detected_mood}")
             
-            # Build voice instructions starting with character identity
-            voice_instructions = f"Speak as {character_display_name}."
+        # Format the final instructions in the OpenAI-preferred format
+        voice_instructions = "\n\n".join(structured_instructions)
             
-            # Add character-specific mood-based instructions if available
-            if character_mood_prompt:
-                # Clean up the mood prompt to be more voice-appropriate
-                # Remove all-caps and extract the instruction part (usually before the period)
-                clean_mood = character_mood_prompt.replace("RESPOND WITH", "Speak with").replace("KEEP RESPONSES", "Keep your voice")
-                if "." in clean_mood:
-                    clean_mood = clean_mood.split(".")[0]
-                
-                voice_instructions += f" {clean_mood}"
-            else:
-                # If no specific mood instruction found, just add a generic one
-                voice_instructions += f" Speak in a way that matches your character's personality."
-            
-            # Include character persona for more context
-            if character_persona:
-                voice_instructions += f" Character traits: {character_persona}"
-                
+        # Log TTS parameters - only if DEBUG is enabled
+        if DEBUG:
             print(f"TTS model: {model} | Voice: {voice} | Speed: {speed}")
-            print(f"Voice emotional style: {detected_mood}")
         
         # Notify that AI is about to speak
         await send_message_to_enhanced_clients({"action": "ai_start_speaking"})
@@ -387,6 +404,11 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
         # Add voice instructions for gpt-4o-mini-tts
         if model == "gpt-4o-mini-tts" and voice_instructions:
             payload["voice_instructions"] = voice_instructions
+            
+            # Debug - print instructions only if DEBUG is enabled
+            if DEBUG and detected_mood:
+                print(f"Voice instructions for {detected_mood} mood:")
+                print(voice_instructions)
         
         # Make the API call
         async with aiohttp.ClientSession() as session:
@@ -469,85 +491,110 @@ async def enhanced_conversation_loop():
         # await enhanced_text_to_speech(greeting, character_audio_file)
         
         while enhanced_conversation_active:
-            # Record and transcribe
-            user_input = await record_enhanced_audio_and_transcribe()
-            
-            # Exit if no input or if the user wants to quit
-            if not user_input:
-                print("No user input received, continuing...")
-                continue
+            # Listen for user input
+            try:
+                # Record audio and convert to text
+                user_input = await record_enhanced_audio_and_transcribe()
                 
-            # Check for quit phrases (case insensitive)
-            if any(quit_phrase in user_input.lower() for quit_phrase in QUIT_PHRASES):
-                print(f"Quit phrase detected: '{user_input}'. Ending conversation.")
+                # Check if recording was successful
+                if not user_input or user_input.strip() == "":
+                    await send_message_to_enhanced_clients({
+                        "action": "error", 
+                        "message": "Sorry, I couldn't hear what you said. Please try again."
+                    })
+                    continue
+                    
+                # Check for quit phrases
+                if any(phrase in user_input.lower() for phrase in QUIT_PHRASES):
+                    await send_message_to_enhanced_clients({
+                        "message": "Goodbye! Ending our conversation now."
+                    })
+                    break
+                    
+                # Process user input - analyze mood, etc.
+                sentiment_score = analyze_mood(user_input)
+                detected_mood = adjust_prompt(sentiment_score)
+                                
+                # Send user message to UI
                 await send_message_to_enhanced_clients({
-                    "message": "Conversation ended."
+                    "message": f"You: {user_input}"
                 })
-                break
                 
-            # Send user message to frontend
-            await send_message_to_enhanced_clients({
-                "message": f"You: {user_input}"
-            })
-            
-            # Add to history
-            local_conversation_history.append({"role": "user", "content": user_input})
-            
-            # Analyze mood - analyze once and store for both chat and TTS
-            detected_mood = analyze_mood(user_input)
-            mood_prompt = adjust_prompt(detected_mood)
-            
-            print(f"======= CONVERSATION TURN =======")
-            print(f"User input: \"{user_input[:40]}...\"")
-            print(f"Detected mood: {detected_mood}")
-            print(f"Character: {character_name}")
-            print(f"Mood prompt: {mood_prompt}")
-            
-            # Get AI response - pass conversation history for context
-            chatbot_response = await enhanced_chat_completion(
-                user_input, 
-                base_system_message, 
-                mood_prompt, 
-                local_conversation_history if len(local_conversation_history) > 1 else None,
-                detected_mood  # Pass the detected mood to avoid re-analyzing
-            )
-            
-            # Add to history
-            local_conversation_history.append({"role": "assistant", "content": chatbot_response})
-            
-            # Limit conversation history to last 20 exchanges to prevent context overflow
-            if len(local_conversation_history) > 20:
-                # Keep system message and last 20 exchanges
-                local_conversation_history = local_conversation_history[-20:]
-            
-            # Send to frontend
-            await send_message_to_enhanced_clients({
-                "message": chatbot_response
-            })
-            
-            # Convert to speech using the same detected mood
-            sanitized_response = sanitize_response(chatbot_response)
-            if len(sanitized_response) > 500:  # Limit length for TTS
-                sanitized_response = sanitized_response[:500] + "..."
+                # Add to local history
+                local_conversation_history.append({"role": "user", "content": user_input})
                 
-            await enhanced_text_to_speech(sanitized_response, character_audio_file, detected_mood)
-            
-            # Update global conversation history
-            conversation_history.extend([
-                {"role": "user", "content": user_input},
-                {"role": "assistant", "content": chatbot_response}
-            ])
-            save_conversation_history(conversation_history)
-            print(f"======= END TURN =======\n")
-            
+                # Always print basic turn info but keep it minimal
+                print(f"User: \"{user_input[:40]}{'...' if len(user_input) > 40 else ''}\"")
+                
+                # Get mood-specific prompt from character's prompts.json - but without logging
+                mood_prompt = ""
+                character_prompts_path = os.path.join(characters_folder, character_name, 'prompts.json')
+                
+                try:
+                    if os.path.exists(character_prompts_path):
+                        with open(character_prompts_path, 'r', encoding='utf-8') as f:
+                            mood_prompts = json.load(f)
+                            mood_prompt = mood_prompts.get(detected_mood, "")
+                            
+                            # Only print detailed prompt info if DEBUG is enabled
+                            if DEBUG:
+                                print(f"Loaded mood prompts for character: {character_name}")
+                                print(f"Selected prompt for {character_name} ({detected_mood}): {mood_prompt[:50]}...")
+                except Exception as e:
+                    if DEBUG:
+                        print(f"Error loading character prompts: {str(e)}")
+                    
+                # Get response from LLM
+                ai_response = await enhanced_chat_completion(
+                    user_input, 
+                    base_system_message, 
+                    mood_prompt,
+                    local_conversation_history[:-1] if len(local_conversation_history) > 1 else None,
+                    detected_mood
+                )
+                
+                # Clean up the response
+                ai_response = sanitize_response(ai_response)
+                
+                # Add to conversation history
+                local_conversation_history.append({"role": "assistant", "content": ai_response})
+                
+                # Manage conversation history size - keep last 20 messages
+                if len(local_conversation_history) > 20:
+                    local_conversation_history = local_conversation_history[-20:]
+                
+                # Update global conversation history
+                conversation_history = local_conversation_history.copy()
+                
+                # Optionally, save the conversation history to a file
+                save_conversation_history(conversation_history)
+                
+                # Send AI response to client
+                await send_message_to_enhanced_clients({"message": ai_response})
+                
+                # Print AI response summary
+                print(f"AI: \"{ai_response[:40]}{'...' if len(ai_response) > 40 else ''}\"")
+                
+                # Convert to speech
+                await enhanced_text_to_speech(ai_response, character_audio_file, detected_mood)
+                
+            except Exception as e:
+                print(f"Error in conversation loop: {e}")
+                # Attempt to continue anyway
+                await send_message_to_enhanced_clients({
+                    "action": "error", 
+                    "message": f"Error: {str(e)}. Please try again."
+                })
+                
+                # Optional: take a short break to avoid rapid errors
+                await asyncio.sleep(1)
+                
     except Exception as e:
-        print(f"Error in enhanced conversation loop: {e}")
-        await send_message_to_enhanced_clients({
-            "action": "error",
-            "message": f"Error: {str(e)}"
-        })
+        print(f"Fatal error in enhanced conversation loop: {e}")
     finally:
+        # Make sure to clean up
         enhanced_conversation_active = False
+        print("Enhanced conversation thread stopping...")
 
 async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversation_history=None, detected_mood=None):
     """Get chat completion from OpenAI using the specified model."""
@@ -568,8 +615,9 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         # Combine the system message with mood prompt from sentiment analysis
         combined_system_message = f"{system_message}\n{mood_prompt}"
         
-        # Print streamlined debug information
-        print(f"Chat model: {model} | System prompt length: {len(combined_system_message)} chars")
+        # Print streamlined debug information only if DEBUG is enabled
+        if DEBUG:
+            print(f"Chat model: {model} | System prompt length: {len(combined_system_message)} chars")
         
         # Prepare the messages for the API call
         messages = [
@@ -590,6 +638,10 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
                 # Add a summary note about user identity 
                 identity_note = {"role": "system", "content": f"Note: The user previously shared: \"{name_info}\". Remember this context."}
                 messages.insert(1, identity_note)
+                
+                # Debug log about user identity if DEBUG is enabled
+                if DEBUG:
+                    print(f"Added user identity context: {name_info[:40]}...")
             
             # Now add all the conversation history
             messages.extend(conversation_history)
@@ -608,7 +660,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
             "model": model,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 800
+            "max_tokens": 2000
         }
         
         # Make the API call
