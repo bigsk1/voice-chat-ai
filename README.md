@@ -455,7 +455,7 @@ Option 2
 
 Install cuDNN: Download cuDNN from the NVIDIA cuDNN page https://developer.nvidia.com/cudnn
 
-Here’s how to add it to the PATH:
+Here's how to add it to the PATH:
 
 Open System Environment Variables:
 
@@ -499,7 +499,29 @@ Cannot connect to server socket err = No such file or directory
 OSError: [Errno -9996] Invalid input device (no default output device)
 ```
 
-PulseAudio Failure: The container’s PulseAudio client can’t connect to a server (Connection refused), meaning no host PulseAudio socket is accessible. Make sure you if running docker your volume mapping is correct to the audio device on your host.
+PulseAudio Failure: The container's PulseAudio client can't connect to a server (Connection refused), meaning no host PulseAudio socket is accessible. Make sure you if running docker your volume mapping is correct to the audio device on your host.
+
+### ImportError: Coqpit module not found
+
+If you update to coqui-tts 0.26.0 (which supports transformers 4.48.0+) and encounter an error related to importing Coqpit, this is because of a package dependency change. The newer version of coqui-tts uses a forked version of coqpit called `coqpit-config` instead of the original `coqpit` package.
+
+To fix this issue:
+
+1. Uninstall the old package:
+
+   ```bash
+   pip uninstall coqpit
+   ```
+
+2. Install the new forked package:
+
+   ```bash
+   pip install coqpit-config
+   ```
+
+3. Restart your Python session or application
+
+If you continue to have issues after these steps, creating a fresh virtual environment and reinstalling all dependencies is the most reliable solution.
 
 ## Watch the Demos
 
