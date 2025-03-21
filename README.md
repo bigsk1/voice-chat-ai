@@ -4,9 +4,9 @@
 
 # Voice Chat AI 🎙️
 
-Voice Chat AI is a project that allows you to interact with different AI characters using speech. You can choose between various characters, each with unique personalities and voices. Have a serious conversation with Albert Einstein or role play with the OS from the movie HER. 
+Voice Chat AI is a project that allows you to interact with different AI characters using speech. You can choose between various characters, each with unique personalities and voices. Have a serious conversation with Albert Einstein or role play with the OS from the movie HER.
 
-You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at. 
+You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at.
 
 ## Quick Start
 
@@ -18,13 +18,13 @@ Get up and running fast with Voice Chat AI!
 - [**Watch the Demos**](#watch-the-demos): Youtube demos
 - [**Troubleshooting**](#troubleshooting): Fix common audio or CUDA errors.
 
-
 ![Ai-Speech](https://imagedelivery.net/WfhVb8dSNAAvdXUdMfBuPQ/ed0edfea-265d-4c23-d11d-0b5ba0f02d00/public)
 
 ## Features
 
 - **Supports OpenAI, xAI or Ollama language models**: Choose the model that best fits your needs.
 - **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
+- **NEW OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
 - **No typing needed, just speak**: Hands-free interaction makes conversations smooth and effortless.
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
 - **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
@@ -33,9 +33,7 @@ Get up and running fast with Voice Chat AI!
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
 - **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
-
 https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
-
 
 ## Installation
 
@@ -100,22 +98,23 @@ https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
     Local XTTS can run on cpu but is slow, if using a enabled cuda gpu you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure `C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6`
-is in system PATH or whatever version you downloaded, you can also disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` to `"cudnn_enable": false`, if you don't want to use it. 
+is in system PATH or whatever version you downloaded, you can also disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` to `"cudnn_enable": false`, if you don't want to use it.
 
-###  XTTS for local voices - Optional
+### XTTS for local voices - Optional
 
-If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS the first time you select XTTS the model will download and be ready to use, if your device is cuda enabled it will load into cuda if not will fall back to cpu. 
+If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS the first time you select XTTS the model will download and be ready to use, if your device is cuda enabled it will load into cuda if not will fall back to cpu.
 
 ## Usage
 
 Run the application: 🏃
 
 Web UI
+
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
-Find on http://localhost:8000/
 
+Find on http://localhost:8000/
 
 CLI Only - `also works in docker`
 
@@ -123,17 +122,17 @@ CLI Only - `also works in docker`
 python cli.py
 ```
 
-
 ## Install with Docker
 
-
 ### 📄 Prerequisites
+
 1. Docker installed on your system.
 2. A `.env` file in the same folder as the command. This file should contain all necessary environment variables for the application.
 
 ---
 
 ### 🐳 Docker compose
+
 uncomment the lines needed in the docker-compose.yml depending on your host system, image pulls latest from dockerhub
 
 ```yaml
@@ -163,6 +162,7 @@ docker-compose up -d
 ```
 
 ### 🐳 Docker run
+
 ### without Nvidia Cuda - cpu mode
 
 Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription
@@ -170,7 +170,8 @@ Cuda and cudnn not supported. No gpu is used and slower when using local xtts an
 ```bash
 docker pull bigsk1/voice-chat-ai:latest
 ```
-or 
+
+or
 
 ```bash
 docker build -t voice-chat-ai -f Dockerfile.cpu .
@@ -188,7 +189,7 @@ docker run -d
    voice-chat-ai:latest  # prebuilt image use bigsk1/voice-chat-ai:latest
 ```
 
-In WSL2 Ubuntu 
+In WSL2 Ubuntu
 
 ```bash
 docker run -d \
@@ -200,18 +201,19 @@ docker run -d \
     voice-chat-ai:latest  # prebuilt image use bigsk1/voice-chat-ai:latest
 ```
 
-### Nvidia Cuda large image!
+### Nvidia Cuda large image
 
-> This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed. 
+> This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed.
 
 This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS with cuda in an nvidia cudnn base image.
 
  Ensure you have Docker installed and that your `.env` file is placed in the same directory as the commands are run. If you get cuda errors make sure to install nvidia toolkit for docker and cudnn is installed in your path.
 
-
 ## 🖥️ Run on Windows using docker desktop - prebuilt image
+
 On windows using docker desktop - run in Windows terminal:
 make sure .env is in same folder you are running this from
+
 ```bash
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
 ```
@@ -219,6 +221,7 @@ docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubunt
 Use `docker logs -f voice-chat-ai-cuda` to see the logs
 
 ## 🐧 Run on WSL Native - best option
+
 For a native WSL environment (like Ubuntu on WSL), use this command:
 
 make sure .env is in same folder you are running this from
@@ -245,10 +248,11 @@ docker run -d --gpus all \
     -p 8000:8000 \
     bigsk1/voice-chat-ai:cuda
 ```
+
 🔗 Access the Application
 URL: http://localhost:8000
 
-To remove use: 
+To remove use:
 
 ```bash
 docker stop voice-chat-ai-cuda
@@ -258,11 +262,12 @@ docker stop voice-chat-ai-cuda
 docker rm voice-chat-ai-cuda
 ```
 
-### Build it yourself using Nvidia Cuda: 
+### Build it yourself using Nvidia Cuda
 
 ```bash
 docker build -t voice-chat-ai:cuda .
 ```
+
 Running in WSL Ubuntu
 
 ```bash
@@ -343,16 +348,15 @@ XAI_BASE_URL=https://api.x.ai/v1
 # To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also)
 ```
 
-
 ### Audio Commands
 
 - You have 3 secs to talk, if there is silence then it's the AI's turn to talk
-- Say any of the following to have the AI look at your screen - "what's on my screen", 
-        "take a screenshot", 
-        "show me my screen", 
-        "analyze my screen", 
-        "what do you see on my screen", 
-        "screen capture", 
+- Say any of the following to have the AI look at your screen - "what's on my screen",
+        "take a screenshot",
+        "show me my screen",
+        "analyze my screen",
+        "what do you see on my screen",
+        "screen capture",
         "screenshot" to have the AI explain what it is seeing in detail.
 - To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also in terminal )
 
@@ -389,15 +393,13 @@ For the CLI the voice id in the .env will be used
 
 ### Web View - Visual and Audio input / output
 
-Press start to start talking. Take a break hit stop, when ready again hit start again. Press stop to change characters and voices in dropdown. You can also select the Model Provider and TTS Provider you want in the dropdown menu and it will update and use the selected provider moving forward. Saying Exit, Leave or Quit is like pressing stop. 
+Press start to start talking. Take a break hit stop, when ready again hit start again. Press stop to change characters and voices in dropdown. You can also select the Model Provider and TTS Provider you want in the dropdown menu and it will update and use the selected provider moving forward. Saying Exit, Leave or Quit is like pressing stop.
 
 http://localhost:8000/
-
 
 [![Watch the video](https://img.youtube.com/vi/Ii3vYg-CzKE/maxresdefault.jpg)](https://youtu.be/Ii3vYg-CzKE)
 
 Click on the thumbnail to open the video☝️
-
 
 ## Adding New Characters
 
@@ -411,13 +413,13 @@ Click on the thumbnail to open the video☝️
 
 This is the prompt used for the AI to know who it is
 
-```
+```bash
 You are a wise and ancient wizard who speaks with a mystical and enchanting tone. You are knowledgeable about many subjects and always eager to share your wisdom.
 ```
 
 `prompts.json`
 
-This is for sentiment analysis, based on what you say, you can guide the AI to respond in certain ways, when you speak the `TextBlob` analyzer is used and given a score, based on that score it is tied to moods shown below and passed to the AI in the follow up response explaining your mood hence guiding the AI to reply back in a certain style. 
+This is for sentiment analysis, based on what you say, you can guide the AI to respond in certain ways, when you speak the `TextBlob` analyzer is used and given a score, based on that score it is tied to moods shown below and passed to the AI in the follow up response explaining your mood hence guiding the AI to reply back in a certain style.
 
 ```json
 {
@@ -434,7 +436,6 @@ This is for sentiment analysis, based on what you say, you can guide the AI to r
 
 For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
 
-
 ## Troubleshooting
 
 ### Could not locate cudnn_ops64_9.dll or Unable to load any of libcudnn_ops.so.9.1.0
@@ -443,6 +444,7 @@ For XTTS find a .wav voice and add it to the wizard folder and name it as wizard
 Could not locate cudnn_ops64_9.dll. Please make sure it is in your library path!
 Invalid handle. Cannot load symbol cudnnCreateTensorDescriptor
 ```
+
 To resolve this:
 
 Option 1
@@ -489,7 +491,7 @@ OSError: [Errno -9999] Unanticipated host error
 
 Make sure ffmpeg is installed and added to PATH, on windows terminal ( winget install ffmpeg ) also make sure your microphone privacy settings on windows are ok and you set the microphone to the default device. I had this issue when using bluetooth apple airpods and this solved it.
 
-###  OSError 9996
+### OSError 9996
 
 ```bash
 ALSA lib pulse.c:242:(pulse_connect) PulseAudio: Unable to connect: Connection refused
@@ -497,15 +499,11 @@ Cannot connect to server socket err = No such file or directory
 OSError: [Errno -9996] Invalid input device (no default output device)
 ```
 
-PulseAudio Failure: The container’s PulseAudio client can’t connect to a server (Connection refused), meaning no host PulseAudio socket is accessible. Make sure you if running docker your volume mapping is correct to the audio device on your host. 
+PulseAudio Failure: The container’s PulseAudio client can’t connect to a server (Connection refused), meaning no host PulseAudio socket is accessible. Make sure you if running docker your volume mapping is correct to the audio device on your host.
 
 ## Watch the Demos
 
-
-
-
 [![Watch the video](https://img.youtube.com/vi/jKaZkSt2mww/maxresdefault.jpg)](https://youtu.be/jKaZkSt2mww)
-
 
 Click on the thumbnail to open the video☝️
 
@@ -517,7 +515,6 @@ GPU - 100% local - ollama llama3, xtts-v2
 
 [![Watch the video](https://img.youtube.com/vi/WsWbYnITdCo/maxresdefault.jpg)](https://youtu.be/WsWbYnITdCo)
 
-
 Click on the thumbnail to open the video☝️
 
 ---
@@ -528,16 +525,13 @@ Alien conversation using openai gpt4o and openai speech for tts.
 
 [![Watch the video](https://img.youtube.com/vi/d5LbRLhWa5c/maxresdefault.jpg)](https://youtu.be/d5LbRLhWa5c)
 
-
 Click on the thumbnail to open the video☝️
-
-
 
 ## Additional Details
 
 ### Console output
 
-Detailed output in terminal while running the app. 
+Detailed output in terminal while running the app.
 
 When using Elevenlabs on first start of server you get details about your usage limits to help you know how much you have been using.
 
@@ -571,15 +565,12 @@ INFO:     connection open
 
 Features:
 
-- If you ask for code examples in webui the code will be displayed in a code block in a different color and formatted correctly. 
-- Working on more features that are displayed , copy button for code blocks, images, links, ect.. 
-
-
+- If you ask for code examples in webui the code will be displayed in a code block in a different color and formatted correctly.
+- Working on more features that are displayed , copy button for code blocks, images, links, ect..
 
 ## License
 
 This project is licensed under the MIT License.
-
 
 ## Star History
 

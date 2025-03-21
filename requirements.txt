@@ -11,7 +11,7 @@ soundfile==0.12.1
 langid==1.1.6
 librosa==0.10.2.post1
 scipy==1.11.4
-transformers==4.46.2
+transformers==4.48.0
 pydantic==2.7.4
 pillow==10.3.0
 
@@ -28,4 +28,4 @@ aiohttp==3.10.11
 spacy==3.7.5
 spacy-legacy==3.0.12
 spacy-loggers==1.0.5
-coqui-tts==0.25.3
+coqui-tts==0.26.0
