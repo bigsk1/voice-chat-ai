@@ -4,7 +4,6 @@ Shared resources used across the application
 
 import os
 from dotenv import load_dotenv
-import fastapi
 
 load_dotenv()
 

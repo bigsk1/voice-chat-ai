@@ -134,22 +134,28 @@ async def stop_enhanced_conversation_route():
 
 @app.post("/clear_history")
 async def clear_history():
-    clear_conversation_history()
-    save_conversation_history(conversation_history)
+    global conversation_history
+    conversation_history.clear()  # Clear the in-memory conversation history
+    save_conversation_history(conversation_history)  # Save the cleared state to the file
     return {"status": "cleared"}
 
 @app.get("/download_history")
 async def download_history():
-    # Create a temporary file
-    temp_file = "conversation_history.json"
-    with open(temp_file, "w") as f:
-        json.dump(conversation_history, f)
+    # Create a temporary file with the same format used in app.py save_conversation_history
+    temp_file = "conversation_history.txt"
+    
+    # Format it the same way as the save_conversation_history function in app.py
+    with open(temp_file, "w", encoding="utf-8") as file:
+        for message in conversation_history:
+            role = message["role"].capitalize()
+            content = message["content"]
+            file.write(f"{role}: {content}\n")
     
     # Return the file
     return FileResponse(
         temp_file,
-        media_type="application/json",
-        filename="conversation_history.json"
+        media_type="text/plain",
+        filename="conversation_history.txt"
     )
 
 @app.websocket("/ws")

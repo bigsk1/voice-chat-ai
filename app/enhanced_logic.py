@@ -3,7 +3,7 @@ import asyncio
 import json
 from threading import Thread
 from fastapi import APIRouter
-from .shared import clients, conversation_history, get_current_character, is_client_active, set_client_inactive
+from .shared import clients, conversation_history, get_current_character, is_client_active, set_client_inactive, clear_conversation_history, set_current_character
 from .app_logic import (
     save_conversation_history,
     open_file,
@@ -432,10 +432,28 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
 
 async def enhanced_conversation_loop():
     """Main conversation loop for the enhanced interface."""
-    global enhanced_conversation_active
+    global enhanced_conversation_active, conversation_history
     try:
         # Keep context of the conversation
         local_conversation_history = []
+        
+        # Check if there's any history to load - only load if there's actual content
+        if conversation_history and len(conversation_history) > 0:
+            print(f"Loading {len(conversation_history)} previous messages from conversation history")
+            local_conversation_history = conversation_history.copy()
+            
+            # Display the conversation history in the UI
+            for msg in local_conversation_history:
+                if msg["role"] == "user":
+                    await send_message_to_enhanced_clients({
+                        "message": f"You: {msg['content']}"
+                    })
+                elif msg["role"] == "assistant":
+                    await send_message_to_enhanced_clients({
+                        "message": msg['content']
+                    })
+        else:
+            print("Starting with empty conversation history")
         
         character_name = get_current_character()
         character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
@@ -560,6 +578,20 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         
         # If conversation history is provided, add it to the messages
         if conversation_history:
+            # Find name-related information in conversation history
+            name_info = ""
+            for msg in conversation_history:
+                if msg["role"] == "user" and ("my name is" in msg["content"].lower() or "i am" in msg["content"].lower() or "i'm" in msg["content"].lower()):
+                    name_info = msg["content"]
+                    break
+            
+            # If name information was found, add it at the beginning for context
+            if name_info:
+                # Add a summary note about user identity 
+                identity_note = {"role": "system", "content": f"Note: The user previously shared: \"{name_info}\". Remember this context."}
+                messages.insert(1, identity_note)
+            
+            # Now add all the conversation history
             messages.extend(conversation_history)
             
         # Add the current user prompt
@@ -601,7 +633,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
 
 async def start_enhanced_conversation(character=None, speed=None, model=None, voice=None, ttsModel=None, transcriptionModel=None):
     """Start a new enhanced conversation."""
-    global enhanced_conversation_active, enhanced_conversation_thread, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model
+    global enhanced_conversation_active, enhanced_conversation_thread, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model, conversation_history
     
     # Set character if provided
     if character:

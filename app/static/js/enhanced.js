@@ -268,13 +268,15 @@ document.addEventListener("DOMContentLoaded", function() {
         
         console.log("Clearing conversation");
         
-        // Optional: Send clear command to the server
+        // Send clear command to the server
         fetch('/clear_history', {
             method: 'POST'
         })
         .then(response => response.json())
         .then(data => {
             console.log("Clear conversation response:", data);
+            // Display a confirmation message
+            displayMessage("Conversation history has been cleared.", "system-message");
         })
         .catch(error => {
             console.error("Error clearing conversation:", error);
@@ -316,7 +318,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'conversation_history.json';
+                a.download = 'conversation_history.txt';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);

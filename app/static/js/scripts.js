@@ -158,8 +158,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
     clearButton.addEventListener('click', async function() {
         messages.innerHTML = '';
-        await fetch('/clear_history', { method: 'POST' });
-        console.log("Conversation history cleared.");
+        try {
+            const response = await fetch('/clear_history', { method: 'POST' });
+            const data = await response.json();
+            console.log("Conversation history cleared.");
+            // Add a confirmation message
+            displayMessage("Conversation history has been cleared.", "system-message");
+        } catch (error) {
+            console.error("Error clearing history:", error);
+            displayMessage("Error clearing conversation history", "error-message");
+        }
     });
     
 
