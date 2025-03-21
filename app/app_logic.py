@@ -6,7 +6,6 @@ from .shared import clients, continue_conversation, conversation_history, get_cu
 from .app import (
     transcribe_with_whisper,
     analyze_mood,
-    adjust_prompt,
     chatgpt_streamed,
     sanitize_response,
     process_and_play,
@@ -23,6 +22,7 @@ from .app import (
     init_set_provider,
     save_conversation_history,
 )
+import json
 
 router = APIRouter()
 characters_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "characters")
@@ -153,3 +153,48 @@ def set_env_variable(key: str, value: str):
         init_set_tts(value)      # Reinitialize TTS Providers
     if key == "MODEL_PROVIDER":
         init_set_provider(value)  # Reinitialize Model Providers
+
+def adjust_prompt(mood):
+    """Load mood-specific prompts from the character's prompts.json file."""
+    # Get the current character
+    current_character = get_current_character()
+    
+    # Look for character-specific prompts first
+    character_prompts_path = os.path.join(characters_folder, current_character, 'prompts.json')
+    
+    try:
+        # Try to load character-specific prompts
+        if os.path.exists(character_prompts_path):
+            with open(character_prompts_path, 'r', encoding='utf-8') as f:
+                mood_prompts = json.load(f)
+                print(f"Loaded mood prompts for character: {current_character}")
+        else:
+            # Fall back to global prompts
+            prompts_path = os.path.join(characters_folder, 'prompts.json')
+            with open(prompts_path, 'r', encoding='utf-8') as f:
+                mood_prompts = json.load(f)
+                print(f"Using global prompts.json - character-specific prompts not found")
+    except FileNotFoundError:
+        print(f"Error loading prompts: character or global prompts.json not found. Using default prompts.")
+        mood_prompts = {
+            "happy": "RESPOND WITH JOY AND ENTHUSIASM.",
+            "sad": "RESPOND WITH KINDNESS AND COMFORT.",
+            "flirty": "RESPOND WITH A TOUCH OF MYSTERY AND CHARM.",
+            "angry": "RESPOND CALMLY AND WISELY.",
+            "neutral": "KEEP RESPONSES SHORT AND NATURAL.",
+            "fearful": "RESPOND WITH REASSURANCE.",
+            "surprised": "RESPOND WITH AMAZEMENT.",
+            "disgusted": "RESPOND WITH UNDERSTANDING.",
+            "joyful": "RESPOND WITH EXUBERANCE."
+        }
+    except Exception as e:
+        print(f"Error loading prompts: {e}")
+        mood_prompts = {}
+
+    print(f"Detected mood: {mood}")
+    mood_prompt = mood_prompts.get(mood, "")
+    
+    # Debug output
+    print(f"Selected prompt for {current_character} ({mood}): {mood_prompt}")
+    
+    return mood_prompt

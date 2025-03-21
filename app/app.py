@@ -421,32 +421,6 @@ def analyze_mood(user_input):
     else:
         return "neutral"
 
-def adjust_prompt(mood):
-    prompts_path = os.path.join(characters_folder, 'prompts.json')
-    try:
-        with open(prompts_path, 'r', encoding='utf-8') as f:
-            mood_prompts = json.load(f)
-    except FileNotFoundError:
-        print(f"Error loading prompts: {prompts_path} not found. Using default prompts.")
-        mood_prompts = {
-            "happy": "RESPOND WITH JOY AND ENTHUSIASM.",
-            "sad": "RESPOND WITH KINDNESS AND COMFORT.",
-            "flirty": "RESPOND WITH A TOUCH OF MYSTERY AND CHARM.",
-            "angry": "RESPOND CALMLY AND WISELY.",
-            "neutral": "KEEP RESPONSES SHORT AND NATURAL.",
-            "fearful": "RESPOND WITH REASSURANCE.",
-            "surprised": "RESPOND WITH AMAZEMENT.",
-            "disgusted": "RESPOND WITH UNDERSTANDING.",
-            "joyful": "RESPOND WITH EXUBERANCE."
-        }
-    except Exception as e:
-        print(f"Error loading prompts: {e}")
-        mood_prompts = {}
-
-    print(f"Detected mood: {mood}")
-    mood_prompt = mood_prompts.get(mood, "")
-    return mood_prompt
-
 def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_history):
     full_response = ""
     print(f"Debug: chatgpt_streamed started. MODEL_PROVIDER: {MODEL_PROVIDER}")
@@ -836,10 +810,9 @@ async def user_chatbot_conversation():
                 continue
             
             mood = analyze_mood(user_input)
-            mood_prompt = adjust_prompt(mood)
             
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
-            chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
+            chatbot_response = chatgpt_streamed(user_input, base_system_message, mood, conversation_history)
             conversation_history.append({"role": "assistant", "content": chatbot_response})
             sanitized_response = sanitize_response(chatbot_response)
             if len(sanitized_response) > 400:
@@ -854,6 +827,75 @@ async def user_chatbot_conversation():
 
     except KeyboardInterrupt:
         print("Quitting the conversation...")
+
+async def non_streaming_conversation():
+    print("Starting non-streaming conversation...")
+    await send_message_to_clients(json.dumps({"action": "transcribing"}))
+    
+    try:
+        # First, record the audio
+        audio_file = os.path.join(output_dir, 'input.wav')
+        await record_audio(audio_file)
+        
+        # Then, transcribe it
+        user_input = transcribe_with_whisper(audio_file)
+        
+        if user_input.strip():
+            conversation_history.append({"role": "user", "content": user_input})
+            save_conversation_history(conversation_history)
+            await send_message_to_clients(json.dumps({"action": "user_message", "message": user_input}))
+            
+            # Check for quit phrases or screenshot request
+            if any(phrase in user_input.strip() for phrase in quit_phrases):
+                print("Quitting the conversation...")
+                await send_message_to_clients(json.dumps({"action": "conversation_ended"}))
+                return True, None
+            
+            if any(phrase in user_input.lower() for phrase in screenshot_phrases):
+                await execute_screenshot_and_analyze()
+                return False, None
+            
+            # Process the text normally
+            character_name = get_current_character()
+            character_folder = os.path.join(characters_folder, character_name)
+            character_prompt_file = os.path.join(character_folder, f"{character_name}.txt")
+            character_audio_file = os.path.join(character_folder, f"{character_name}.wav")
+            
+            base_system_message = open_file(character_prompt_file)
+            
+            mood = analyze_mood(user_input)
+            mood_prompt = adjust_prompt(mood)
+            
+            print(PINK + f"{character_display_name}:..." + RESET_COLOR)
+            chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
+            conversation_history.append({"role": "assistant", "content": chatbot_response})
+            sanitized_response = sanitize_response(chatbot_response)
+            
+            # If the response is too long for audio, truncate it
+            if len(sanitized_response) > 500:
+                sanitized_response = sanitized_response[:500] + "..."
+                
+            await send_message_to_clients(json.dumps({
+                "action": "ai_message", 
+                "message": chatbot_response, 
+                "character": character_name
+            }))
+            
+            # Generate and play the audio response
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await process_and_play(sanitized_response, character_audio_file)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+            
+            return False, chatbot_response
+        else:
+            print("No user input detected.")
+            await send_message_to_clients(json.dumps({"action": "error", "message": "No speech detected. Please try again."}))
+            return False, None
+            
+    except Exception as e:
+        print(f"Error in non-streaming conversation: {e}")
+        await send_message_to_clients(json.dumps({"action": "error", "message": f"Error: {str(e)}"}))
+        return False, None
 
 if __name__ == "__main__":
     asyncio.run(user_chatbot_conversation())

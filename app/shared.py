@@ -13,7 +13,7 @@ clients = set()
 active_client_status = {}  # Track status of websocket clients
 
 # Shared state variables
-current_character = os.getenv("CHARACTER_NAME", "wizard")  # Get from .env or default to grok_xai
+current_character = os.getenv("CHARACTER_NAME")  # Get from .env
 conversation_active = False
 conversation_history = []
 continue_conversation = False  # Added missing variable

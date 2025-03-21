@@ -111,7 +111,6 @@ async def start_enhanced_conversation_route(request: Request):
     data = await request.json()
     character = data.get("character")
     speed = data.get("speed")
-    tone = data.get("tone")
     model = data.get("model")
     voice = data.get("voice")
     tts_model = data.get("ttsModel")
@@ -120,7 +119,6 @@ async def start_enhanced_conversation_route(request: Request):
     asyncio.create_task(start_enhanced_conversation(
         character=character,
         speed=speed,
-        tone=tone,
         model=model,
         voice=voice,
         ttsModel=tts_model,

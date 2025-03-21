@@ -166,14 +166,12 @@
         <div class="settings">
             <div class="setting-group">
                 <label for="characterSelect">Character:</label>
-                <select id="characterSelect" class="setting-select">
-                    <!-- Will be populated via JavaScript -->
-                </select>
+                <select id="characterSelect"></select>
             </div>
-
+            
             <div class="setting-group">
                 <label for="voiceSelect">Voice:</label>
-                <select id="voiceSelect" class="setting-select">
+                <select id="voiceSelect">
                     <option value="alloy">Alloy</option>
                     <option value="echo">Echo</option>
                     <option value="fable">Fable</option>
@@ -185,40 +183,29 @@
                     <option value="ash">Ash</option>
                 </select>
             </div>
-
+            
             <div class="setting-group">
                 <label for="speedSelect">Voice Speed:</label>
-                <select id="speedSelect" class="setting-select">
-                    <option value="0.7">Slow</option>
+                <select id="speedSelect">
+                    <option value="0.8">Slow</option>
                     <option value="1.0" selected>Normal</option>
-                    <option value="1.3">Fast</option>
-                    <option value="1.6">Very Fast</option>
+                    <option value="1.2">Fast</option>
+                    <option value="1.5">Very Fast</option>
                 </select>
             </div>
-
-            <div class="setting-group">
-                <label for="toneSelect">Tone:</label>
-                <select id="toneSelect" class="setting-select">
-                    <option value="neutral" selected>Neutral</option>
-                    <option value="friendly">Friendly</option>
-                    <option value="professional">Professional</option>
-                    <option value="excited">Excited</option>
-                    <option value="empathetic">Empathetic</option>
-                    <option value="serious">Serious</option>
-                </select>
-            </div>
-
+            
             <div class="setting-group">
                 <label for="modelSelect">Chat Model:</label>
-                <select id="modelSelect" class="setting-select">
-                    <option value="gpt-4o" selected>GPT-4o</option>
+                <select id="modelSelect">
+                    <option value="gpt-4o">GPT-4o</option>
                     <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-4">GPT-4</option>
                 </select>
             </div>
             
             <div class="setting-group">
                 <label for="ttsModelSelect">TTS Model:</label>
-                <select id="ttsModelSelect" class="setting-select">
+                <select id="ttsModelSelect">
                     <option value="gpt-4o-mini-tts" selected>GPT-4o Mini TTS</option>
                     <option value="tts-1">TTS-1</option>
                     <option value="tts-1-hd">TTS-1 HD</option>
@@ -227,7 +214,7 @@
             
             <div class="setting-group">
                 <label for="transcriptionModelSelect">Transcription:</label>
-                <select id="transcriptionModelSelect" class="setting-select">
+                <select id="transcriptionModelSelect">
                     <option value="gpt-4o-transcribe" selected>GPT-4o Transcribe</option>
                     <option value="gpt-4o-mini-transcribe">GPT-4o Mini Transcribe</option>
                     <option value="whisper-1">Whisper-1</option>

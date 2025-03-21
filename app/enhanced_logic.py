@@ -18,12 +18,16 @@ router = APIRouter()
 # Enhanced-specific variables
 enhanced_conversation_active = False
 enhanced_conversation_thread = None
-enhanced_tone = "neutral"
 enhanced_speed = "1.0"
 enhanced_voice = os.getenv("OPENAI_TTS_VOICE", "alloy")
 enhanced_model = os.getenv("OPENAI_MODEL", "gpt-4o")
 enhanced_tts_model = os.getenv("OPENAI_MODEL_TTS", "gpt-4o-mini-tts")
 enhanced_transcription_model = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
+# Debug flag to control verbose output
+DEBUG_AUDIO_LEVELS = False  # Set to True to see audio level output in the console
+
+# Quit phrases that will stop the conversation when detected
+QUIT_PHRASES = ["quit", "exit", "leave", "stop", "end", "bye", "goodbye"]
 
 async def send_message_to_enhanced_clients(message):
     """Send message to clients using the enhanced websocket."""
@@ -87,13 +91,14 @@ async def record_enhanced_audio_and_transcribe():
         # Recording logic
         p = pyaudio.PyAudio()
         
-        # Debug info about audio devices
-        print("\nAudio input devices:")
-        for i in range(p.get_device_count()):
-            dev_info = p.get_device_info_by_index(i)
-            if dev_info['maxInputChannels'] > 0:  # Only input devices
-                print(f"Device {i}: {dev_info['name']}")
-        print("Using default input device\n")
+        # Debug info about audio devices - only show once
+        if DEBUG_AUDIO_LEVELS:
+            print("\nAudio input devices:")
+            for i in range(p.get_device_count()):
+                dev_info = p.get_device_info_by_index(i)
+                if dev_info['maxInputChannels'] > 0:  # Only input devices
+                    print(f"Device {i}: {dev_info['name']}")
+            print("Using default input device\n")
         
         # Open the stream with input_device_index=None to use default device
         stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
@@ -102,7 +107,9 @@ async def record_enhanced_audio_and_transcribe():
         def detect_silence(data, threshold=300):
             audio_data = np.frombuffer(data, dtype=np.int16)
             level = np.mean(np.abs(audio_data))
-            print(f"Audio level: {level}")  # Debug to see audio levels
+            # Only print audio levels if debug is enabled
+            if DEBUG_AUDIO_LEVELS:
+                print(f"Audio level: {level}")
             return level < threshold
         
         # Wait for user to start speaking (break initial silence)
@@ -225,7 +232,9 @@ async def record_enhanced_audio_and_transcribe():
                                     audio_file.read(),
                                     filename=os.path.basename(temp_filename),
                                     content_type='audio/wav')
-                form_data.add_field('model', model if model != "gpt-4o-transcribe" and model != "gpt-4o-mini-transcribe" else "whisper-1")
+                
+                # Use the model directly - no mapping needed
+                form_data.add_field('model', model)
                 
                 headers = {
                     "Authorization": f"Bearer {openai_api_key}"
@@ -279,20 +288,12 @@ async def enhanced_text_to_speech(text, character_audio_file):
         # Prepare parameters for the enhanced TTS
         voice = enhanced_voice
         speed = float(enhanced_speed)
-        model = enhanced_tts_model if enhanced_tts_model else "tts-1"
+        model = enhanced_tts_model
         
-        # Additional instructions to adjust tone based on the selected setting
-        voice_instructions = ""
-        if enhanced_tone == "friendly":
-            voice_instructions = "Speak in a warm, friendly tone that makes the listener feel comfortable."
-        elif enhanced_tone == "professional":
-            voice_instructions = "Speak in a clear, professional manner suitable for a business context."
-        elif enhanced_tone == "excited":
-            voice_instructions = "Speak with enthusiasm and excitement in your voice."
-        elif enhanced_tone == "empathetic":
-            voice_instructions = "Speak with empathy and understanding in your voice."
-        elif enhanced_tone == "serious":
-            voice_instructions = "Speak in a serious, no-nonsense tone."
+        print(f"Using TTS model: {model}, voice: {voice}, speed: {speed}")
+        
+        # Notify that AI is about to speak
+        await send_message_to_enhanced_clients({"action": "ai_start_speaking"})
         
         # Make the actual API call to OpenAI for TTS
         url = "https://api.openai.com/v1/audio/speech"
@@ -308,15 +309,6 @@ async def enhanced_text_to_speech(text, character_audio_file):
             "speed": speed,
             "response_format": "mp3"
         }
-        
-        # If we have voice instructions, include them
-        if voice_instructions:
-            payload["voice_instructions"] = voice_instructions
-            
-        print(f"Using TTS model: {model}, voice: {voice}, speed: {speed}")
-        
-        # Notify that AI is about to speak
-        await send_message_to_enhanced_clients({"action": "ai_start_speaking"})
         
         # Make the API call
         async with aiohttp.ClientSession() as session:
@@ -360,6 +352,100 @@ async def enhanced_text_to_speech(text, character_audio_file):
         # Make sure to stop speaking in case of error
         await send_message_to_enhanced_clients({"action": "ai_stop_speaking"})
 
+async def enhanced_conversation_loop():
+    """Main conversation loop for the enhanced interface."""
+    global enhanced_conversation_active
+    try:
+        # Keep context of the conversation
+        local_conversation_history = []
+        
+        character_name = get_current_character()
+        character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
+        character_audio_file = os.path.join(characters_folder, character_name, f"{character_name}.wav")
+        
+        base_system_message = open_file(character_prompt_file)
+        
+        # Greeting message (just send to UI, don't play audio yet)
+        greeting = f"Hello! I'm {character_name.replace('_', ' ')}. How can I help you today?"
+        await send_message_to_enhanced_clients({"message": greeting})
+        
+        # Don't play greeting audio automatically - wait for user interaction
+        # await enhanced_text_to_speech(greeting, character_audio_file)
+        
+        while enhanced_conversation_active:
+            # Record and transcribe
+            user_input = await record_enhanced_audio_and_transcribe()
+            
+            # Exit if no input or if the user wants to quit
+            if not user_input:
+                print("No user input received, continuing...")
+                continue
+                
+            # Check for quit phrases (case insensitive)
+            if any(quit_phrase in user_input.lower() for quit_phrase in QUIT_PHRASES):
+                print(f"Quit phrase detected: '{user_input}'. Ending conversation.")
+                await send_message_to_enhanced_clients({
+                    "message": "Conversation ended."
+                })
+                break
+                
+            # Send user message to frontend
+            await send_message_to_enhanced_clients({
+                "message": f"You: {user_input}"
+            })
+            
+            # Add to history
+            local_conversation_history.append({"role": "user", "content": user_input})
+            
+            # Analyze mood - the analyze_mood function already prints the mood once
+            # in app_logic.py, so we don't need to print it again here
+            mood = analyze_mood(user_input)
+            mood_prompt = adjust_prompt(mood)
+            
+            # Get AI response - pass conversation history for context
+            chatbot_response = await enhanced_chat_completion(
+                user_input, 
+                base_system_message, 
+                mood_prompt, 
+                local_conversation_history if len(local_conversation_history) > 1 else None
+            )
+            
+            # Add to history
+            local_conversation_history.append({"role": "assistant", "content": chatbot_response})
+            
+            # Limit conversation history to last 20 exchanges to prevent context overflow
+            if len(local_conversation_history) > 20:
+                # Keep system message and last 20 exchanges
+                local_conversation_history = local_conversation_history[-20:]
+            
+            # Send to frontend
+            await send_message_to_enhanced_clients({
+                "message": chatbot_response
+            })
+            
+            # Convert to speech
+            sanitized_response = sanitize_response(chatbot_response)
+            if len(sanitized_response) > 500:  # Limit length for TTS
+                sanitized_response = sanitized_response[:500] + "..."
+                
+            await enhanced_text_to_speech(sanitized_response, character_audio_file)
+            
+            # Update global conversation history
+            conversation_history.extend([
+                {"role": "user", "content": user_input},
+                {"role": "assistant", "content": chatbot_response}
+            ])
+            save_conversation_history(conversation_history)
+            
+    except Exception as e:
+        print(f"Error in enhanced conversation loop: {e}")
+        await send_message_to_enhanced_clients({
+            "action": "error",
+            "message": f"Error: {str(e)}"
+        })
+    finally:
+        enhanced_conversation_active = False
+
 async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversation_history=None):
     """Get chat completion from OpenAI using the specified model."""
     try:
@@ -376,9 +462,19 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         # Use the selected model
         model = enhanced_model
         
+        # Combine the system message with mood prompt from sentiment analysis
+        combined_system_message = f"{system_message}\n{mood_prompt}"
+        
+        # Print detailed debug information
+        character_name = get_current_character()
+        print(f"Current character: {character_name}")
+        print(f"System message (first 50 chars): {system_message[:50]}...")
+        print(f"Mood prompt: {mood_prompt}")
+        print(f"Using system message with mood adjustment: {mood_prompt}")
+        
         # Prepare the messages for the API call
         messages = [
-            {"role": "system", "content": system_message + "\n" + mood_prompt}
+            {"role": "system", "content": combined_system_message}
         ]
         
         # If conversation history is provided, add it to the messages
@@ -424,120 +520,45 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         print(f"Error in enhanced chat completion: {e}")
         return f"Error: {str(e)}"
 
-async def enhanced_conversation_loop():
-    """Main conversation loop for the enhanced interface."""
-    global enhanced_conversation_active
-    try:
-        # Keep context of the conversation
-        local_conversation_history = []
-        
-        character_name = get_current_character()
-        character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
-        character_audio_file = os.path.join(characters_folder, character_name, f"{character_name}.wav")
-        
-        base_system_message = open_file(character_prompt_file)
-        
-        # Greeting message (just send to UI, don't play audio yet)
-        greeting = f"Hello! I'm {character_name.replace('_', ' ')}. How can I help you today?"
-        await send_message_to_enhanced_clients({"message": greeting})
-        
-        # Don't play greeting audio automatically - wait for user interaction
-        # await enhanced_text_to_speech(greeting, character_audio_file)
-        
-        while enhanced_conversation_active:
-            # Record and transcribe
-            user_input = await record_enhanced_audio_and_transcribe()
-            
-            if not user_input or user_input.lower() in ["quit", "exit", "leave"]:
-                await send_message_to_enhanced_clients({
-                    "message": "Conversation ended."
-                })
-                break
-                
-            # Send user message to frontend
-            await send_message_to_enhanced_clients({
-                "message": f"You: {user_input}"
-            })
-            
-            # Add to history
-            local_conversation_history.append({"role": "user", "content": user_input})
-            
-            # Analyze mood
-            mood = analyze_mood(user_input)
-            mood_prompt = adjust_prompt(mood)
-            
-            # Get AI response - pass conversation history for context
-            chatbot_response = await enhanced_chat_completion(
-                user_input, 
-                base_system_message, 
-                mood_prompt, 
-                local_conversation_history if len(local_conversation_history) > 1 else None
-            )
-            
-            # Add to history
-            local_conversation_history.append({"role": "assistant", "content": chatbot_response})
-            
-            # Limit conversation history to last 10 exchanges to prevent context overflow
-            if len(local_conversation_history) > 20:
-                # Keep system message and last 10 exchanges
-                local_conversation_history = local_conversation_history[-20:]
-            
-            # Send to frontend
-            await send_message_to_enhanced_clients({
-                "message": chatbot_response
-            })
-            
-            # Convert to speech
-            sanitized_response = sanitize_response(chatbot_response)
-            if len(sanitized_response) > 500:  # Limit length for TTS
-                sanitized_response = sanitized_response[:500] + "..."
-                
-            await enhanced_text_to_speech(sanitized_response, character_audio_file)
-            
-            # Update global conversation history
-            conversation_history.extend([
-                {"role": "user", "content": user_input},
-                {"role": "assistant", "content": chatbot_response}
-            ])
-            save_conversation_history(conversation_history)
-            
-    except Exception as e:
-        print(f"Error in enhanced conversation loop: {e}")
-        await send_message_to_enhanced_clients({
-            "action": "error",
-            "message": f"Error: {str(e)}"
-        })
-    finally:
-        enhanced_conversation_active = False
-
-async def start_enhanced_conversation(character=None, speed=None, tone=None, model=None, voice=None, ttsModel=None, transcriptionModel=None):
-    """Start the enhanced conversation with the specified settings."""
-    global enhanced_conversation_active, enhanced_conversation_thread
-    global enhanced_tone, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model
+async def start_enhanced_conversation(character=None, speed=None, model=None, voice=None, ttsModel=None, transcriptionModel=None):
+    """Start a new enhanced conversation."""
+    global enhanced_conversation_active, enhanced_conversation_thread, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model
     
-    if enhanced_conversation_active:
-        await stop_enhanced_conversation()
-    
-    # Update settings if provided
+    # Set character if provided
     if character:
         from .shared import set_current_character
         set_current_character(character)
+    
+    # Set speed if provided
     if speed:
         enhanced_speed = speed
-    if tone:
-        enhanced_tone = tone
+        
+    # Set model if provided
     if model:
         enhanced_model = model
+        
+    # Set voice if provided
     if voice:
         enhanced_voice = voice
+        
+    # Set TTS model if provided
     if ttsModel:
         enhanced_tts_model = ttsModel
+        
+    # Set transcription model if provided
     if transcriptionModel:
         enhanced_transcription_model = transcriptionModel
     
+    # Check if already running
+    if enhanced_conversation_active:
+        print("Enhanced conversation already running")
+        return {"status": "already_running"}
+    
+    # Set active flag
     enhanced_conversation_active = True
+    
+    # Start the conversation in a separate thread
     enhanced_conversation_thread = Thread(target=asyncio.run, args=(enhanced_conversation_loop(),))
-    enhanced_conversation_thread.daemon = True
     enhanced_conversation_thread.start()
     
     return {"status": "started"}
