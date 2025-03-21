@@ -13,10 +13,12 @@ document.addEventListener("DOMContentLoaded", function() {
     const clearBtn = document.getElementById('clearBtn');
     const characterSelect = document.getElementById('characterSelect');
     const voiceSelect = document.getElementById('voiceSelect');
-    const speedSelect = document.getElementById('speedSelect');
     const modelSelect = document.getElementById('modelSelect');
     const ttsModelSelect = document.getElementById('ttsModelSelect');
     const transcriptionModelSelect = document.getElementById('transcriptionModelSelect');
+
+    // Default speed value (since we removed the speedSelect dropdown)
+    const defaultSpeed = "1.0";
 
     let isRecording = false;
     let hasStarted = false;
@@ -210,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const settings = {
             character: characterSelect.value,
             voice: voiceSelect.value,
-            speed: speedSelect.value,
+            speed: defaultSpeed,
             model: modelSelect.value,
             ttsModel: ttsModelSelect.value,
             transcriptionModel: transcriptionModelSelect.value
