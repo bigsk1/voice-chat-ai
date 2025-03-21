@@ -1,2 +1,0 @@
-# checkpoints/* filter=lfs diff=lfs merge=lfs -text
-# XTTS-v2/* filter=lfs diff=lfs merge=lfs -text

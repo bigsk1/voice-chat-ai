@@ -2,7 +2,7 @@ import os
 import asyncio
 from threading import Thread
 from fastapi import APIRouter
-from .shared import clients, continue_conversation, conversation_history, get_current_character
+from .shared import clients, continue_conversation, conversation_history, get_current_character, is_client_active, set_client_inactive
 from .app import (
     transcribe_with_whisper,
     analyze_mood,
@@ -25,6 +25,7 @@ from .app import (
 )
 
 router = APIRouter()
+characters_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "characters")
 
 async def record_audio_and_transcribe():
     audio_file = "temp_recording.wav"
@@ -81,8 +82,30 @@ async def stop_conversation():
     return {"message": "Conversation stopped"}
 
 async def send_message_to_clients(message: str):
+    """Send a message to all connected clients, handling closed connections gracefully."""
+    closed_clients = set()
     for client in clients:
-        await client.send_json({"message": message})
+        if is_client_active(client):
+            try:
+                await client.send_json({"message": message})
+            except RuntimeError as e:
+                if "websocket.send" in str(e) and "websocket.close" in str(e):
+                    # WebSocket is already closed
+                    print(f"Client connection already closed: {e}")
+                    closed_clients.add(client)
+                    set_client_inactive(client)
+                else:
+                    # Some other RuntimeError
+                    print(f"Error sending message to client: {e}")
+                    closed_clients.add(client)
+                    set_client_inactive(client)
+            except Exception as e:
+                # Any other exception
+                print(f"Error sending message to client: {e}")
+                closed_clients.add(client)
+                set_client_inactive(client)
+    
+    # No need to remove from clients set here - let the WebSocketDisconnect handler do it
 
 async def conversation_loop():
     global continue_conversation

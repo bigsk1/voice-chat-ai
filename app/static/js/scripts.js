@@ -9,9 +9,39 @@ document.addEventListener("DOMContentLoaded", function() {
     const clearButton = document.getElementById('clear-conversation-btn');
     const messages = document.getElementById('messages');
     const micIcon = document.getElementById('mic-icon');
+    const characterSelect = document.getElementById('character-select');
 
     let aiMessageQueue = [];
     let isAISpeaking = false;
+
+    // Fetch and populate characters as soon as page loads
+    fetchCharacters();
+
+    // Function to fetch available characters
+    async function fetchCharacters() {
+        try {
+            const response = await fetch('/characters');
+            if (response.ok) {
+                const data = await response.json();
+                populateCharacterSelect(data.characters);
+            } else {
+                console.error('Failed to fetch characters:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error fetching characters:', error);
+        }
+    }
+
+    // Function to populate character select dropdown
+    function populateCharacterSelect(characters) {
+        characterSelect.innerHTML = '';
+        characters.forEach(character => {
+            const option = document.createElement('option');
+            option.value = character;
+            option.textContent = character;
+            characterSelect.appendChild(option);
+        });
+    }
 
     websocket.onopen = function(event) {
         console.log("WebSocket is open now.");

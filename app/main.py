@@ -8,10 +8,17 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPExcept
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from .shared import clients, get_current_character, set_current_character, conversation_history
-from .app_logic import start_conversation, stop_conversation, set_env_variable
-from .app import save_conversation_history
+from fastapi.responses import FileResponse, HTMLResponse
+from .shared import clients, get_current_character, set_current_character, conversation_history, add_client, remove_client, clear_conversation_history
+from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder
+from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
+import logging
+from threading import Thread
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -27,11 +34,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/")
-async def get(request: Request):
+@app.get("/", response_class=HTMLResponse)
+async def get_index(request: Request):
     model_provider = os.getenv("MODEL_PROVIDER")
-    character_name = get_current_character()
+    character_name = os.getenv("CHARACTER_NAME", "grok_xai")  # Default to grok_xai if not in .env
     tts_provider = os.getenv("TTS_PROVIDER")
     openai_tts_voice = os.getenv("OPENAI_TTS_VOICE")
     openai_model = os.getenv("OPENAI_MODEL")
@@ -53,10 +59,20 @@ async def get(request: Request):
 
 @app.get("/characters")
 async def get_characters():
-    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    characters_folder = os.path.join(project_dir, 'characters')
-    characters = [name for name in os.listdir(characters_folder) if os.path.isdir(os.path.join(characters_folder, name))]
-    return {"characters": characters}
+    if not os.path.exists(characters_folder):
+        logger.warning(f"Characters folder not found: {characters_folder}")
+        return {"characters": ["Assistant"]}  # fallback
+    
+    try:
+        character_dirs = [d for d in os.listdir(characters_folder) 
+                        if os.path.isdir(os.path.join(characters_folder, d))]
+        if not character_dirs:
+            logger.warning("No character folders found")
+            return {"characters": ["Assistant"]}  # fallback
+        return {"characters": character_dirs}
+    except Exception as e:
+        logger.error(f"Error listing characters: {e}")
+        return {"characters": ["Assistant"]}  # fallback in case of error
 
 @app.get("/elevenlabs_voices")
 async def get_elevenlabs_voices():
@@ -71,25 +87,77 @@ async def get_elevenlabs_voices():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/download_history")
-async def download_history():
-    file_path = "conversation_history.txt"
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Conversation history file not found.")
-    return FileResponse(path=file_path, filename="conversation_history.txt", media_type='text/plain')
+@app.get("/enhanced", response_class=HTMLResponse)
+async def get_enhanced(request: Request):
+    return templates.TemplateResponse("enhanced.html", {"request": request})
+
+@app.post("/set_character/{character_name}")
+async def set_character(character_name: str):
+    set_current_character(character_name)
+    return {"status": "success", "character": character_name}
+
+@app.post("/start_conversation")
+async def start_conversation_route():
+    Thread(target=lambda: asyncio.run(start_conversation())).start()
+    return {"status": "started"}
+
+@app.post("/stop_conversation")
+async def stop_conversation_route():
+    await stop_conversation()
+    return {"status": "stopped"}
+
+@app.post("/start_enhanced_conversation")
+async def start_enhanced_conversation_route(request: Request):
+    data = await request.json()
+    character = data.get("character")
+    speed = data.get("speed")
+    tone = data.get("tone")
+    model = data.get("model")
+    voice = data.get("voice")
+    tts_model = data.get("ttsModel")
+    transcription_model = data.get("transcriptionModel")
+    
+    asyncio.create_task(start_enhanced_conversation(
+        character=character,
+        speed=speed,
+        tone=tone,
+        model=model,
+        voice=voice,
+        ttsModel=tts_model,
+        transcriptionModel=transcription_model
+    ))
+    
+    return {"status": "started"}
+
+@app.post("/stop_enhanced_conversation")
+async def stop_enhanced_conversation_route():
+    await stop_enhanced_conversation()
+    return {"status": "stopped"}
 
 @app.post("/clear_history")
 async def clear_history():
-    global conversation_history
-    conversation_history.clear()  # Clear the in-memory conversation history
-    save_conversation_history(conversation_history)  # Save the cleared state to the file
+    clear_conversation_history()
+    save_conversation_history(conversation_history)
     return {"status": "cleared"}
 
+@app.get("/download_history")
+async def download_history():
+    # Create a temporary file
+    temp_file = "conversation_history.json"
+    with open(temp_file, "w") as f:
+        json.dump(conversation_history, f)
+    
+    # Return the file
+    return FileResponse(
+        temp_file,
+        media_type="application/json",
+        filename="conversation_history.json"
+    )
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    clients.append(websocket)
+    add_client(websocket)
     try:
         while True:
             data = await websocket.receive_text()
@@ -122,21 +190,81 @@ async def websocket_endpoint(websocket: WebSocket):
                 conversation_history.clear()
                 await websocket.send_json({"message": "Conversation history cleared."})
     except WebSocketDisconnect:
-        if websocket in clients:
-            clients.remove(websocket)
-    finally:
-        if websocket in clients:
-            clients.remove(websocket)
+        remove_client(websocket)
+        logger.info(f"Client disconnected from standard websocket")
+    except Exception as e:
+        logger.error(f"Error in standard websocket: {e}")
+        # Still remove the client to prevent resource leaks
+        remove_client(websocket)
+
+@app.websocket("/ws_enhanced")
+async def enhanced_websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    add_client(websocket)
+    try:
+        # Just keep the connection alive without actively reading
+        # Simply notify the client that the connection is established
+        await websocket.send_json({"action": "connected", "message": "WebSocket connection established"})
+        
+        # Wait for the client to disconnect rather than actively reading
+        while True:
+            # This will raise WebSocketDisconnect when client disconnects
+            # Process only control messages and heartbeats
+            data = await websocket.receive()
+            # Don't try to parse or process normal text messages
+            if data["type"] == "websocket.disconnect":
+                raise WebSocketDisconnect(1000)
+    except WebSocketDisconnect:
+        remove_client(websocket)
+        logger.info(f"Client disconnected from enhanced websocket")
+    except Exception as e:
+        logger.error(f"Error in enhanced websocket: {e}")
+        # Still remove the client to prevent resource leaks
+        remove_client(websocket)
 
 def signal_handler(sig, frame):
-    print('Shutting down gracefully...')
-    for client in clients:
-        asyncio.create_task(client.close())
-    sys.exit(0)
+    print('\nShutting down gracefully...')
+    
+    # Stop any active enhanced conversation
+    try:
+        # For async shutdown in sync context, create a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # First stop any active conversations
+        from .enhanced_logic import enhanced_conversation_active, stop_enhanced_conversation
+        if enhanced_conversation_active:
+            print("Stopping active enhanced conversation...")
+            loop.run_until_complete(stop_enhanced_conversation())
+            
+        # Then close all WebSocket connections
+        # Safely close all WebSocket connections
+        for client in list(clients):  # Create a copy of the clients set to avoid modification during iteration
+            try:
+                if hasattr(client, 'close'):
+                    # Use the same loop for consistency
+                    loop.run_until_complete(client.close())
+            except Exception as e:
+                print(f"Error closing client: {e}")
+                
+        loop.close()
+    except Exception as e:
+        print(f"Error in graceful shutdown: {e}")
+    
+    # Force exit after a short timeout if still running
+    print("Shutdown procedures completed. Exiting...")
+    import os
+    os._exit(0)  # Force exit as sys.exit() might not work if asyncio is running
 
 if __name__ == "__main__":
+    # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     try:
+        print("Starting server. Press Ctrl+C to exit.")
         uvicorn.run(app, host="0.0.0.0", port=8000)
     except KeyboardInterrupt:
-        print("Server stopped by user.")
+        print("\nServer stopped by keyboard interrupt.")
+    finally:
+        print("Shutdown complete.")

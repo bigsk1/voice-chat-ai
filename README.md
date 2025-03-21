@@ -10,7 +10,7 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 
 ## Quick Start
 
-Get up and running fast with Voice Chat AI!:
+Get up and running fast with Voice Chat AI!
 
 - [**Install Locally**](#installation): Set up with Python 3.10 on Windows or Linux.
 - [**Run with Docker**](#install-with-docker): Use Docker run or Docker Compose
@@ -263,13 +263,13 @@ docker rm voice-chat-ai-cuda
 ```bash
 docker build -t voice-chat-ai:cuda .
 ```
-On windows docker desktop using wsl - run in windows
+Running in WSL Ubuntu
 
 ```bash
 wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
 
-Running from wsl
+On windows docker desktop using wsl - run in windows
 
 ```bash
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda

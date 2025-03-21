@@ -48,6 +48,7 @@ body {
 
 header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
     padding: 1rem;
     background-color: var(--secondary-color);
@@ -57,7 +58,11 @@ header {
 .header-controls {
     display: flex;
     align-items: center;
-    margin-left: auto;
+    gap: 15px;
+}
+
+.header-controls .main-nav {
+    margin-left: 15px;
 }
 
 h1 {
@@ -245,6 +250,20 @@ a:hover {
     margin: 0 1rem;
 } */
 
+#download-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-right: 10px;
+}
+
+#download-button svg {
+    width: 24px;
+    height: 24px;
+    color: var(--text-color);
+}
+
 #download-history {
     background: none;
     border: none;
@@ -358,5 +377,72 @@ a:hover {
 
     .settings {
         grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Add styles for navigation */
+.main-nav {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    font-size: 16px;
+}
+
+.main-nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #444;
+}
+
+.main-nav li {
+    margin: 0;
+}
+
+.main-nav a {
+    display: block;
+    padding: 8px 16px;
+    text-decoration: none;
+    color: #ccc;
+    transition: background-color 0.3s;
+}
+
+.main-nav a:hover {
+    background-color: #333;
+}
+
+.main-nav a.active {
+    background-color: #555;
+    color: white;
+    font-weight: bold;
+}
+
+/* Enhanced page styles */
+.enhanced-info {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.enhanced-info code {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+    .main-nav {
+        font-size: 14px;
+    }
+    
+    .main-nav a {
+        padding: 6px 12px;
     }
 }

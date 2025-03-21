@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Voice Chat AI with OpenAI Enhanced features">
+    <meta name="keywords" content="AI, voice chat, OpenAI, GPT-4o, TTS, speech-to-text">
+    <meta name="author" content="Voice Chat AI">
+    <title>Voice Chat AI - OpenAI Enhanced</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
+    <style>
+        /* Enhanced page specific styles */
+        .control-button {
+            margin: 0 8px;
+        }
+        
+        /* Match button size with main page */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .controls button {
+            padding: 0.5rem 1rem;
+            flex-grow: 1;
+            max-width: 200px;
+            font-size: 1rem;
+        }
+        
+        /* Message types */
+        .system-message {
+            color: #777;
+            font-size: 0.9rem;
+            text-align: center;
+            margin: 0.5rem 0;
+            font-style: italic;
+        }
+        
+        .error-message {
+            color: #d9534f;
+            background-color: rgba(217, 83, 79, 0.1);
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            font-weight: bold;
+        }
+        
+        /* Microphone animation and status indicators */
+        .mic-off {
+            color: #aaa;
+        }
+        
+        .mic-waiting {
+            color: #ffc107; /* Yellow/amber color */
+        }
+        
+        .mic-on {
+            color: #28a745; /* Green color */
+        }
+        
+        /* Pulse animation for active recording */
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Listening indicator with animated dots */
+        .listening-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            color: #ffc107;
+            font-style: italic;
+        }
+        
+        .listening-dots {
+            display: inline-flex;
+            margin-left: 8px;
+        }
+        
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #ffc107;
+            margin: 0 2px;
+            animation: dot-fade 1.4s infinite;
+        }
+        
+        @keyframes dot-fade {
+            0%, 100% {
+                opacity: 0.2;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <header>
+        <h1>
+            Voice Chat AI
+            <div id="mic-icon" class="mic-off">&#x1F399;</div>
+        </h1>
+        <div class="header-controls">
+            <button id="theme-toggle" aria-label="Toggle dark/light mode">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+            <button id="download-button" aria-label="Download conversation history" title="Download conversation history">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </button>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="/">Standard</a></li>
+                    <li><a href="/enhanced" class="active">OpenAI Enhanced</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div id="conversation" class="conversation-container">
+            <div id="voiceWaveAnimation" class="voice-wave-animation" style="display: none;">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn" class="control-button">Start</button>
+            <button id="stopBtn" class="control-button" disabled>Stop</button>
+            <button id="clearBtn" class="control-button">Clear</button>
+        </div>
+
+        <div class="settings">
+            <div class="setting-group">
+                <label for="characterSelect">Character:</label>
+                <select id="characterSelect" class="setting-select">
+                    <!-- Will be populated via JavaScript -->
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="voiceSelect">Voice:</label>
+                <select id="voiceSelect" class="setting-select">
+                    <option value="alloy">Alloy</option>
+                    <option value="echo">Echo</option>
+                    <option value="fable">Fable</option>
+                    <option value="onyx">Onyx</option>
+                    <option value="nova">Nova</option>
+                    <option value="shimmer">Shimmer</option>
+                    <option value="sage">Sage</option>
+                    <option value="coral">Coral</option>
+                    <option value="ash">Ash</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="speedSelect">Voice Speed:</label>
+                <select id="speedSelect" class="setting-select">
+                    <option value="0.7">Slow</option>
+                    <option value="1.0" selected>Normal</option>
+                    <option value="1.3">Fast</option>
+                    <option value="1.6">Very Fast</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="toneSelect">Tone:</label>
+                <select id="toneSelect" class="setting-select">
+                    <option value="neutral" selected>Neutral</option>
+                    <option value="friendly">Friendly</option>
+                    <option value="professional">Professional</option>
+                    <option value="excited">Excited</option>
+                    <option value="empathetic">Empathetic</option>
+                    <option value="serious">Serious</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="modelSelect">Chat Model:</label>
+                <select id="modelSelect" class="setting-select">
+                    <option value="gpt-4o" selected>GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label for="ttsModelSelect">TTS Model:</label>
+                <select id="ttsModelSelect" class="setting-select">
+                    <option value="gpt-4o-mini-tts" selected>GPT-4o Mini TTS</option>
+                    <option value="tts-1">TTS-1</option>
+                    <option value="tts-1-hd">TTS-1 HD</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label for="transcriptionModelSelect">Transcription:</label>
+                <select id="transcriptionModelSelect" class="setting-select">
+                    <option value="gpt-4o-transcribe" selected>GPT-4o Transcribe</option>
+                    <option value="gpt-4o-mini-transcribe">GPT-4o Mini Transcribe</option>
+                    <option value="whisper-1">Whisper-1</option>
+                </select>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p><a href="https://github.com/your-username/voice-chat-ai" target="_blank">GitHub Repository</a></p>
+    </footer>
+
+    <script src="/app/static/js/enhanced.js"></script>
+</body>
+</html> 
