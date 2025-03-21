@@ -261,8 +261,8 @@ async def record_enhanced_audio_and_transcribe():
         print(f"Error in enhanced audio recording/transcription: {e}")
         return f"Error: {str(e)}"
 
-async def enhanced_text_to_speech(text, character_audio_file):
-    """Convert text to speech using the enhanced TTS model."""
+async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None):
+    """Convert text to speech using the enhanced TTS model with emotional voice instructions."""
     try:
         # Import required libraries
         import json
@@ -290,7 +290,81 @@ async def enhanced_text_to_speech(text, character_audio_file):
         speed = float(enhanced_speed)
         model = enhanced_tts_model
         
-        print(f"Using TTS model: {model}, voice: {voice}, speed: {speed}")
+        # Get current character and load its prompt
+        character_name = get_current_character()
+        character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
+        
+        # Extract more comprehensive character information from the character prompt file
+        character_persona = ""
+        try:
+            if os.path.exists(character_prompt_file):
+                with open(character_prompt_file, 'r', encoding='utf-8') as f:
+                    character_content = f.read()
+                    
+                    # Get the first 5 lines which usually contain the main character description
+                    # This covers more than just the first paragraph and includes key character traits
+                    lines = character_content.strip().split('\n')
+                    relevant_lines = [line for line in lines[:5] if line.strip() and not line.startswith("RESPOND") and not line.startswith("ADAPT")]
+                    
+                    # Also look for specific instruction lines that might define character traits
+                    trait_markers = ["Act like", "You are", "YOUR PERSONALITY", "YOUR CHARACTER"]
+                    for line in lines:
+                        if any(marker.lower() in line.lower() for marker in trait_markers):
+                            if line not in relevant_lines:
+                                relevant_lines.append(line)
+                    
+                    character_persona = " ".join(relevant_lines)
+                    
+                    # Limit size to avoid making the voice_instructions too large
+                    if len(character_persona) > 250:
+                        character_persona = character_persona[:250]
+                        
+                    print(f"Extracted character persona: {character_persona}")
+        except Exception as e:
+            print(f"Error reading character file: {e}")
+        
+        # For gpt-4o-mini-tts, add voice instructions based on the detected mood
+        voice_instructions = ""
+        
+        # Use the mood that was already detected in the conversation loop
+        if model == "gpt-4o-mini-tts" and detected_mood:
+            # Get character name for voice instruction
+            character_display_name = character_name.replace('_', ' ')
+            
+            # Get character-specific prompt for the mood from the character's prompts.json
+            character_prompts_path = os.path.join(characters_folder, character_name, 'prompts.json')
+            character_mood_prompt = ""
+            
+            try:
+                if os.path.exists(character_prompts_path):
+                    with open(character_prompts_path, 'r', encoding='utf-8') as f:
+                        mood_prompts = json.load(f)
+                        character_mood_prompt = mood_prompts.get(detected_mood, "")
+            except Exception as e:
+                print(f"Error loading character mood prompts: {e}")
+            
+            # Build voice instructions starting with character identity
+            voice_instructions = f"Speak as {character_display_name}."
+            
+            # Add character-specific mood-based instructions if available
+            if character_mood_prompt:
+                # Clean up the mood prompt to be more voice-appropriate
+                # Remove all-caps and extract the instruction part (usually before the period)
+                clean_mood = character_mood_prompt.replace("RESPOND WITH", "Speak with").replace("KEEP RESPONSES", "Keep your voice")
+                if "." in clean_mood:
+                    clean_mood = clean_mood.split(".")[0]
+                
+                voice_instructions += f" {clean_mood}"
+            else:
+                # If no specific mood instruction found, just add a generic one
+                voice_instructions += f" Speak in a way that matches your character's personality."
+            
+            # Include character persona for more context
+            if character_persona:
+                voice_instructions += f" Character traits: {character_persona}"
+                
+            print(f"TTS model: {model} | Voice: {voice} | Speed: {speed}")
+            print(f"Voice emotional style: {detected_mood}")
         
         # Notify that AI is about to speak
         await send_message_to_enhanced_clients({"action": "ai_start_speaking"})
@@ -309,6 +383,10 @@ async def enhanced_text_to_speech(text, character_audio_file):
             "speed": speed,
             "response_format": "mp3"
         }
+        
+        # Add voice instructions for gpt-4o-mini-tts
+        if model == "gpt-4o-mini-tts" and voice_instructions:
+            payload["voice_instructions"] = voice_instructions
         
         # Make the API call
         async with aiohttp.ClientSession() as session:
@@ -397,17 +475,23 @@ async def enhanced_conversation_loop():
             # Add to history
             local_conversation_history.append({"role": "user", "content": user_input})
             
-            # Analyze mood - the analyze_mood function already prints the mood once
-            # in app_logic.py, so we don't need to print it again here
-            mood = analyze_mood(user_input)
-            mood_prompt = adjust_prompt(mood)
+            # Analyze mood - analyze once and store for both chat and TTS
+            detected_mood = analyze_mood(user_input)
+            mood_prompt = adjust_prompt(detected_mood)
+            
+            print(f"======= CONVERSATION TURN =======")
+            print(f"User input: \"{user_input[:40]}...\"")
+            print(f"Detected mood: {detected_mood}")
+            print(f"Character: {character_name}")
+            print(f"Mood prompt: {mood_prompt}")
             
             # Get AI response - pass conversation history for context
             chatbot_response = await enhanced_chat_completion(
                 user_input, 
                 base_system_message, 
                 mood_prompt, 
-                local_conversation_history if len(local_conversation_history) > 1 else None
+                local_conversation_history if len(local_conversation_history) > 1 else None,
+                detected_mood  # Pass the detected mood to avoid re-analyzing
             )
             
             # Add to history
@@ -423,12 +507,12 @@ async def enhanced_conversation_loop():
                 "message": chatbot_response
             })
             
-            # Convert to speech
+            # Convert to speech using the same detected mood
             sanitized_response = sanitize_response(chatbot_response)
             if len(sanitized_response) > 500:  # Limit length for TTS
                 sanitized_response = sanitized_response[:500] + "..."
                 
-            await enhanced_text_to_speech(sanitized_response, character_audio_file)
+            await enhanced_text_to_speech(sanitized_response, character_audio_file, detected_mood)
             
             # Update global conversation history
             conversation_history.extend([
@@ -436,6 +520,7 @@ async def enhanced_conversation_loop():
                 {"role": "assistant", "content": chatbot_response}
             ])
             save_conversation_history(conversation_history)
+            print(f"======= END TURN =======\n")
             
     except Exception as e:
         print(f"Error in enhanced conversation loop: {e}")
@@ -446,7 +531,7 @@ async def enhanced_conversation_loop():
     finally:
         enhanced_conversation_active = False
 
-async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversation_history=None):
+async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversation_history=None, detected_mood=None):
     """Get chat completion from OpenAI using the specified model."""
     try:
         # Import required libraries
@@ -465,12 +550,8 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         # Combine the system message with mood prompt from sentiment analysis
         combined_system_message = f"{system_message}\n{mood_prompt}"
         
-        # Print detailed debug information
-        character_name = get_current_character()
-        print(f"Current character: {character_name}")
-        print(f"System message (first 50 chars): {system_message[:50]}...")
-        print(f"Mood prompt: {mood_prompt}")
-        print(f"Using system message with mood adjustment: {mood_prompt}")
+        # Print streamlined debug information
+        print(f"Chat model: {model} | System prompt length: {len(combined_system_message)} chars")
         
         # Prepare the messages for the API call
         messages = [
@@ -497,8 +578,6 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
             "temperature": 0.7,
             "max_tokens": 800
         }
-        
-        print(f"Using chat model: {model}")
         
         # Make the API call
         async with aiohttp.ClientSession() as session:
