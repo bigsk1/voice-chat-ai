@@ -329,6 +329,42 @@ a:hover {
     display: none;
 }
 
+/* Voice animation for Enhanced page */
+#voiceWaveAnimation {
+    position: sticky;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px;
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    background-color: var(--conversation-bg);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--shadow-color);
+}
+
+#voiceWaveAnimation svg {
+    width: 100%;
+    height: 100%;
+}
+
+#voiceWaveAnimation circle {
+    stroke: var(--text-color);
+    stroke-width: 4;
+}
+
+#voiceWaveAnimation #voice-bars rect {
+    fill: var(--text-color);
+    animation: voiceBars 0.9s ease-in-out infinite;
+    transform-origin: 50% 50%;
+}
+
+#voiceWaveAnimation.hidden {
+    display: none;
+}
 
 @media (max-width: 768px) {
     main {
@@ -365,6 +401,12 @@ a:hover {
 
     #voice-animation {
         width: 30px; /* Smaller animation for mobile */
+        height: 30px;
+        margin: 0 0.5rem;
+    }
+
+    #voiceWaveAnimation {
+        width: 30px;
         height: 30px;
         margin: 0 0.5rem;
     }

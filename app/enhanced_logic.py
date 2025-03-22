@@ -416,6 +416,9 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
                     with open(temp_filename, "wb") as f:
                         f.write(await response.read())
                     
+                    # Signal that audio is about to play (for animation synchronization)
+                    await send_message_to_enhanced_clients({"action": "audio_actually_playing"})
+                    
                     # Play audio using pydub - avoid system audio players like VLC
                     try:
                         # Use pydub's play function which doesn't launch external players
@@ -567,14 +570,14 @@ async def enhanced_conversation_loop():
                 # Optionally, save the conversation history to a file
                 save_conversation_history(conversation_history)
                 
-                # Send AI response to client
-                await send_message_to_enhanced_clients({"message": ai_response})
-                
                 # Print AI response summary
                 print(f"AI: \"{ai_response[:40]}{'...' if len(ai_response) > 40 else ''}\"")
                 
-                # Convert to speech
+                # Convert to speech - this will play the audio first
                 await enhanced_text_to_speech(ai_response, character_audio_file, detected_mood)
+                
+                # Send AI response to client after audio finishes playing
+                await send_message_to_enhanced_clients({"message": ai_response})
                 
             except Exception as e:
                 print(f"Error in conversation loop: {e}")

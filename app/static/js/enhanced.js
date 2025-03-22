@@ -24,6 +24,10 @@ document.addEventListener("DOMContentLoaded", function() {
     let hasStarted = false;
     let listeningIndicator = null;
     
+    // For message queue management (like the main page)
+    let aiMessageQueue = [];
+    let isAISpeaking = false;
+    
     function connectWebSocket() {
         // Close existing connection if any
         if (websocket && websocket.readyState !== WebSocket.CLOSED) {
@@ -68,10 +72,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 micIcon.classList.add('mic-off');
                 hideListeningIndicator();
                 displayMessage("Processing your message...", "system-message");
-            } else if (data.action === "ai_start_speaking") {
+            } else if (data.action === "audio_actually_playing") {
+                // Set speaking flag and show animation
+                isAISpeaking = true;
                 showVoiceWaveAnimation();
+                // Process any queued messages after a slight delay
+                setTimeout(processQueuedMessages, 100);
+            } else if (data.action === "ai_start_speaking") {
+                // The server is preparing to speak, but audio hasn't started yet
+                console.log("AI preparing to speak");
             } else if (data.action === "ai_stop_speaking") {
+                // Audio finished playing
+                isAISpeaking = false;
                 hideVoiceWaveAnimation();
+                // Process any queued messages
+                processQueuedMessages();
             } else if (data.action === "conversation_stopped") {
                 hasStarted = false;
                 stopBtn.disabled = true;
@@ -79,6 +94,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
                 micIcon.classList.add('mic-off');
                 hideListeningIndicator();
+                hideVoiceWaveAnimation();
+                isAISpeaking = false;
+                processQueuedMessages(); // Process any remaining messages
                 console.log("Conversation stopped");
             } else if (data.action === "error") {
                 console.error("Error:", data.message);
@@ -87,10 +105,22 @@ document.addEventListener("DOMContentLoaded", function() {
                 micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
                 micIcon.classList.add('mic-off');
                 hideListeningIndicator();
+                hideVoiceWaveAnimation();
+                isAISpeaking = false;
+                processQueuedMessages(); // Process any remaining messages
             } else if (data.action === "connected") {
                 console.log("WebSocket connection confirmed by server");
             } else if (data.message) {
-                displayMessage(data.message);
+                if (data.message.startsWith("You:")) {
+                    // User messages are displayed immediately
+                    displayMessage(data.message);
+                } else {
+                    // Queue AI messages to display after audio finishes
+                    aiMessageQueue.push(data.message);
+                    if (!isAISpeaking) {
+                        processQueuedMessages();
+                    }
+                }
             }
         };
         
@@ -103,6 +133,7 @@ document.addEventListener("DOMContentLoaded", function() {
             micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
             micIcon.classList.add('mic-off');
             hideListeningIndicator();
+            hideVoiceWaveAnimation(); // Hide voice animation on disconnect
             
             // Try to reconnect if not closed cleanly and not exceeding max attempts
             if (!event.wasClean && reconnectAttempts < maxReconnectAttempts) {
@@ -124,10 +155,18 @@ document.addEventListener("DOMContentLoaded", function() {
             micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
             micIcon.classList.add('mic-off');
             hideListeningIndicator();
+            hideVoiceWaveAnimation(); // Hide voice animation on error
         };
     }
     
+    function processQueuedMessages() {
+        while (aiMessageQueue.length > 0 && !isAISpeaking) {
+            displayMessage(aiMessageQueue.shift());
+        }
+    }
+    
     function displayMessage(message, className = "") {
+        const messagesContainer = document.getElementById('messages');
         const messageElement = document.createElement("div");
         
         if (className) {
@@ -140,13 +179,22 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         messageElement.textContent = message;
-        conversation.appendChild(messageElement);
+        messagesContainer.appendChild(messageElement);
         conversation.scrollTop = conversation.scrollHeight;
+        adjustScrollPosition();
+    }
+    
+    function adjustScrollPosition() {
+        // Ensure the conversation is scrolled down even with voice animation
+        setTimeout(() => {
+            conversation.scrollTop = conversation.scrollHeight;
+        }, 10);
     }
     
     function showListeningIndicator(message) {
         hideListeningIndicator(); // Remove any existing indicator
         
+        const messagesContainer = document.getElementById('messages');
         listeningIndicator = document.createElement("div");
         listeningIndicator.className = "listening-indicator";
         
@@ -166,7 +214,7 @@ document.addEventListener("DOMContentLoaded", function() {
         listeningIndicator.appendChild(textSpan);
         listeningIndicator.appendChild(dotsContainer);
         
-        conversation.appendChild(listeningIndicator);
+        messagesContainer.appendChild(listeningIndicator);
         conversation.scrollTop = conversation.scrollHeight;
     }
     
@@ -180,14 +228,16 @@ document.addEventListener("DOMContentLoaded", function() {
     function showVoiceWaveAnimation() {
         const voiceWave = document.getElementById('voiceWaveAnimation');
         if (voiceWave) {
-            voiceWave.style.display = 'flex';
+            voiceWave.classList.remove('hidden');
+            adjustScrollPosition();
         }
     }
     
     function hideVoiceWaveAnimation() {
         const voiceWave = document.getElementById('voiceWaveAnimation');
         if (voiceWave) {
-            voiceWave.style.display = 'none';
+            voiceWave.classList.add('hidden');
+            adjustScrollPosition();
         }
     }
     
