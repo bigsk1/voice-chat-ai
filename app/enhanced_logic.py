@@ -3,7 +3,7 @@ import asyncio
 import json
 from threading import Thread
 from fastapi import APIRouter
-from .shared import clients, conversation_history, get_current_character, is_client_active, set_client_inactive, clear_conversation_history, set_current_character
+from .shared import clients, conversation_history, get_current_character, is_client_active, set_client_inactive
 from .app_logic import (
     save_conversation_history,
     open_file,
@@ -67,14 +67,12 @@ async def record_enhanced_audio_and_transcribe():
     """Record audio and transcribe it using the enhanced transcription model."""
     try:
         # Import required libraries
-        import json
         import aiohttp
         import tempfile
         import pyaudio
         import wave
         import numpy as np
         import os
-        import time
         
         # First, record the audio using similar logic to the existing app
         temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)

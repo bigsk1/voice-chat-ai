@@ -351,6 +351,44 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
     
+    // Fetch default settings from server
+    function fetchDefaultSettings() {
+        fetch('/enhanced_defaults')
+            .then(response => response.json())
+            .then(data => {
+                // Wait a moment to ensure the character dropdown is populated
+                setTimeout(() => {
+                    // Set default character
+                    if (data.character && characterSelect.querySelector(`option[value="${data.character}"]`)) {
+                        characterSelect.value = data.character;
+                    }
+                    
+                    // Set default voice
+                    if (data.voice && voiceSelect.querySelector(`option[value="${data.voice}"]`)) {
+                        voiceSelect.value = data.voice;
+                    }
+                    
+                    // Set default model
+                    if (data.model && modelSelect.querySelector(`option[value="${data.model}"]`)) {
+                        modelSelect.value = data.model;
+                    }
+                    
+                    // Set default TTS model
+                    if (data.tts_model && ttsModelSelect.querySelector(`option[value="${data.tts_model}"]`)) {
+                        ttsModelSelect.value = data.tts_model;
+                    }
+                    
+                    // Set default transcription model
+                    if (data.transcription_model && transcriptionModelSelect.querySelector(`option[value="${data.transcription_model}"]`)) {
+                        transcriptionModelSelect.value = data.transcription_model;
+                    }
+                }, 300); // Small delay to ensure dropdowns are populated
+            })
+            .catch(error => {
+                console.error('Error fetching default settings:', error);
+            });
+    }
+    
     // Add a simple heartbeat to keep the connection alive
     function startHeartbeat() {
         setInterval(() => {
@@ -368,6 +406,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // Initialize
     loadThemePreference();
     fetchCharacters();
+    fetchDefaultSettings();
     connectWebSocket();
     startHeartbeat();
     stopBtn.disabled = true;

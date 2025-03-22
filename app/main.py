@@ -91,6 +91,19 @@ async def get_elevenlabs_voices():
 async def get_enhanced(request: Request):
     return templates.TemplateResponse("enhanced.html", {"request": request})
 
+@app.get("/enhanced_defaults")
+async def get_enhanced_defaults():
+    from .enhanced_logic import enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model
+    from .shared import get_current_character
+    
+    return {
+        "character": get_current_character(),
+        "voice": enhanced_voice,
+        "model": enhanced_model,
+        "tts_model": enhanced_tts_model,
+        "transcription_model": enhanced_transcription_model
+    }
+
 @app.post("/set_character/{character_name}")
 async def set_character(character_name: str):
     set_current_character(character_name)
