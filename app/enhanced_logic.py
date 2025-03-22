@@ -271,11 +271,11 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
         import tempfile
         from pathlib import Path
         import asyncio
-        from pydub import AudioSegment
-        from pydub.playback import play
+        import wave
+        import pyaudio
         
         # Create a temporary file to store the speech audio
-        temp_file = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
         temp_filename = temp_file.name
         temp_file.close()
         
@@ -396,7 +396,7 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
             "input": text,
             "voice": voice,
             "speed": speed,
-            "response_format": "mp3"
+            "response_format": "wav"  # Changed from mp3 to wav for lower latency
         }
         
         # Add voice instructions for gpt-4o-mini-tts
@@ -419,11 +419,37 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
                     # Signal that audio is about to play (for animation synchronization)
                     await send_message_to_enhanced_clients({"action": "audio_actually_playing"})
                     
-                    # Play audio using pydub - avoid system audio players like VLC
+                    # Play audio using PyAudio - similar to the main page implementation
                     try:
-                        # Use pydub's play function which doesn't launch external players
-                        sound = AudioSegment.from_mp3(temp_filename)
-                        play(sound)
+                        print("Starting audio playback")
+                        wf = wave.open(temp_filename, 'rb')
+                        p = pyaudio.PyAudio()
+                        
+                        # Set up a buffered stream for lower latency
+                        # Use a smaller buffer size for quicker start (512 instead of 1024)
+                        buffer_size = 512
+                        
+                        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                                        channels=wf.getnchannels(),
+                                        rate=wf.getframerate(),
+                                        output=True,
+                                        frames_per_buffer=buffer_size)
+                        
+                        # Read initial data to start quickly
+                        data = wf.readframes(buffer_size)
+                        
+                        # Stream the audio data
+                        while data and len(data) > 0:
+                            stream.write(data)
+                            data = wf.readframes(buffer_size)
+                            
+                        # Clean up resources
+                        stream.stop_stream()
+                        stream.close()
+                        p.terminate()
+                        wf.close()  # Close the wave file properly
+                        print("Finished audio playback")
+                        
                     except Exception as e:
                         print(f"Error playing audio: {e}")
                         # Just wait an estimated amount of time if playback fails
@@ -437,9 +463,13 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
         
         # Clean up the temporary file
         try:
-            os.unlink(temp_filename)
+            # Add a small delay to ensure file is released before deletion (Windows issue)
+            await asyncio.sleep(0.2)
+            if os.path.exists(temp_filename):
+                os.unlink(temp_filename)
         except Exception as e:
             print(f"Error removing temporary TTS file: {e}")
+            # Non-critical error, we can continue even if file cleanup fails
         
         # Signal that AI has stopped speaking
         await send_message_to_enhanced_clients({"action": "ai_stop_speaking"})
@@ -484,12 +514,9 @@ async def enhanced_conversation_loop():
         
         base_system_message = open_file(character_prompt_file)
         
-        # Greeting message (just send to UI, don't play audio yet)
-        greeting = f"Hello! I'm {character_name.replace('_', ' ')}. How can I help you today?"
-        await send_message_to_enhanced_clients({"message": greeting})
-        
-        # Don't play greeting audio automatically - wait for user interaction
-        # await enhanced_text_to_speech(greeting, character_audio_file)
+        # Don't automatically show a greeting message
+        # Instead, show character selection confirmation similar to main page
+        await send_message_to_enhanced_clients({"message": f"Character: {character_name.replace('_', ' ')}", "type": "system-message"})
         
         while enhanced_conversation_active:
             # Listen for user input

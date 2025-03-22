@@ -114,6 +114,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (data.message.startsWith("You:")) {
                     // User messages are displayed immediately
                     displayMessage(data.message);
+                } else if (data.type === "system-message") {
+                    // System messages like character selection are displayed with system styling
+                    displayMessage(data.message, "system-message");
                 } else {
                     // Queue AI messages to display after audio finishes
                     aiMessageQueue.push(data.message);
@@ -268,14 +271,14 @@ document.addEventListener("DOMContentLoaded", function() {
             transcriptionModel: transcriptionModelSelect.value
         };
         
+        // Don't display starting message - keep UI cleaner
         console.log("Starting enhanced conversation with settings:", settings);
-        displayMessage("Starting conversation...", "system-message");
         
         // Send the start command with settings
         fetch('/start_enhanced_conversation', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify(settings)
         })
@@ -285,9 +288,11 @@ document.addEventListener("DOMContentLoaded", function() {
         })
         .catch(error => {
             console.error("Error starting conversation:", error);
+            displayMessage("Error starting conversation. The server may be unresponsive.", "error-message");
+            // Reset buttons on error
             startBtn.disabled = false;
             stopBtn.disabled = true;
-            displayMessage("Failed to start conversation. Please try again.", "error-message");
+            hasStarted = false;
         });
     });
     
@@ -316,7 +321,10 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     
     clearBtn.addEventListener('click', function() {
-        conversation.innerHTML = '';
+        // Clear the conversation by emptying the messages div 
+        // (don't remove the div itself)
+        const messagesContainer = document.getElementById('messages');
+        messagesContainer.innerHTML = '';
         
         console.log("Clearing conversation");
         
