@@ -306,6 +306,14 @@ TTS_PROVIDER=elevenlabs
 # Voice options: alloy, echo, fable, onyx, nova, shimmer
 OPENAI_TTS_VOICE=onyx
 
+# OpenAI Enhanced Mode TTS Model-  NEW it uses emotions and is better
+# Model options: gpt-4o-mini-tts, tts-1, tts-1-hd
+OPENAI_MODEL_TTS=gpt-4o-mini-tts
+
+# OpenAI Enhanced Mode Transcription Model
+# Model options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
+OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+
 # ElevenLabs Configuration:
 ELEVENLABS_API_KEY=your_api_key_here
 # Default voice ID
@@ -339,7 +347,7 @@ OLLAMA_MODEL=llama3.2
 XAI_MODEL=grok-beta
 XAI_API_KEY=your_api_key_here
 XAI_BASE_URL=https://api.x.ai/v1
-
+DEBUG=false
 # NOTES:
 # List of trigger phrases to have the model view your desktop (desktop, browser, images, etc.).
 # It will describe what it sees, and you can ask questions about it:
