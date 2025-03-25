@@ -688,7 +688,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         payload = {
             "model": model,
             "messages": messages,
-            "temperature": 0.8,
+            "temperature": 0.9,
             "max_tokens": 2000
         }
         
