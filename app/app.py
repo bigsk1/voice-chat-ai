@@ -19,7 +19,7 @@ import re
 import io
 import torch
 from pydub import AudioSegment
-from .shared import clients
+from .shared import clients, get_current_character
 
 import logging
 logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
@@ -229,6 +229,23 @@ print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print("To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...")
 
 async def process_and_play(prompt, audio_file_pth):
+    # Always get the current character name to ensure we have the right audio file
+    current_character = get_current_character()
+    
+    # Update characters_folder path to point to the current character's folder
+    current_characters_folder = os.path.join(project_dir, 'characters', current_character)
+    
+    # Override the provided audio path with the current character's audio file
+    # This ensures we always use the correct character voice even after switching
+    current_audio_file = os.path.join(current_characters_folder, f"{current_character}.wav")
+    
+    # Fall back to the provided path if the current character file doesn't exist
+    if not os.path.exists(current_audio_file):
+        current_audio_file = audio_file_pth
+        print(f"Warning: Using fallback audio file as {current_audio_file} not found")
+    else:
+        print(f"Using current character audio: {current_character}")
+        
     if TTS_PROVIDER == 'openai':
         output_path = os.path.join(output_dir, 'output.wav')
         await openai_text_to_speech(prompt, output_path)
@@ -257,7 +274,7 @@ async def process_and_play(prompt, audio_file_pth):
                 wav = await asyncio.to_thread(
                     tts.tts,
                     text=prompt,
-                    speaker_wav=audio_file_pth,  # Uses character_audio_file for cloning
+                    speaker_wav=current_audio_file,  # Use the updated current character audio
                     language="en",
                     speed=float(XTTS_SPEED)
                 )
