@@ -367,7 +367,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Download conversation history
     downloadButton.addEventListener('click', function() {
-        fetch('/download_history')
+        fetch('/download_enhanced_history')
             .then(response => {
                 if (response.ok) {
                     return response.blob();

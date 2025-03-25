@@ -745,6 +745,58 @@ async def start_enhanced_conversation(character=None, speed=None, model=None, vo
         print("Enhanced conversation already running")
         return {"status": "already_running"}
     
+    # IMPORTANT FIX: Ensure history is properly reset
+    # Clear the in-memory history completely
+    conversation_history.clear()
+    
+    # Reload conversation history from file to ensure it's in sync
+    try:
+        history_file = "conversation_history.txt"
+        if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
+            # File exists and has content, load it
+            temp_history = []
+            with open(history_file, "r", encoding="utf-8") as file:
+                current_role = None
+                current_content = ""
+                
+                for line in file:
+                    line = line.strip()
+                    if line.startswith("User:"):
+                        # Save previous message if exists
+                        if current_role:
+                            temp_history.append({"role": current_role, "content": current_content.strip()})
+                        
+                        # Start new user message
+                        current_role = "user"
+                        current_content = line[5:].strip()
+                    elif line.startswith("Assistant:"):
+                        # Save previous message if exists
+                        if current_role:
+                            temp_history.append({"role": current_role, "content": current_content.strip()})
+                        
+                        # Start new assistant message
+                        current_role = "assistant"
+                        current_content = line[10:].strip()
+                    else:
+                        # Continue previous message
+                        current_content += "\n" + line
+                
+                # Add the last message
+                if current_role:
+                    temp_history.append({"role": current_role, "content": current_content.strip()})
+                    
+            # Set the global conversation history
+            conversation_history = temp_history
+            print(f"Loaded {len(conversation_history)} messages from history file")
+        else:
+            # File doesn't exist or is empty
+            print("No history found or empty history file, starting with empty conversation")
+            conversation_history = []
+    except Exception as e:
+        print(f"Error loading conversation history from file: {e}")
+        # Safety fallback - ensure history is empty if loading fails
+        conversation_history = []
+    
     # Set active flag
     enhanced_conversation_active = True
     

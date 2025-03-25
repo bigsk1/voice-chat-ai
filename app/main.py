@@ -9,11 +9,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
+from starlette.background import BackgroundTask
 from .shared import clients, get_current_character, set_current_character, conversation_history, add_client, remove_client, clear_conversation_history
 from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 import logging
 from threading import Thread
+import uuid
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -154,8 +156,8 @@ async def clear_history():
 
 @app.get("/download_history")
 async def download_history():
-    # Create a temporary file with the same format used in app.py save_conversation_history
-    temp_file = "conversation_history.txt"
+    # Create a temporary file with a unique name different from the main history file
+    temp_file = f"temp_download_{uuid.uuid4().hex}.txt"
     
     # Format it the same way as the save_conversation_history function in app.py
     with open(temp_file, "w", encoding="utf-8") as file:
@@ -164,12 +166,72 @@ async def download_history():
             content = message["content"]
             file.write(f"{role}: {content}\n")
     
-    # Return the file
+    # Return the file and ensure it will be cleaned up after sending
     return FileResponse(
         temp_file,
         media_type="text/plain",
-        filename="conversation_history.txt"
+        filename="conversation_history.txt",
+        background=BackgroundTask(lambda: os.remove(temp_file) if os.path.exists(temp_file) else None)
     )
+
+@app.get("/download_enhanced_history")
+async def download_enhanced_history():
+    # First load history from file to ensure we have the latest content
+    try:
+        history_file = "conversation_history.txt"
+        temp_history = []
+        if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
+            # File exists and has content, load it
+            with open(history_file, "r", encoding="utf-8") as file:
+                current_role = None
+                current_content = ""
+                
+                for line in file:
+                    line = line.strip()
+                    if line.startswith("User:"):
+                        # Save previous message if exists
+                        if current_role:
+                            temp_history.append({"role": current_role, "content": current_content.strip()})
+                        
+                        # Start new user message
+                        current_role = "user"
+                        current_content = line[5:].strip()
+                    elif line.startswith("Assistant:"):
+                        # Save previous message if exists
+                        if current_role:
+                            temp_history.append({"role": current_role, "content": current_content.strip()})
+                        
+                        # Start new assistant message
+                        current_role = "assistant"
+                        current_content = line[10:].strip()
+                    else:
+                        # Continue previous message
+                        current_content += "\n" + line
+                
+                # Add the last message
+                if current_role:
+                    temp_history.append({"role": current_role, "content": current_content.strip()})
+        
+        # Create a temporary file with a unique name different from the main history file
+        temp_file = f"temp_download_{uuid.uuid4().hex}.txt"
+        
+        # Format it the same way as the save_conversation_history function in app.py
+        with open(temp_file, "w", encoding="utf-8") as file:
+            for message in temp_history:
+                role = message["role"].capitalize()
+                content = message["content"]
+                file.write(f"{role}: {content}\n")
+        
+        # Return the file and ensure it will be cleaned up after sending
+        return FileResponse(
+            temp_file,
+            media_type="text/plain",
+            filename="conversation_history.txt",
+            background=BackgroundTask(lambda: os.remove(temp_file) if os.path.exists(temp_file) else None)
+        )
+    except Exception as e:
+        print(f"Error creating download file: {e}")
+        return HTTPException(status_code=500, detail="Failed to create download file")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
