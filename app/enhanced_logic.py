@@ -29,7 +29,7 @@ DEBUG_AUDIO_LEVELS = False  # Set to True to see audio level output in the conso
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"  # Control detailed debug output
 
 # Quit phrases that will stop the conversation when detected
-QUIT_PHRASES = ["quit", "exit", "leave", "stop", "end", "bye", "goodbye"]
+QUIT_PHRASES = ["quit", "exit", "leave", "end", "bye", "goodbye"]
 
 async def send_message_to_enhanced_clients(message):
     """Send message to clients using the enhanced websocket."""
@@ -532,8 +532,9 @@ async def enhanced_conversation_loop():
                     })
                     continue
                     
-                # Check for quit phrases
-                if any(phrase in user_input.lower() for phrase in QUIT_PHRASES):
+                # Check for quit phrases with word boundary check
+                words = user_input.lower().split()
+                if any(phrase.lower() in words for phrase in QUIT_PHRASES):
                     await send_message_to_enhanced_clients({
                         "message": "Goodbye! Ending our conversation now."
                     })

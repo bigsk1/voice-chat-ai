@@ -116,11 +116,14 @@ async def conversation_loop():
         await send_message_to_clients(f"You: {user_input}")
         print(f"You: {user_input}")
 
-        if any(phrase in user_input.strip() for phrase in quit_phrases):
+        # Check for quit phrases with word boundary check
+        words = user_input.lower().split()
+        if any(phrase.lower() in words for phrase in quit_phrases):
             print("Quitting the conversation...")
             await stop_conversation()
             break
 
+        # Check for screenshot phrases - match only if the full phrase exists in input
         if any(phrase in user_input.lower() for phrase in screenshot_phrases):
             await execute_screenshot_and_analyze()
             continue

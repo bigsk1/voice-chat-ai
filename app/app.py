@@ -818,9 +818,13 @@ async def user_chatbot_conversation():
             user_input = transcribe_with_whisper(audio_file)
             os.remove(audio_file)
             print(CYAN + "You:", user_input + RESET_COLOR)
-            if user_input.strip() in quit_phrases:
+            
+            # Check for quit phrases with word boundary check
+            words = user_input.lower().split()
+            if any(phrase.lower().rstrip('.') in words for phrase in quit_phrases):
                 print("Quitting the conversation...")
                 break
+                
             conversation_history.append({"role": "user", "content": user_input})
             
             if any(phrase in user_input.lower() for phrase in screenshot_phrases):
