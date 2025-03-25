@@ -396,10 +396,14 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(response => response.json())
             .then(data => {
                 characterSelect.innerHTML = '';
+                
+                // Sort the characters alphabetically
+                data.characters.sort((a, b) => a.localeCompare(b));
+                
                 data.characters.forEach(character => {
                     const option = document.createElement('option');
                     option.value = character;
-                    option.textContent = character;
+                    option.textContent = character.replace(/_/g, ' '); // Replace all underscores with spaces
                     characterSelect.appendChild(option);
                 });
             })
