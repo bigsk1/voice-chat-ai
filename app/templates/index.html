@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="default-character" content="{{ character_name }}">
     <title>Voice Chat AI</title>
     <link rel="stylesheet" href="/app/static/css/styles.css">
     <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
@@ -146,18 +147,11 @@
     <script src="/app/static/js/scripts.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            fetch('/characters')
-                .then(response => response.json())
-                .then(data => {
-                    const characterSelect = document.getElementById('character-select');
-                    data.characters.forEach(character => {
-                        const option = document.createElement('option');
-                        option.value = character;
-                        option.text = character.replace('_', ' ');
-                        characterSelect.add(option);
-                    });
-                    characterSelect.value = "{{ character_name }}";
-                });
+            // Characters are already loaded by scripts.js
+            // We only need to set the value here
+            setTimeout(() => {
+                document.getElementById('character-select').value = "{{ character_name }}";
+            }, 100);
 
             fetch('/elevenlabs_voices')
                 .then(response => response.json())

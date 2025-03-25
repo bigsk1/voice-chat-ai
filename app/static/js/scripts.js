@@ -35,12 +35,22 @@ document.addEventListener("DOMContentLoaded", function() {
     // Function to populate character select dropdown
     function populateCharacterSelect(characters) {
         characterSelect.innerHTML = '';
+        
+        // Sort the characters alphabetically
+        characters.sort((a, b) => a.localeCompare(b));
+        
         characters.forEach(character => {
             const option = document.createElement('option');
             option.value = character;
-            option.textContent = character;
+            option.textContent = character.replace(/_/g, ' '); // Replace all underscores with spaces
             characterSelect.appendChild(option);
         });
+        
+        // Try to set the default character
+        const defaultCharacter = document.querySelector('meta[name="default-character"]')?.getAttribute('content');
+        if (defaultCharacter) {
+            characterSelect.value = defaultCharacter;
+        }
     }
 
     websocket.onopen = function(event) {
