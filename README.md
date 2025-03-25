@@ -33,7 +33,7 @@ Get up and running fast with Voice Chat AI!
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
 - **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
-https://github.com/user-attachments/assets/5581bd53-422b-4a92-9b97-7ee4ea37e09b
+https://github.com/user-attachments/assets/ff17eeed-3117-413f-94b1-21970c44f377
 
 ## Installation
 
