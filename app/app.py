@@ -403,8 +403,12 @@ async def elevenlabs_text_to_speech(text, output_path):
                 print("Error generating speech:", await response.text())
 
 def sanitize_response(response):
+    # Remove <think>...</think> blocks first
+    response = re.sub(r'<think>[\s\S]*?<\/think>', '', response)
+    # Remove asterisks and other formatting
     response = re.sub(r'\*.*?\*', '', response)
     response = re.sub(r'[^\w\s,.\'!?]', '', response)
+    # Trim any whitespace
     return response.strip()
 
 def analyze_mood(user_input):

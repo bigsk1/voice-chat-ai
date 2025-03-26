@@ -274,6 +274,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function displayMessage(message, className = '') {
         let formattedMessage = message;
+        
+        // Strip out <think>...</think> blocks
+        formattedMessage = formattedMessage.replace(/<think>[\s\S]*?<\/think>/g, '');
+        
+        // Format code blocks
         if (formattedMessage.includes('```')) {
             formattedMessage = formattedMessage.replace(/```(.*?)```/gs, function(match, p1) {
                 return `<pre><code>${p1}</code></pre>`;
