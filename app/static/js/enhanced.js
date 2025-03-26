@@ -44,11 +44,25 @@ document.addEventListener("DOMContentLoaded", function() {
         };
         
         websocket.onmessage = function(event) {
-            console.log("Message received:", event.data);
             let data;
+            
+            // First check if the data is already a string that should be displayed directly
+            if (typeof event.data === 'string' && !event.data.startsWith('{') && !event.data.startsWith('[')) {
+                displayMessage(event.data);
+                return;
+            }
+            
+            // Try to parse as JSON
             try {
                 data = JSON.parse(event.data);
+                console.log("Received message:", data);
             } catch (e) {
+                console.log("Received non-JSON message:", event.data);
+                // Don't treat this as an error if it's just a plain text message
+                if (event.data && typeof event.data === 'string') {
+                    displayMessage(event.data);
+                    return;
+                }
                 console.error("Error parsing WebSocket message:", e);
                 data = { message: event.data, action: "error" };
             }
