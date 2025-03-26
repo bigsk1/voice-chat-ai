@@ -27,21 +27,23 @@ logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ 
 # Load environment variables
 load_dotenv()
 
-MODEL_PROVIDER = os.getenv('MODEL_PROVIDER')
+MODEL_PROVIDER = os.getenv('MODEL_PROVIDER', 'openai')
 CHARACTER_NAME = os.getenv('CHARACTER_NAME', 'wizard')
-TTS_PROVIDER = os.getenv('TTS_PROVIDER')
-OPENAI_TTS_URL = os.getenv('OPENAI_TTS_URL')
+TTS_PROVIDER = os.getenv('TTS_PROVIDER', 'openai')
+OPENAI_TTS_URL = os.getenv('OPENAI_TTS_URL', 'https://api.openai.com/v1/audio/speech')
 OPENAI_TTS_VOICE = os.getenv('OPENAI_TTS_VOICE', 'alloy')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-OPENAI_MODEL = os.getenv('OPENAI_MODEL')
-OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/completions')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
-XAI_MODEL = os.getenv('XAI_MODEL')
-XAI_BASE_URL = os.getenv('XAI_BASE_URL')
-OLLAMA_MODEL = os.getenv('OLLAMA_MODEL')
-OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
+XAI_MODEL = os.getenv('XAI_MODEL', 'grok-2-1212')
+XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
+OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
+ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
+ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
 XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
 os.environ["COQUI_TOS_AGREED"] = "1"
 
@@ -357,12 +359,13 @@ async def elevenlabs_text_to_speech(text, output_path):
 
     data = {
         "text": text,
-        "model_id": "eleven_multilingual_v2",
+        "model_id": ELEVENLABS_TTS_MODEL,
         "voice_settings": {
             "stability": 0.5,
             "similarity_boost": 0.8,
             "style": 0.0,
-            "use_speaker_boost": True
+            "use_speaker_boost": True,
+            "speed": ELEVENLABS_TTS_SPEED
         }
     }
 

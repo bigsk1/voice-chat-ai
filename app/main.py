@@ -39,7 +39,7 @@ app.add_middleware(
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
     model_provider = os.getenv("MODEL_PROVIDER")
-    character_name = os.getenv("CHARACTER_NAME", "grok_xai")  # Default to grok_xai if not in .env
+    character_name = os.getenv("CHARACTER_NAME", "wizard") 
     tts_provider = os.getenv("TTS_PROVIDER")
     openai_tts_voice = os.getenv("OPENAI_TTS_VOICE")
     openai_model = os.getenv("OPENAI_MODEL")
