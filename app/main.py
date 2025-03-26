@@ -106,10 +106,12 @@ async def get_enhanced_defaults():
         "transcription_model": enhanced_transcription_model
     }
 
-@app.post("/set_character/{character_name}")
-async def set_character(character_name: str):
-    set_current_character(character_name)
-    return {"status": "success", "character": character_name}
+@app.post("/set_character")
+async def set_character(request: Request):
+    data = await request.json()
+    character = data.get("character")
+    if not character:
+        return {"status": "error", "message": "Character name is required"}
 
 @app.post("/start_conversation")
 async def start_conversation_route():
