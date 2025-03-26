@@ -356,9 +356,9 @@ OLLAMA_BASE_URL=http://localhost:11434
 # IF RUNNING IN DOCKER CHANGE OLLAMA BASE URL TO THE ONE BELOW
 # OLLAMA_BASE_URL=http://host.docker.internal:11434
 
-# Models Configuration:
-# Models to use - llama3.2 works well for local usage.
-OLLAMA_MODEL=llama3.2
+# Ollama Models Configuration:
+# Model to use - llama3.1 or 3.2 works well for local usage. In the UI it will get the list of models from /api/tags and display them. Not all models are supported.
+OLLAMA_MODEL=llama3.1
 
 # xAI Configuration
 XAI_MODEL=grok-beta
