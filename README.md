@@ -186,7 +186,7 @@ or
 docker build -t voice-chat-ai -f Dockerfile.cpu .
 ```
 
-In Windows command prompt - paste in one line
+In Windows command prompt
 
 ```bash
 docker run -d
@@ -198,6 +198,11 @@ docker run -d
    -p 8000:8000
    voice-chat-ai:latest
 ```
+
+```bash
+docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+```
+
 
 In WSL2 Ubuntu
 
@@ -211,6 +216,11 @@ docker run -d \
     -p 8000:8000 \
     voice-chat-ai:latest
 ```
+
+```bash
+docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+```
+
 
 ### Nvidia Cuda large image
 
@@ -252,6 +262,10 @@ docker run -d --gpus all \
     bigsk1/voice-chat-ai:cuda
 ```
 
+```bash
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
+```
+
 ## 🐧 Run on Ubuntu/Debian
 
 ```bash
@@ -264,6 +278,10 @@ docker run -d --gpus all \
     --name voice-chat-ai-cuda \
     -p 8000:8000 \
     bigsk1/voice-chat-ai:cuda
+```
+
+```bash
+docker run -d --gpus all -e PULSE_SERVER=unix:/tmp/pulse/native -v ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro -v /run/user/$(id -u)/pulse:/tmp/pulse:ro -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
 ```
 
 🔗 Access the Application
