@@ -200,7 +200,7 @@ docker run -d
 ```
 
 ```bash
-docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
 ```
 
 
@@ -238,7 +238,7 @@ make sure .env is in same folder you are running this from
  `Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.`
 
 ```bash
-docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
 ```
 
 Use `docker logs -f voice-chat-ai-cuda` to see the logs
@@ -312,7 +312,7 @@ wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wsl
 On windows docker desktop using wsl - run in windows
 
 ```bash
-docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
 
 ## Configuration
