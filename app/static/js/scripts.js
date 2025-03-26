@@ -25,6 +25,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Fetch and populate characters as soon as page loads
     fetchCharacters();
+    
+    // Fetch Ollama models if that's the current provider
+    if (providerSelect.value === 'ollama') {
+        fetchOllamaModels();
+    }
 
     // Function to fetch available characters
     async function fetchCharacters() {
@@ -38,6 +43,61 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         } catch (error) {
             console.error('Error fetching characters:', error);
+        }
+    }
+    
+    // Function to fetch available Ollama models
+    async function fetchOllamaModels() {
+        try {
+            const response = await fetch('/ollama_models');
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.warn('Ollama API warning:', data.error);
+                }
+                
+                if (data.models && data.models.length > 0) {
+                    populateOllamaModelSelect(data.models);
+                } else {
+                    console.warn('No Ollama models found');
+                }
+            } else {
+                console.error('Failed to fetch Ollama models:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error fetching Ollama models:', error);
+        }
+    }
+    
+    // Function to populate Ollama model select dropdown
+    function populateOllamaModelSelect(models) {
+        // Save the current selection
+        const currentValue = ollamaModelSelect.value;
+        
+        // Clear the select element
+        ollamaModelSelect.innerHTML = '';
+        
+        // Sort the models alphabetically
+        models.sort((a, b) => a.localeCompare(b));
+        
+        // Add each model as an option
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            ollamaModelSelect.appendChild(option);
+        });
+        
+        // Try to restore the previous selection
+        if (models.includes(currentValue)) {
+            ollamaModelSelect.value = currentValue;
+        } else if (models.includes('llama3.2')) {
+            // Default to llama3.2 if available
+            ollamaModelSelect.value = 'llama3.2';
+        } else if (models.length > 0) {
+            // Otherwise select the first available model
+            ollamaModelSelect.value = models[0];
         }
     }
 
@@ -269,8 +329,13 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     function setProvider() {
-        const selectedProvider = document.getElementById('provider-select').value;
-        websocket.send(JSON.stringify({ action: "set_provider", provider: selectedProvider }));
+        const provider = providerSelect.value;
+        websocket.send(JSON.stringify({ action: "set_provider", provider: provider }));
+        
+        // When Ollama is selected, fetch available models
+        if (provider === 'ollama') {
+            fetchOllamaModels();
+        }
     }
 
     function setTTS() {

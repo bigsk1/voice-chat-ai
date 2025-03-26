@@ -23,6 +23,8 @@ from .app import (
 )
 from .transcription import transcribe_audio
 import json
+import logging
+import requests
 
 router = APIRouter()
 characters_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "characters")
@@ -223,3 +225,40 @@ def adjust_prompt(mood):
         print(f"Selected prompt for {current_character} ({mood}): {mood_prompt[:50]}...")
     
     return mood_prompt
+
+async def fetch_ollama_models():
+    """Fetch available models from Ollama API"""
+    try:
+        ollama_base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+        response = requests.get(f"{ollama_base_url}/api/tags", timeout=5)
+        
+        if response.status_code == 200:
+            models_data = response.json()
+            # Extract just the model names from the response
+            models = [model['name'] for model in models_data.get('models', [])]
+            
+            # If models list is empty (older Ollama versions format), try alternate path
+            if not models and 'models' not in models_data:
+                models = [model['name'] for model in models_data]
+                
+            return {"models": models}
+        else:
+            logging.warning(f"Failed to fetch Ollama models: {response.status_code}")
+            return {"models": ["llama3.2"], "error": f"Failed to fetch models: {response.status_code}"}
+    except Exception as e:
+        logging.error(f"Error fetching Ollama models: {e}")
+        return {"models": ["llama3.2"], "error": f"Error connecting to Ollama: {str(e)}"}
+
+# Function to save conversation history to a file
+def save_conversation_history(conversation_history):
+    history_file = "conversation_history.txt"
+    try:
+        with open(history_file, "w", encoding="utf-8") as file:
+            for message in conversation_history:
+                role = message["role"].capitalize()
+                content = message["content"]
+                file.write(f"{role}: {content}\n")
+    except Exception as e:
+        logging.error(f"Error saving conversation history: {e}")
+        return {"status": "error", "message": str(e)}
+    return {"status": "success"}

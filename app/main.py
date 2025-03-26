@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
-from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model
+from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 import logging
 from threading import Thread
@@ -271,6 +271,13 @@ async def update_transcription_model(request: Request):
         return {"status": "error", "message": "Model name is required"}
     
     return set_transcription_model(model_name)
+
+@app.get("/ollama_models")
+async def get_ollama_models():
+    """
+    Fetch available models from Ollama
+    """
+    return await fetch_ollama_models()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
