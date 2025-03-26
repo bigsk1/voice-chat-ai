@@ -25,6 +25,7 @@ Get up and running fast with Voice Chat AI!
 - **Supports OpenAI, xAI or Ollama language models**: Choose the model that best fits your needs.
 - **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
 - **NEW OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
+- **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper (automatically downloads when selected).
 - **No typing needed, just speak**: Hands-free interaction makes conversations smooth and effortless.
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
 - **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
@@ -74,7 +75,7 @@ https://github.com/user-attachments/assets/ff17eeed-3117-413f-94b1-21970c44f377
 
 3. Install dependencies:
 
-    Windows Only: Need to have Microsoft C++ 14.0 or greater Build Tools on windows.
+    Windows Only if using XTTS: Need to have Microsoft C++ 14.0 or greater Build Tools on windows.
     [Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
    For GPU (CUDA) version: RECOMMEND
@@ -96,6 +97,8 @@ https://github.com/user-attachments/assets/ff17eeed-3117-413f-94b1-21970c44f377
     ```
 
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
+
+    Note: The app uses OpenAI transcription by default. If you select Local Faster Whisper in the UI, it will automatically download the model (about 1GB) on first use. The model is stored in your user's cache directory and shared across environments.
 
     Local XTTS can run on cpu but is slow, if using a enabled cuda gpu you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure `C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6`
 is in system PATH or whatever version you downloaded, you can also disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` to `"cudnn_enable": false`, if you don't want to use it.
@@ -347,6 +350,11 @@ OLLAMA_MODEL=llama3.2
 XAI_MODEL=grok-beta
 XAI_API_KEY=your_api_key_here
 XAI_BASE_URL=https://api.x.ai/v1
+
+# Transcription settings
+# Set to false to skip loading Faster Whisper on startup and use OpenAI transcription
+FASTER_WHISPER_LOCAL=false
+
 DEBUG=false
 # NOTES:
 # List of trigger phrases to have the model view your desktop (desktop, browser, images, etc.).
