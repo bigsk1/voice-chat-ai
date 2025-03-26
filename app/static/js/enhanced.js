@@ -364,6 +364,16 @@ document.addEventListener("DOMContentLoaded", function() {
         document.body.classList.toggle('dark-mode', isDarkMode);
         updateThemeToggleIcon();
     }
+
+    function setDarkModeDefault() {
+        const isDarkMode = localStorage.getItem('darkMode');
+        if (isDarkMode === null) {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.toggle('dark-mode', isDarkMode === 'true');
+        }
+        updateThemeToggleIcon();
+    }
     
     // Download conversation history
     downloadButton.addEventListener('click', function() {
@@ -467,6 +477,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Initialize
     loadThemePreference();
+    setDarkModeDefault();
     fetchCharacters();
     fetchDefaultSettings();
     connectWebSocket();
