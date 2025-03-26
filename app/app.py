@@ -66,22 +66,31 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # Disable CuDNN explicitly - enable this if you get cudnn errors or change in xtts-v2/config.json
 # torch.backends.cudnn.enabled = False
 
+# Check if Faster Whisper should be loaded at startup
+FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
+
+# Initialize whisper model as None to lazy load
+whisper_model = None
+
 # Default model size (adjust as needed)
 model_size = "medium.en"
 
-try:
-    print(f"Attempting to load Faster-Whisper on {device}...")
-    whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
-    print("Faster-Whisper initialized successfully.")
-except Exception as e:
-    print(f"Error initializing Faster-Whisper on {device}: {e}")
-    print("Falling back to CPU mode...")
+if FASTER_WHISPER_LOCAL:
+    try:
+        print(f"Attempting to load Faster-Whisper on {device}...")
+        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        print("Faster-Whisper initialized successfully.")
+    except Exception as e:
+        print(f"Error initializing Faster-Whisper on {device}: {e}")
+        print("Falling back to CPU mode...")
 
-    # Force CPU fallback
-    device = "cpu"
-    model_size = "tiny.en"  # Use a smaller model for CPU performance
-    whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
-    print("Faster-Whisper initialized on CPU successfully.")
+        # Force CPU fallback
+        device = "cpu"
+        model_size = "tiny.en"  # Use a smaller model for CPU performance
+        whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        print("Faster-Whisper initialized on CPU successfully.")
+else:
+    print("Faster-Whisper initialization skipped (FASTER_WHISPER_LOCAL=false). Will use OpenAI API for transcription or load on demand.")
 
 # Paths for character-specific files
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -295,8 +304,22 @@ async def process_and_play(prompt, audio_file_pth):
 
 
 async def send_message_to_clients(message):
+    """Send a message to all connected clients
+    
+    Args:
+        message: Either a string or a dictionary to send to clients
+    """
+    # Convert dictionary to JSON string if needed
+    if isinstance(message, dict):
+        message_str = json.dumps(message)
+    else:
+        message_str = message
+        
     for client in clients:
-        await client.send_text(message)
+        try:
+            await client.send_text(message_str)
+        except Exception as e:
+            print(f"Error sending message to client: {e}")
 
 def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2):
     with wave.open(file_path, 'wb') as wav_file:
@@ -576,6 +599,31 @@ def save_conversation_history(conversation_history):
             file.write(f"{role}: {content}\n")
 
 def transcribe_with_whisper(audio_file):
+    """Transcribe audio using local Faster Whisper model"""
+    global whisper_model
+    
+    # Lazy load the model only when needed
+    if whisper_model is None:
+        # Check for CUDA availability
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        # Default model size (adjust as needed)
+        model_size = "medium.en" if device == "cuda" else "tiny.en"
+        
+        try:
+            print(f"Lazy-loading Faster-Whisper on {device}...")
+            whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+            print("Faster-Whisper initialized successfully.")
+        except Exception as e:
+            print(f"Error initializing Faster-Whisper on {device}: {e}")
+            print("Falling back to CPU mode...")
+            
+            # Force CPU fallback
+            device = "cpu"
+            model_size = "tiny.en"
+            whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
+            print("Faster-Whisper initialized on CPU successfully.")
+    
     segments, info = whisper_model.transcribe(audio_file, beam_size=5)
     transcription = ""
     for segment in segments:

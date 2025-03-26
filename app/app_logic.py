@@ -4,12 +4,10 @@ from threading import Thread
 from fastapi import APIRouter
 from .shared import clients, continue_conversation, conversation_history, get_current_character, is_client_active, set_client_inactive
 from .app import (
-    transcribe_with_whisper,
     analyze_mood,
     chatgpt_streamed,
     sanitize_response,
     process_and_play,
-    record_audio,
     execute_screenshot_and_analyze,
     open_file,
     init_ollama_model,
@@ -21,19 +19,54 @@ from .app import (
     init_set_tts,
     init_set_provider,
     save_conversation_history,
+    send_message_to_clients,
 )
+from .transcription import transcribe_audio
 import json
 
 router = APIRouter()
 characters_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "characters")
 
+# Global variable to store the current transcription model
+current_transcription_model = "gpt-4o-mini-transcribe"
+use_local_whisper = False
+
+# Function to update the transcription model
+def set_transcription_model(model_name):
+    global current_transcription_model, use_local_whisper
+    if model_name == "local_whisper":
+        use_local_whisper = True
+    else:
+        current_transcription_model = model_name
+        use_local_whisper = False
+    print(f"Transcription set to: {'Local Whisper' if use_local_whisper else current_transcription_model}")
+    return {"status": "success", "message": f"Transcription model set to: {'Local Whisper' if use_local_whisper else current_transcription_model}"}
+
 async def record_audio_and_transcribe():
-    audio_file = "temp_recording.wav"
-    await record_audio(audio_file)
-    user_input = transcribe_with_whisper(audio_file)
-    os.remove(audio_file)  # Clean up the temporary audio file
+    """Record audio and transcribe it using the selected method"""
+    
+    # Create a custom callback that works with our clients set
+    async def status_callback(status_data):
+        message = json.dumps(status_data) if isinstance(status_data, dict) else status_data
+        # Use the existing send_message_to_clients function from shared
+        await send_message_to_clients(message)
+        
+    # Use our new unified transcription module
+    user_input = await transcribe_audio(
+        transcription_model=current_transcription_model,
+        use_local=use_local_whisper,
+        send_status_callback=status_callback
+    )
+    
     return user_input
 
+# We can keep this as a utility function but it's not used directly with transcription
+async def send_message_to_all_clients(message):
+    for client_websocket in clients:
+        try:
+            await client_websocket.send_text(message)
+        except Exception as e:
+            print(f"Error sending message to client: {e}")
 
 async def process_text(user_input):
     current_character = get_current_character()
@@ -80,32 +113,6 @@ async def stop_conversation():
     global continue_conversation
     continue_conversation = False
     return {"message": "Conversation stopped"}
-
-async def send_message_to_clients(message: str):
-    """Send a message to all connected clients, handling closed connections gracefully."""
-    closed_clients = set()
-    for client in clients:
-        if is_client_active(client):
-            try:
-                await client.send_json({"message": message})
-            except RuntimeError as e:
-                if "websocket.send" in str(e) and "websocket.close" in str(e):
-                    # WebSocket is already closed
-                    print(f"Client connection already closed: {e}")
-                    closed_clients.add(client)
-                    set_client_inactive(client)
-                else:
-                    # Some other RuntimeError
-                    print(f"Error sending message to client: {e}")
-                    closed_clients.add(client)
-                    set_client_inactive(client)
-            except Exception as e:
-                # Any other exception
-                print(f"Error sending message to client: {e}")
-                closed_clients.add(client)
-                set_client_inactive(client)
-    
-    # No need to remove from clients set here - let the WebSocketDisconnect handler do it
 
 async def conversation_loop():
     global continue_conversation

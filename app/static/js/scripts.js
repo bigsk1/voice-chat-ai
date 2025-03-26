@@ -10,6 +10,15 @@ document.addEventListener("DOMContentLoaded", function() {
     const messages = document.getElementById('messages');
     const micIcon = document.getElementById('mic-icon');
     const characterSelect = document.getElementById('character-select');
+    const providerSelect = document.getElementById('provider-select');
+    const ttsSelect = document.getElementById('tts-select');
+    const openaiVoiceSelect = document.getElementById('openai-voice-select');
+    const elevenLabsVoiceSelect = document.getElementById('elevenlabs-voice-select');
+    const openaiModelSelect = document.getElementById('openai-model-select');
+    const ollamaModelSelect = document.getElementById('ollama-model-select');
+    const xaiModelSelect = document.getElementById('xai-model-select');
+    const xttsSpeedSelect = document.getElementById('xtts-speed-select');
+    const transcriptionSelect = document.getElementById('transcription-select');
 
     let aiMessageQueue = [];
     let isAISpeaking = false;
@@ -229,19 +238,30 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_elevenlabs_voice", voice: selectedVoice }));
     }
 
-    document.getElementById('character-select').addEventListener('change', function() {
-        const selectedCharacter = this.value;
-        websocket.send(JSON.stringify({ action: "set_character", character: selectedCharacter }));
+    characterSelect.addEventListener('change', function() {
+        fetch('/set_character', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ character: this.value })
+        });
     });
 
-    document.getElementById('provider-select').addEventListener('change', setProvider);
-    document.getElementById('tts-select').addEventListener('change', setTTS);
-    document.getElementById('openai-voice-select').addEventListener('change', setOpenAIVoice);
-    document.getElementById('openai-model-select').addEventListener('change', setOpenAIModel);
-    document.getElementById('ollama-model-select').addEventListener('change', setOllamaModel);
-    document.getElementById('xai-model-select').addEventListener('change', setXAIModel);
-    document.getElementById('xtts-speed-select').addEventListener('change', setXTTSSpeed);
-    document.getElementById('elevenlabs-voice-select').addEventListener('change', setElevenLabsVoice);
+    providerSelect.addEventListener('change', setProvider);
+    ttsSelect.addEventListener('change', setTTS);
+    openaiVoiceSelect.addEventListener('change', setOpenAIVoice);
+    openaiModelSelect.addEventListener('change', setOpenAIModel);
+    ollamaModelSelect.addEventListener('change', setOllamaModel);
+    xaiModelSelect.addEventListener('change', setXAIModel);
+    xttsSpeedSelect.addEventListener('change', setXTTSSpeed);
+    elevenLabsVoiceSelect.addEventListener('change', setElevenLabsVoice);
+
+    transcriptionSelect.addEventListener('change', function() {
+        fetch('/set_transcription_model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: this.value })
+        });
+    });
 
     async function downloadHistory() {
         const response = await fetch('/download_history');

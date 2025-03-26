@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
 from .shared import clients, get_current_character, set_current_character, conversation_history, add_client, remove_client, clear_conversation_history
-from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder
+from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, router as app_logic_router, set_transcription_model
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 import logging
 from threading import Thread
@@ -232,6 +232,15 @@ async def download_enhanced_history():
     except Exception as e:
         print(f"Error creating download file: {e}")
         return HTTPException(status_code=500, detail="Failed to create download file")
+
+@app.post("/set_transcription_model")
+async def update_transcription_model(request: Request):
+    data = await request.json()
+    model_name = data.get("model")
+    if not model_name:
+        return {"status": "error", "message": "Model name is required"}
+    
+    return set_transcription_model(model_name)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
