@@ -32,6 +32,7 @@ OPENAI_TTS_VOICE = os.getenv('OPENAI_TTS_VOICE', 'alloy')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/completions')
+OPENAI_TRANSCRIPTION_MODEL = os.getenv('OPENAI_TRANSCRIPTION_MODEL', 'gpt-4o-mini-transcribe')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
 XAI_MODEL = os.getenv('XAI_MODEL', 'grok-2-1212')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
@@ -60,22 +61,31 @@ character_display_name = CHARACTER_NAME.capitalize()
 # Check for CUDA availability
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+# Check if Faster Whisper should be loaded at startup
+FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
+
+# Initialize whisper model as None to lazy load
+whisper_model = None
+
 # Default model size (adjust as needed)
 model_size = "medium.en"
 
-try:
-    print(f"Attempting to load Faster-Whisper on {device}...")
-    whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
-    print("Faster-Whisper initialized successfully.")
-except Exception as e:
-    print(f"Error initializing Faster-Whisper on {device}: {e}")
-    print("Falling back to CPU mode...")
+if FASTER_WHISPER_LOCAL:
+    try:
+        print(f"Attempting to load Faster-Whisper on {device}...")
+        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        print("Faster-Whisper initialized successfully.")
+    except Exception as e:
+        print(f"Error initializing Faster-Whisper on {device}: {e}")
+        print("Falling back to CPU mode...")
 
-    # Force CPU fallback
-    device = "cpu"
-    model_size = "tiny.en"  # Use a smaller model for CPU performance
-    whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
-    print("Faster-Whisper initialized on CPU successfully.")
+        # Force CPU fallback
+        device = "cpu"
+        model_size = "tiny.en"  # Use a smaller model for CPU performance
+        whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        print("Faster-Whisper initialized on CPU successfully.")
+else:
+    print("Faster-Whisper initialization skipped (FASTER_WHISPER_LOCAL=false). Will use OpenAI API for transcription.")
 
 # Paths for character-specific files
 project_dir = os.path.dirname(os.path.abspath(__file__))
@@ -713,6 +723,44 @@ def generate_speech(text, temp_audio_path):
         else:
             print("XTTS model is not loaded.")
 
+def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe"):
+    """Transcribe audio using OpenAI's API"""
+    if not OPENAI_API_KEY:
+        raise ValueError("API key missing. Please set OPENAI_API_KEY in your environment.")
+    
+    # Make the API call to OpenAI
+    api_url = "https://api.openai.com/v1/audio/transcriptions"
+    
+    with open(audio_file, "rb") as audio_file_data:
+        files = {
+            'file': (os.path.basename(audio_file), audio_file_data, 'audio/wav')
+        }
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}"
+        }
+        data = {
+            'model': model
+        }
+        
+        response = requests.post(api_url, headers=headers, files=files, data=data, timeout=30)
+        if response.status_code == 200:
+            result = response.json()
+            transcription = result.get("text", "")
+            return transcription
+        else:
+            error_text = response.text
+            print(f"Error from OpenAI API: {error_text}")
+            raise Exception(f"Transcription error: {response.status_code} - {error_text}")
+
+def transcribe_audio(audio_file):
+    """Transcribe audio using either local Faster Whisper or OpenAI API"""
+    if FASTER_WHISPER_LOCAL:
+        print(f"Using Faster Whisper for transcription")
+        return transcribe_with_whisper(audio_file)
+    else:
+        print(f"Transcription (model: {OPENAI_TRANSCRIPTION_MODEL})")
+        return transcribe_with_openai_api(audio_file, OPENAI_TRANSCRIPTION_MODEL)
+
 def user_chatbot_conversation():
     conversation_history = []
     base_system_message = open_file(character_prompt_file)
@@ -731,13 +779,12 @@ def user_chatbot_conversation():
         while True:
             audio_file = "temp_recording.wav"
             record_audio(audio_file)
-            user_input = transcribe_with_whisper(audio_file)
+            user_input = transcribe_audio(audio_file)
             os.remove(audio_file)  # Clean up the temporary audio file 
             print(CYAN + "You:", user_input + RESET_COLOR)
             
-            # Check for quit phrases with word boundary check
-            words = user_input.lower().split()
-            if any(phrase.lower().rstrip('.') in words for phrase in quit_phrases):
+            # Check for quit phrases - simplified and more robust check
+            if any(user_input.lower().strip().rstrip('.') == phrase.lower().rstrip('.') for phrase in quit_phrases):
                 print("Quitting the conversation...")
                 break
                 
