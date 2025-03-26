@@ -2,7 +2,7 @@ import os
 import asyncio
 from threading import Thread
 from fastapi import APIRouter
-from .shared import clients, continue_conversation, conversation_history, get_current_character, is_client_active, set_client_inactive
+from .shared import clients, continue_conversation, conversation_history, get_current_character
 from .app import (
     analyze_mood,
     chatgpt_streamed,

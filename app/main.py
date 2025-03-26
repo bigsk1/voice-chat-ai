@@ -1,7 +1,6 @@
 import json
 import os
 import signal
-import sys
 import uvicorn
 import asyncio
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
@@ -10,8 +9,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
-from .shared import clients, get_current_character, set_current_character, conversation_history, add_client, remove_client, clear_conversation_history
-from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, router as app_logic_router, set_transcription_model
+from .shared import clients, set_current_character, conversation_history, add_client, remove_client
+from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 import logging
 from threading import Thread

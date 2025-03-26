@@ -2,13 +2,11 @@ import os
 import pyaudio
 import wave
 import numpy as np
-import json
 import aiohttp
 import tempfile
 import torch
 from faster_whisper import WhisperModel
 from dotenv import load_dotenv
-import asyncio
 
 # Load environment variables
 load_dotenv()
