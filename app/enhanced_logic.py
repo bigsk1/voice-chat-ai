@@ -23,7 +23,7 @@ enhanced_speed = "1.0"
 enhanced_voice = os.getenv("OPENAI_TTS_VOICE", "coral")
 enhanced_model = os.getenv("OPENAI_MODEL", "gpt-4o")
 enhanced_tts_model = os.getenv("OPENAI_MODEL_TTS", "gpt-4o-mini-tts")
-enhanced_transcription_model = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
+enhanced_transcription_model = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
 
 # Debug flags to control verbose output
 DEBUG_AUDIO_LEVELS = False  # Set to True to see audio level output in the console

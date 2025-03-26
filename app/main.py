@@ -46,6 +46,7 @@ async def get_index(request: Request):
     ollama_model = os.getenv("OLLAMA_MODEL")
     xtts_speed = os.getenv("XTTS_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
+    faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -57,6 +58,7 @@ async def get_index(request: Request):
         "ollama_model": ollama_model,
         "xtts_speed": xtts_speed,
         "elevenlabs_voice": elevenlabs_voice,
+        "faster_whisper_local": faster_whisper_local,
     })
 
 @app.get("/characters")

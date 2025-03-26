@@ -142,10 +142,17 @@
             <div class="setting-group">
                 <label for="transcription-select">Transcription:</label>
                 <select id="transcription-select">
-                    <option value="gpt-4o-mini-transcribe" selected>GPT-4o Mini transcribe</option>
-                    <option value="gpt-4o-transcribe">GPT-4o transcribe</option>
+                    {% if faster_whisper_local %}
+                    <option value="local_whisper" selected>Local Faster Whisper</option>
+                    <option value="gpt-4o-mini-transcribe">OpenAI GPT-4o Mini</option>
+                    <option value="gpt-4o-transcribe">OpenAI GPT-4o</option>
+                    <option value="whisper-1">OpenAI Whisper-1</option>
+                    {% else %}
+                    <option value="gpt-4o-mini-transcribe" selected>OpenAI GPT-4o Mini</option>
+                    <option value="gpt-4o-transcribe">OpenAI GPT-4o</option>
                     <option value="whisper-1">OpenAI Whisper-1</option>
                     <option value="local_whisper">Local Faster Whisper</option>
+                    {% endif %}
                 </select>
             </div>
         </div>

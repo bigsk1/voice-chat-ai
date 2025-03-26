@@ -28,8 +28,9 @@ router = APIRouter()
 characters_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "characters")
 
 # Global variable to store the current transcription model
+FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 current_transcription_model = "gpt-4o-mini-transcribe"
-use_local_whisper = False
+use_local_whisper = FASTER_WHISPER_LOCAL  # Initialize based on environment
 
 # Function to update the transcription model
 def set_transcription_model(model_name):
