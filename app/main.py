@@ -82,14 +82,41 @@ async def get_characters():
 async def get_elevenlabs_voices():
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     voices_file = os.path.join(project_dir, 'elevenlabs_voices.json')
+    example_file = os.path.join(project_dir, 'elevenlabs_voices.json.example')
+    
+    # If the elevenlabs_voices.json file doesn't exist but the example does, create from example
+    if not os.path.exists(voices_file) and os.path.exists(example_file):
+        try:
+            logger.info("elevenlabs_voices.json not found. Creating from example file.")
+            with open(example_file, 'r', encoding='utf-8') as src:
+                with open(voices_file, 'w', encoding='utf-8') as dst:
+                    dst.write(src.read())
+            logger.info("Created elevenlabs_voices.json from example file.")
+        except Exception as e:
+            logger.error(f"Error creating elevenlabs_voices.json: {e}")
+            
+    # If file still doesn't exist, create a minimal version
+    if not os.path.exists(voices_file):
+        try:
+            logger.info("Creating minimal elevenlabs_voices.json.")
+            default_content = {
+                "voices": {},
+                "_comment": "This is a placeholder file. Replace with your own voice IDs from ElevenLabs."
+            }
+            with open(voices_file, 'w', encoding='utf-8') as f:
+                json.dump(default_content, f, indent=2)
+            logger.info("Created minimal elevenlabs_voices.json file.")
+        except Exception as e:
+            logger.error(f"Error creating minimal elevenlabs_voices.json: {e}")
+            return {"voices": []}
+    
     try:
         with open(voices_file, 'r', encoding='utf-8') as f:
             voices = json.load(f)
         return voices
-    except FileNotFoundError:
-        return {"voices": []}
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"Error reading elevenlabs_voices.json: {e}")
+        return {"voices": []}
 
 @app.get("/enhanced", response_class=HTMLResponse)
 async def get_enhanced(request: Request):

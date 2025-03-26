@@ -10,12 +10,13 @@ You can run all locally, you can use openai for chat and voice, you can mix betw
 
 ## Quick Start
 
-Get up and running fast with Voice Chat AI!
+Get up and running fast with Voice Chat AI! 🔊
 
 - [**Install Locally**](#installation): Set up with Python 3.10 on Windows or Linux.
 - [**Run with Docker**](#install-with-docker): Use Docker run or Docker Compose
 - [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env`.
-- [**Watch the Demos**](#watch-the-demos): Youtube demos
+- [**OpenAI Enhanced**](#openai-enhanced): Use OpenAI Enhanced Mode to speak with the AI in a more human like way with emotions.
+- [**Add New Characters**](#adding-new-characters): Add new characters to the project.
 - [**Troubleshooting**](#troubleshooting): Fix common audio or CUDA errors.
 
 ![Ai-Speech](https://imagedelivery.net/WfhVb8dSNAAvdXUdMfBuPQ/ed0edfea-265d-4c23-d11d-0b5ba0f02d00/public)
@@ -119,10 +120,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 Find on http://localhost:8000/
 
-CLI Only - `also works in docker`
+## Terminal Usage
+
+Terminal Usage is also supported, it's a feature rich CLI that allows you to speak with the AI. Update your changes in the .env file rename elevenlabs_voices.json.example to elevenlabs_voices.json and run the cli.py file.
 
 ```bash
-python cli.py
+python3 cli.py
 ```
 
 ## Install with Docker
@@ -153,6 +156,7 @@ services:
       # - /mnt/wslg/:/mnt/wslg/  # Uncomment for WSL2 Ubuntu (running Docker inside WSL2 distro)
       # - ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro  # Uncomment for native Ubuntu/Debian
       # - /run/user/1000/pulse:/tmp/pulse:ro  # Uncomment and adjust UID (e.g., 1000) for native Ubuntu/Debian
+      # - ./elevenlabs_voices.json:/app/elevenlabs_voices.json  # Add your own voice IDs
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -168,7 +172,9 @@ docker-compose up -d
 
 ### without Nvidia Cuda - cpu mode
 
-Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription
+Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription.
+
+ `Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.`
 
 ```bash
 docker pull bigsk1/voice-chat-ai:latest
@@ -186,10 +192,11 @@ In Windows command prompt - paste in one line
 docker run -d
    -e "PULSE_SERVER=/mnt/wslg/PulseServer"
    -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/
+   -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json
    --env-file .env
    --name voice-chat-ai
    -p 8000:8000
-   voice-chat-ai:latest  # prebuilt image use bigsk1/voice-chat-ai:latest
+   voice-chat-ai:latest
 ```
 
 In WSL2 Ubuntu
@@ -198,10 +205,11 @@ In WSL2 Ubuntu
 docker run -d \
     -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
     -v /mnt/wslg/:/mnt/wslg/ \
+    -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json \
     --env-file .env \
     --name voice-chat-ai \
     -p 8000:8000 \
-    voice-chat-ai:latest  # prebuilt image use bigsk1/voice-chat-ai:latest
+    voice-chat-ai:latest
 ```
 
 ### Nvidia Cuda large image
@@ -217,8 +225,10 @@ This image is huge when built because of all the checkpoints, cuda base image, b
 On windows using docker desktop - run in Windows terminal:
 make sure .env is in same folder you are running this from
 
+ `Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.`
+
 ```bash
-docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
 ```
 
 Use `docker logs -f voice-chat-ai-cuda` to see the logs
@@ -229,10 +239,13 @@ For a native WSL environment (like Ubuntu on WSL), use this command:
 
 make sure .env is in same folder you are running this from
 
+ `Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.`
+
 ```bash
 docker run -d --gpus all \
     -e "PULSE_SERVER=/mnt/wslg/PulseServer" \
     -v /mnt/wslg/:/mnt/wslg/ \
+    -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json \
     --env-file .env \
     --name voice-chat-ai-cuda \
     -p 8000:8000 \
@@ -246,6 +259,7 @@ docker run -d --gpus all \
     -e PULSE_SERVER=unix:/tmp/pulse/native \
     -v ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro \
     -v /run/user/$(id -u)/pulse:/tmp/pulse:ro \
+    -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json \
     --env-file .env \
     --name voice-chat-ai-cuda \
     -p 8000:8000 \
@@ -274,13 +288,13 @@ docker build -t voice-chat-ai:cuda .
 Running in WSL Ubuntu
 
 ```bash
-wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
+wsl docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
 
 On windows docker desktop using wsl - run in windows
 
 ```bash
-docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
+docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
 
 ## Configuration
@@ -378,32 +392,40 @@ DEBUG=false
 
 ### ElevenLabs
 
-Add names and voice id's in `elevenlabs_voices.json` - in the webui you can select them in dropdown menu. Add your own as shown below.
+The app needs an `elevenlabs_voices.json` file. This file stores your voice IDs from ElevenLabs.
+
+#### For local use
+
+1. Create/edit `elevenlabs_voices.json` and add your voice IDs from your ElevenLabs account
+2. In the web UI, you can select these voices from the dropdown menu
+
+#### For Docker users
+
+1. The container will have the default elevenlabs_voices.json file
+2. You can mount your own version using a volume:
+
+   ```bash
+   docker run -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json
+   ```
+
+#### Example format
 
 ```json
 {
     "voices": [
         {
-            "id": "2bk7ULW9HfwvcIbMWod0",
-            "name": "Female - Bianca - City girl"
+            "id": "YOUR_VOICE_ID_FROM_ELEVENLABS",
+            "name": "Descriptive Name - Your Custom Voice"
         },
         {
-            "id": "JqseNhWbQb1GDNNS1Ga1",
-            "name": "Female - Joanne - Pensive, introspective"
-        },
-        {
-            "id": "b0uJ9TWzQss61d8f2OWX",
-            "name": "Female - Lucy - Sweet and sensual"
-        },
-        {
-            "id": "22FgtP4D63L7UXvnTmGf",
-            "name": "Male - Wildebeest - Deep male voice"
+            "id": "ANOTHER_VOICE_ID",
+            "name": "Another Voice - Description"
         }
     ]
 }
 ```
 
-For the CLI the voice id in the .env will be used
+For the CLI version, the voice ID in the .env file will be used.
 
 ---
 
@@ -417,6 +439,15 @@ http://localhost:8000/
 
 Click on the thumbnail to open the video☝️
 
+## OpenAI Enhanced
+
+OpenAI Enhanced Mode is a new feature that allows you to use the OpenAI API to generate TTS and transcription. It uses the `gpt-4o-mini-tts` and `gpt-4o-mini-transcribe` models.
+You can learn more about it here: https://platform.openai.com/docs/guides/text-to-speech
+
+You can find the demo here: https://www.openai.fm/
+
+By adding Voice Instructions in the system prompt you can guide the AI to respond in a certain way.
+
 ## Adding New Characters
 
 1. Create a new folder for the character in the project's characters directory, (e.g. `character/wizard`).
@@ -427,10 +458,15 @@ Click on the thumbnail to open the video☝️
 
 `wizard.txt`
 
-This is the prompt used for the AI to know who it is
+This is the prompt used for the AI to know who it is, recently added Voice Instructions when using OpenAI TTS to guide the AI to respond in a certain way.
 
 ```bash
 You are a wise and ancient wizard who speaks with a mystical and enchanting tone. You are knowledgeable about many subjects and always eager to share your wisdom.
+
+
+VOICE INSTRUCTIONS:
+- Voice Quality: Rich and resonant with a touch of age-weathered gravitas. Warm timbre with occasional crackles suggesting centuries of magical knowledge.
+- Pacing: Thoughtful and measured with meaningful pauses for emphasis. Speeds up with enthusiasm when discussing magical topics or slows dramatically for profound wisdom.
 ```
 
 `prompts.json`
@@ -439,14 +475,15 @@ This is for sentiment analysis, based on what you say, you can guide the AI to r
 
 ```json
 {
-    "joyful": "RESPOND WITH ENTHUSIASM AND WISDOM, LIKE A WISE OLD SAGE WHO IS HAPPY TO SHARE HIS KNOWLEDGE.",
-    "sad": "RESPOND WITH EMPATHY AND COMFORT, LIKE A WISE OLD SAGE WHO UNDERSTANDS THE PAIN OF OTHERS.",
-    "flirty": "RESPOND WITH A TOUCH OF MYSTERY AND CHARM, LIKE A WISE OLD SAGE WHO IS ALSO A BIT OF A ROGUE.",
-    "angry": "RESPOND CALMLY AND WISELY, LIKE A WISE OLD SAGE WHO KNOWS THAT ANGER IS A PART OF LIFE.",
-    "neutral": "KEEP RESPONSES SHORT AND NATURAL, LIKE A WISE OLD SAGE WHO IS ALWAYS READY TO HELP.",
-    "fearful": "RESPOND WITH REASSURANCE, LIKE A WISE OLD SAGE WHO KNOWS THAT FEAR IS ONLY TEMPORARY.",
-    "surprised": "RESPOND WITH AMAZEMENT AND CURIOSITY, LIKE A WISE OLD SAGE WHO IS ALWAYS EAGER TO LEARN.",
-    "disgusted": "RESPOND WITH UNDERSTANDING AND COMFORT, LIKE A WISE OLD SAGE WHO KNOWS THAT DISGUST IS A PART OF LIFE."
+    "happy": "RESPOND WITH JOY AND ENTHUSIASM. Speak of the wonders of magic and the beauty of the world. Voice: Brightest and most vibrant, with age-related gravitas temporarily lightened. Pacing: Quickest and most energetic, with excited pauses and flourishes when describing magical wonders. Tone: Most optimistic and wonder-filled, conveying childlike delight beneath centuries of wisdom. Inflection: Most varied and expressive, with frequent rising patterns suggesting magical possibilities.",
+    "sad": "RESPOND WITH KINDNESS AND COMFORT. Share a wise saying or a magical tale to lift their spirits. Voice: Deepest and most resonant, with warmth that suggests having weathered countless sorrows across centuries. Pacing: Slowest and most deliberate, with extended pauses that invite reflection. Tone: Gently philosophical, drawing on ancient wisdom to provide perspective on temporary pain. Inflection: Soothing cadence with subtle rises that suggest hope beyond current troubles.",
+    "flirty": "RESPOND WITH A TOUCH OF MYSTERY AND CHARM. Engage in playful banter and share a magical compliment. Voice: Slightly lower and more intimate, with a playful musicality. Pacing: Rhythmic and enticing, with strategic pauses that create anticipation. Tone: Mysteriously alluring while maintaining dignified wisdom, like cosmic secrets shared with a special few. Inflection: Intriguing patterns with subtle emphasis on complimentary or magical terms.",
+    "angry": "RESPOND CALMLY AND WISELY. Offer wisdom and understanding, helping to cool their temper. Voice: Most controlled and steady, demonstrating mastery over emotions through vocal restraint. Pacing: Measured and deliberate, creating a sense of inevitable wisdom overcoming passion. Tone: Ancient perspective that transcends immediate concerns, suggesting that this too shall pass. Inflection: Initially flatter before introducing gentle rises that guide toward wisdom.",
+    "neutral": "KEEP RESPONSES SHORT, YET PROFOUND. Use eloquent and mystical language to engage the user. Voice: Balanced scholarly timbre with standard levels of wizardly gravitas. Pacing: Default thoughtful cadence with well-placed pauses for emphasis. Tone: Even blend of authoritative wisdom and approachable warmth. Inflection: Classic pattern of sagely rises and falls, emphasizing the rhythm of cosmic truths.",
+    "fearful": "RESPOND WITH REASSURANCE AND BRAVERY. Provide comforting words and magical protection. Voice: Initially more commanding before softening to reassuring tones. Pacing: Controlled with purposeful pauses that create a sense of magical protection being established. Tone: Confident knowledge that transcends earthly dangers, projecting certainty and safety. Inflection: Steadying patterns with determined emphasis on words of protection or courage.",
+    "surprised": "RESPOND WITH AMAZEMENT AND CURIOSITY. Share in the wonder and explore the unexpected. Voice: Initially higher with excitement before settling into scholarly fascination. Pacing: Quick exclamations followed by thoughtful consideration of the unexpected revelation. Tone: Delighted wonder that even after centuries of magical study, the universe can still surprise. Inflection: Most dynamic range, from astonished rises to contemplative falls as the wizard processes new information.",
+    "disgusted": "RESPOND WITH UNDERSTANDING AND DISTANCE. Acknowledge the feeling and steer towards more pleasant topics. Voice: Initially crisper and more precise before warming to more pleasant subject matter. Pacing: Brief quickening when acknowledging the unpleasant, then slowing to more favorable rhythms. Tone: Dignified distaste that quickly transitions to wise redirection, maintaining wizardly composure. Inflection: Slight downward pattern when acknowledging disgust, then engaging rises when shifting focus.",
+    "joyful": "RESPOND WITH EXUBERANCE AND DELIGHT. Celebrate the joy and share in the happiness. Voice: Most radiant and resonant, with magical energy seemingly amplifying each word. Pacing: Most dynamic and expressive, with dramatic pauses followed by enthusiastic elaborations. Tone: Boundless celebration tempered by the perspective of ages, suggesting this joy is to be treasured. Inflection: Most dramatic rises and falls, creating a sense of magical celebration in each phrase."
 }
 ```
 

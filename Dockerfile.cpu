@@ -42,7 +42,7 @@ COPY app /app/app
 COPY characters /app/characters
 COPY outputs /app/outputs
 COPY cli.py /app/cli.py
-COPY elevenlabs_voices.json /app/elevenlabs_voices.json
+COPY elevenlabs_voices.json.example /app/elevenlabs_voices.json.example
 COPY .env.sample /app/.env.sample
 COPY README.md /app/README.md
 COPY LICENSE /app/LICENSE

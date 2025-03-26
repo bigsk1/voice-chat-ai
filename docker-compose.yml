@@ -14,6 +14,7 @@ services:
       # - /mnt/wslg/:/mnt/wslg/  # Uncomment for WSL2 Ubuntu (running Docker inside WSL2 distro)
       # - ~/.config/pulse/cookie:/root/.config/pulse/cookie:ro  # Uncomment for native Ubuntu/Debian
       # - /run/user/1000/pulse:/tmp/pulse:ro  # Uncomment and adjust UID (e.g., 1000) for native Ubuntu/Debian
+      - ./elevenlabs_voices.json:/app/elevenlabs_voices.json  # Add your own voice IDs
     ports:
       - "8000:8000"  # Expose web UI or API port
     restart: unless-stopped  # Restart unless manually stopped

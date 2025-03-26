@@ -1,0 +1,13 @@
+{
+    "voices": [
+        {
+            "id": "REPLACE_WITH_YOUR_VOICE_ID",
+            "name": "Example Voice - Replace with your voice name"
+        },
+        {
+            "id": "REPLACE_WITH_YOUR_VOICE_ID",
+            "name": "Another Voice - Each user needs their own voice IDs"
+        }
+    ],
+    "_comment": "IMPORTANT: These are placeholder IDs. You need to replace them with your own voice IDs from your ElevenLabs account. Get your voice IDs at https://elevenlabs.io/voice-lab. This file is required even if you don't use ElevenLabs."
+}
