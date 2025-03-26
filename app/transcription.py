@@ -201,7 +201,7 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     # Wait for user to start speaking
     print("Waiting for speech...")
     if send_status_callback:
-        await send_status_callback({"action": "waiting_for_speech", "message": "Listening... Please speak now."})
+        await send_status_callback({"action": "waiting_for_speech"})
     
     # Flush initial buffer
     for _ in range(5):
@@ -239,9 +239,9 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
         # Every 2 seconds, provide feedback
         if initial_silent_chunks % (2 * int(RATE / CHUNK)) == 0 and initial_silent_chunks > 0 and initial_silent_chunks % (4 * int(RATE / CHUNK)) == 0:
             if send_status_callback:
+                # Just send a reminder ping, no need for message text as UI now handles this
                 await send_status_callback({
-                    "action": "waiting_for_speech", 
-                    "message": "Still listening... Please speak or check your microphone."
+                    "action": "waiting_for_speech"
                 })
                 
     # Now begin actual recording

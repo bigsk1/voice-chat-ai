@@ -58,20 +58,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 micIcon.classList.remove('mic-on');
                 micIcon.classList.add('mic-waiting');
                 // Show listening message with animation
-                showListeningIndicator(data.message || "Waiting for speech...");
+                showListeningIndicator("Listening");
             } else if (data.action === "recording_started") {
                 isRecording = true;
                 micIcon.classList.remove('mic-off', 'mic-waiting');
                 micIcon.classList.add('mic-on');
                 micIcon.classList.add('pulse-animation');
                 hideListeningIndicator();
-                displayMessage("Recording...", "system-message");
             } else if (data.action === "recording_stopped") {
                 isRecording = false;
                 micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
                 micIcon.classList.add('mic-off');
                 hideListeningIndicator();
-                displayMessage("Processing your message...", "system-message");
             } else if (data.action === "audio_actually_playing") {
                 // Set speaking flag and show animation
                 isAISpeaking = true;

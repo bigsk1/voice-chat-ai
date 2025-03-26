@@ -98,9 +98,14 @@ document.addEventListener("DOMContentLoaded", function() {
         } else if (data.action === "error") {
             console.error("Error from server:", data.message);
             displayMessage(data.message, 'error-message');
+        } else if (data.action === "waiting_for_speech") {
+            // Show the listening indicator for waiting_for_speech action
+            showListeningIndicator();
         } else if (data.message) {
             if (data.message.startsWith('You:')) {
                 displayMessage(data.message);
+                // Hide the listening indicator when user's message is received
+                hideListeningIndicator();
             } else {
                 aiMessageQueue.push(data.message);
                 if (!isAISpeaking) {
@@ -110,9 +115,15 @@ document.addEventListener("DOMContentLoaded", function() {
         } else if (data.action === "recording_started") {
             micIcon.classList.remove('mic-off');
             micIcon.classList.add('mic-on');
+            micIcon.classList.add('pulse-animation');
+            // Show the listening indicator when recording starts
+            showListeningIndicator();
         } else if (data.action === "recording_stopped") {
             micIcon.classList.remove('mic-on');
+            micIcon.classList.remove('pulse-animation');
             micIcon.classList.add('mic-off');
+            // Hide the listening indicator when recording stops
+            hideListeningIndicator();
         } else {
             displayMessage(event.data);
         }
@@ -122,6 +133,53 @@ document.addEventListener("DOMContentLoaded", function() {
         while (aiMessageQueue.length > 0 && !isAISpeaking) {
             displayMessage(aiMessageQueue.shift());
         }
+    }
+
+    // Function to create and show the listening indicator with animated dots
+    function showListeningIndicator() {
+        // Remove any existing listening indicator
+        hideListeningIndicator();
+        
+        // Create the listening indicator
+        const listeningIndicator = document.createElement('div');
+        listeningIndicator.className = "listening-indicator";
+        listeningIndicator.id = "listening-indicator";
+        
+        // Add the text
+        listeningIndicator.textContent = "Listening";
+        
+        // Create dots container
+        const dotsContainer = document.createElement('div');
+        dotsContainer.className = "listening-dots";
+        
+        // Create three animated dots
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement('div');
+            dot.className = "dot";
+            dot.style.animationDelay = `${i * 0.2}s`;
+            dotsContainer.appendChild(dot);
+        }
+        
+        // Add dots to the indicator
+        listeningIndicator.appendChild(dotsContainer);
+        
+        // Add indicator to messages
+        messages.appendChild(listeningIndicator);
+        adjustScrollPosition();
+        
+        // Also add animation to mic icon
+        micIcon.classList.add('mic-waiting');
+    }
+
+    // Function to hide the listening indicator
+    function hideListeningIndicator() {
+        const existingIndicator = document.getElementById('listening-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        // Remove animation from mic icon
+        micIcon.classList.remove('mic-waiting');
     }
 
     function showVoiceAnimation() {

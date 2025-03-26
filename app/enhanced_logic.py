@@ -410,7 +410,7 @@ async def enhanced_conversation_loop():
                 save_conversation_history(conversation_history)
                 
                 # Print AI response summary
-                print(f"AI: \"{ai_response[:40]}{'...' if len(ai_response) > 40 else ''}\"")
+                print(f"AI: \"{ai_response[:100]}{'...' if len(ai_response) > 100 else ''}\"")
                 
                 # Convert to speech - this will play the audio first
                 await enhanced_text_to_speech(ai_response, character_audio_file, detected_mood)

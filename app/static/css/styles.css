@@ -132,6 +132,7 @@ main {
     margin-left: 0;
     margin-right: 0;
     max-width: calc(100% - 120px); 
+    margin-bottom: 2rem;
 }
 
 .user-message {
@@ -494,5 +495,75 @@ a:hover {
     
     .main-nav a {
         padding: 6px 12px;
+    }
+}
+
+/* Listening indicator with animated dots */
+.listening-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    color: #ffc107;
+    font-style: italic;
+}
+
+.listening-dots {
+    display: inline-flex;
+    margin-left: 8px;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #ffc107;
+    margin: 0 2px;
+    animation: dot-fade 1.4s infinite;
+}
+
+@keyframes dot-fade {
+    0%, 100% {
+        opacity: 0.2;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Add animation for the mic icon when waiting for speech */
+#mic-icon.mic-waiting {
+    color: red;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.5;
+    }
+}
+
+/* Pulse animation for recording mic */
+.pulse-animation {
+    animation: pulse-red 1s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+        color: red;
+    }
+    100% {
+        opacity: 0.6;
     }
 }
