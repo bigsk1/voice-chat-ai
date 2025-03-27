@@ -50,6 +50,22 @@ document.addEventListener("DOMContentLoaded", function() {
     clearButton.addEventListener('click', clearTranscript);
     testMicButton.addEventListener('click', testMicrophone);
     
+    // Info box toggle
+    const infoToggleBtn = document.getElementById('infoToggleBtn');
+    const infoBox = document.getElementById('infoBox');
+    if (infoToggleBtn && infoBox) {
+        infoToggleBtn.addEventListener('click', function() {
+            const isVisible = infoBox.style.display !== 'none';
+            if (isVisible) {
+                infoBox.style.display = 'none';
+                infoToggleBtn.innerHTML = '<i class="fas fa-info-circle"></i> Show Usage Guide';
+            } else {
+                infoBox.style.display = 'block';
+                infoToggleBtn.innerHTML = '<i class="fas fa-info-circle"></i> Hide Usage Guide';
+            }
+        });
+    }
+    
     // Voice selection change handler
     voiceSelect.addEventListener('change', function() {
         const selectedVoice = voiceSelect.value;

@@ -500,6 +500,80 @@
         body:not(.dark-mode) footer a {
             color: #007bff;
         }
+        
+        /* Info Box Styles */
+        .info-box-container {
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        .info-toggle-btn {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        
+        .info-toggle-btn:hover {
+            background-color: var(--hover-bg);
+        }
+        
+        .info-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .info-box h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--heading-color);
+        }
+        
+        .info-box ul {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul ul {
+            margin-top: 5px;
+        }
+        
+        .info-box li {
+            margin-bottom: 8px;
+        }
+        
+        .info-box p {
+            margin-top: 10px;
+            margin-bottom: 0;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+        
+        /* For dark mode */
+        html.dark-mode .info-toggle-btn {
+            background-color: #2d3748;
+        }
+        
+        html.dark-mode .info-toggle-btn:hover {
+            background-color: #3a4a61;
+        }
+        
+        html.dark-mode .info-box {
+            background-color: #2d3748;
+        }
+        
+        /* Add styles for the debug panel and its components */
     </style>
 </head>
 <body class="dark-mode">
@@ -592,6 +666,30 @@
             
             <h3>Activity Log</h3>
             <div id="transcript" class="transcript-container" style="height: 200px;"></div>
+            
+            <!-- Info Box -->
+            <div class="info-box-container">
+                <button id="infoToggleBtn" class="info-toggle-btn btn"><i class="fas fa-info-circle"></i> Show Usage Guide</button>
+                <div id="infoBox" class="info-box" style="display: none;">
+                    <h4>How to Use This Page</h4>
+                    <ul>
+                        <li><strong>Start a Conversation</strong>: Click the "Start Conversation" button to begin a voice chat with the AI.</li>
+                        <li><strong>Speaking to the AI</strong>: When the microphone icon pulses red, your voice is being detected and sent to the AI.</li>
+                        <li><strong>Microphone States</strong>: 
+                            <ul>
+                                <li>Gray - Microphone inactive or session not started</li>
+                                <li>Yellow - Waiting for your voice</li>
+                                <li>Pulsing Red - Your voice is being detected</li>
+                            </ul>
+                        </li>
+                        <li><strong>Toggle Microphone</strong>: Use the microphone button to temporarily disable/enable your microphone.</li>
+                        <li><strong>Change Character</strong>: Select different AI characters from the dropdown menu. Make sure to stop the session select the character and start session.</li>
+                        <li><strong>Debug Panel</strong>: Access technical details by clicking "Show Debug Panel".</li>
+                        <li><strong>End Conversation</strong>: Click red mic and stop session to end the session.</li>
+                    </ul>
+                    <p><em>Note: This is a real-time voice conversation - the AI responds as you speak and you can interrupt the AI at any time.</em></p>
+                </div>
+            </div>
         </div>
     </main>
     
