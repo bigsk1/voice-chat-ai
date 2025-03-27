@@ -27,3 +27,8 @@ spacy==3.7.5
 spacy-legacy==3.0.12
 spacy-loggers==1.0.5
 coqui-tts==0.26.0
+
+# WebRTC-specific dependencies
+aiortc==1.10.1
+av==14.2.0
+httpx==0.28.1 
