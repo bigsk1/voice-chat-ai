@@ -430,7 +430,7 @@ async def enhanced_websocket_endpoint(websocket: WebSocket):
             # This will raise WebSocketDisconnect when client disconnects
             # Process only control messages and heartbeats
             data = await websocket.receive()
-            logging.info(f"Received message from client: {data}")
+            # logging.info(f"Received message from client: {data}")
             # Don't try to parse or process normal text messages
             if data["type"] == "websocket.disconnect":
                 raise WebSocketDisconnect(1000)

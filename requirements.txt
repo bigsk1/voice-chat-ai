@@ -6,7 +6,7 @@ torchvision==0.18.1+cu121
 
 PyAudio==0.2.14
 numpy==1.26.4
-faster-whisper==1.0.2
+faster-whisper==1.1.1
 soundfile==0.12.1    
 langid==1.1.6
 librosa==0.10.2.post1
@@ -30,5 +30,6 @@ coqui-tts==0.26.0
 
 # WebRTC-specific dependencies
 aiortc==1.10.1
-av==14.2.0
+av==11.0.0
 httpx==0.28.1 
+websockets==15.0.1
