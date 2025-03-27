@@ -454,10 +454,6 @@ Press start to start talking. Take a break hit stop, when ready again hit start 
 
 http://localhost:8000/
 
-[![Watch the video](https://img.youtube.com/vi/Ii3vYg-CzKE/maxresdefault.jpg)](https://youtu.be/Ii3vYg-CzKE)
-
-Click on the thumbnail to open the video☝️
-
 ## OpenAI Enhanced
 
 OpenAI Enhanced Mode is a new feature that allows you to use the OpenAI API to generate TTS and transcription. It uses the `gpt-4o-mini-tts` and `gpt-4o-mini-transcribe` models.
@@ -472,6 +468,8 @@ By adding Voice Instructions in the system prompt you can guide the AI to respon
 The OpenAI Realtime feature uses WebRTC to connect directly to OpenAI's Realtime API, enabling continuous voice streaming with minimal latency for the most natural conversation experience.
 
 ### RealTime Features
+
+![Image](https://github.com/user-attachments/assets/322a6c13-9d40-48ee-91e7-448e67489584)
 
 - **Direct WebRTC Connection**: Connect directly to OpenAI's API for the lowest possible latency.
 - **Zero Turn-Taking**: No need to wait for the AI to finish before speaking - interrupt naturally like a real conversation.
