@@ -31,9 +31,12 @@ document.addEventListener('DOMContentLoaded', function() {
     header.style.cssText = `
         display: flex;
         justify-content: space-between;
+        align-items: center;
         margin-bottom: 10px;
         padding-bottom: 5px;
         border-bottom: 1px solid #00ff00;
+        position: relative;
+        padding-right: 30px; /* Make room for X button */
     `;
     
     const title = document.createElement('h3');
@@ -48,6 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
         color: #ff5555;
         cursor: pointer;
         font-weight: bold;
+        position: absolute;
+        top: 0;
+        right: 0;
+        font-size: 16px;
+        padding: 0;
     `;
     closeBtn.onclick = function() {
         debugPanel.style.display = 'none';
@@ -124,23 +132,6 @@ document.addEventListener('DOMContentLoaded', function() {
     footerControls.appendChild(clearBtn);
     footerControls.appendChild(autoShowContainer);
     debugPanel.appendChild(footerControls);
-    
-    // Add test button
-    const testBtn = document.createElement('button');
-    testBtn.textContent = 'Test Log';
-    testBtn.style.cssText = `
-        background-color: #333;
-        color: #fff;
-        border: 1px solid #5555aa;
-        padding: 5px 10px;
-        border-radius: 3px;
-        cursor: pointer;
-        margin-top: 10px;
-    `;
-    testBtn.onclick = function() {
-        window.debugLog('Test message - if you see this, debug logging is working!', 'success');
-    };
-    debugPanel.appendChild(testBtn);
     
     // Add to the document
     document.body.appendChild(debugPanel);
