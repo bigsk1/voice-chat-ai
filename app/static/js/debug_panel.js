@@ -11,8 +11,8 @@ document.addEventListener('DOMContentLoaded', function() {
         position: fixed;
         bottom: 10px;
         right: 10px;
-        width: 400px;
-        max-height: 300px;
+        width: 800px;
+        max-height: 600px;
         background-color: rgba(0, 0, 0, 0.9);
         color: #00ff00;
         font-family: monospace;
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         border-radius: 5px;
         z-index: 9999;
         overflow-y: auto;
-        display: block;
+        display: none;
         border: 1px solid #00ff00;
         box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
     `;
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const logArea = document.createElement('div');
     logArea.id = 'debug-log';
     logArea.style.cssText = `
-        max-height: 220px;
+        max-height: 500px;
         overflow-y: auto;
         margin-bottom: 10px;
     `;
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoShowCheckbox = document.createElement('input');
     autoShowCheckbox.type = 'checkbox';
     autoShowCheckbox.id = 'auto-show-debug';
-    autoShowCheckbox.checked = true;
+    autoShowCheckbox.checked = false;
     autoShowCheckbox.style.marginRight = '5px';
     
     const autoShowLabel = document.createElement('label');
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 12px;
         cursor: pointer;
         z-index: 9998;
-        display: none;
+        display: block;
     `;
     
     toggleButton.onclick = function() {
@@ -189,16 +189,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const log = document.getElementById('debug-log');
         if (!log) return;
         
-        // Make sure debug panel is visible when logging 
-        const panel = document.getElementById('debug-panel');
-        if (panel && panel.style.display === 'none') {
-            panel.style.display = 'block';
-            // Use the global reference to the toggle button
-            if (window.debugPanelToggle) {
-                window.debugPanelToggle.style.display = 'none';
-            }
-        }
-        
+        // Never show the panel automatically - just log the message
+                
         const entry = document.createElement('div');
         
         const timestamp = new Date().toLocaleTimeString();
@@ -243,53 +235,31 @@ document.addEventListener('DOMContentLoaded', function() {
         
         log.appendChild(entry);
         log.scrollTop = log.scrollHeight; // Scroll to bottom
-        
-        // If debug panel is hidden and auto-show is enabled, show the panel
-        if (document.getElementById('debug-panel').style.display === 'none' && 
-            document.getElementById('auto-show-debug') && 
-            document.getElementById('auto-show-debug').checked) {
-            document.getElementById('debug-panel').style.display = 'block';
-            toggleButton.style.display = 'none';
-        }
-        
-        // If debug panel is hidden, show a notification on the toggle button
-        if (document.getElementById('debug-panel').style.display === 'none') {
-            toggleButton.style.backgroundColor = color;
-            setTimeout(() => {
-                toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-            }, 500);
-        }
     }
     
     // Create global debug logging function
     window.debugLog = function(message, type = 'info') {
         isLogging = true;
         try {
-            // Force the debug panel to be visible
-            if (window.debugPanel) {
-                window.debugPanel.style.display = 'block';
-                if (window.debugPanelToggle) {
-                    window.debugPanelToggle.style.display = 'none';
-                }
-            }
-            
+            // Never force the debug panel to be visible
+            // Just log the message silently
             internalLog(message, type);
             
-            // Always show the debug panel when a message is logged
-            const panel = document.getElementById('debug-panel');
-            if (panel) {
-                panel.style.display = 'block';
-                if (toggleButton) {
-                    toggleButton.style.display = 'none';
+            // Only flash the toggle button if debug panel is hidden
+            if (toggleButton && document.getElementById('debug-panel').style.display === 'none') {
+                let color = '#aaffaa';
+                switch(type.toLowerCase()) {
+                    case 'error': color = '#ff5555'; break;
+                    case 'warning': color = '#ffaa55'; break;
+                    case 'success': color = '#55ff55'; break;
+                    case 'event': color = '#55aaff'; break;
+                    case 'data': color = '#aa55ff'; break;
                 }
-            }
-            
-            // Original auto-show logic still kept as a fallback
-            if ((type === 'error' || 
-                (document.getElementById('auto-show-debug') && document.getElementById('auto-show-debug').checked)) && 
-                document.getElementById('debug-panel').style.display === 'none') {
-                document.getElementById('debug-panel').style.display = 'block';
-                toggleButton.style.display = 'none';
+                
+                toggleButton.style.backgroundColor = color;
+                setTimeout(() => {
+                    toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                }, 500);
             }
         } finally {
             isLogging = false;
@@ -311,18 +281,25 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error("Could not find debug-log element");
         }
         
+        // Log startup without showing panel
         window.debugLog('Debug panel initialized and ready', 'success');
         
         // Test the panel is working
-        window.forceDebugMessage = function(message, type = 'info') {
+        window.forceDebugMessage = function(message, type = 'info', show = false) {
             try {
                 const logElement = document.getElementById('debug-log');
                 if (!logElement) return;
                 
-                // Show panel
-                const panel = document.getElementById('debug-panel');
-                if (panel) {
-                    panel.style.display = 'block';
+                // Only show the panel if explicitly requested with show=true
+                // This should be used very sparingly
+                if (show === true) {
+                    const panel = document.getElementById('debug-panel');
+                    if (panel) {
+                        panel.style.display = 'block';
+                        if (window.debugPanelToggle) {
+                            window.debugPanelToggle.style.display = 'none';
+                        }
+                    }
                 }
                 
                 // Create entry
@@ -346,6 +323,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 logElement.appendChild(entry);
                 logElement.scrollTop = logElement.scrollHeight;
                 
+                // If debug panel is hidden, flash the toggle button without showing panel
+                if (!show && toggleButton && document.getElementById('debug-panel').style.display === 'none') {
+                    toggleButton.style.backgroundColor = color;
+                    setTimeout(() => {
+                        toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                    }, 500);
+                }
+                
                 return true;
             } catch (error) {
                 console.error("Force debug message error:", error);
@@ -353,10 +338,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
         
-        // Add initial messages
-        window.forceDebugMessage('Debug panel is now active', 'success');
-        window.forceDebugMessage('Test the microphone by clicking the Test Microphone button', 'info');
-        window.forceDebugMessage('Start a session to begin talking with the AI', 'info');
+        // Add initial messages without showing the panel
+        window.forceDebugMessage('Debug panel is now active', 'success', false);
+        window.forceDebugMessage('Test the microphone by clicking the Test Microphone button', 'info', false);
+        window.forceDebugMessage('Start a session to begin talking with the AI', 'info', false);
     }, 500);
     
     // Intercept console.log and other console methods
@@ -381,10 +366,12 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             internalLog(Array.from(arguments).join(' '), 'error');
             
-            // Auto-show panel on error
-            if (document.getElementById('debug-panel').style.display === 'none') {
-                document.getElementById('debug-panel').style.display = 'block';
-                toggleButton.style.display = 'none';
+            // Don't auto-show, just flash the button to indicate errors
+            if (toggleButton && document.getElementById('debug-panel').style.display === 'none') {
+                toggleButton.style.backgroundColor = '#ff5555';
+                setTimeout(() => {
+                    toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                }, 500);
             }
         } finally {
             isLogging = false;
@@ -396,6 +383,13 @@ document.addEventListener('DOMContentLoaded', function() {
         isLogging = true;
         try {
             internalLog(Array.from(arguments).join(' '), 'warning');
+            // Never auto-show the panel, just flash button if needed
+            if (toggleButton && document.getElementById('debug-panel').style.display === 'none') {
+                toggleButton.style.backgroundColor = '#ffaa55';
+                setTimeout(() => {
+                    toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                }, 500);
+            }
         } finally {
             isLogging = false;
         }
@@ -406,6 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
         isLogging = true;
         try {
             internalLog(Array.from(arguments).join(' '), 'info');
+            // Never auto-show the panel
         } finally {
             isLogging = false;
         }

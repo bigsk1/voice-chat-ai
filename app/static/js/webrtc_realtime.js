@@ -95,9 +95,9 @@ document.addEventListener("DOMContentLoaded", function() {
             console.log("Testing microphone...");
             debugLog("Starting microphone test...", "info");
             
-            // Use direct debug messaging
+            // Use direct debug messaging without showing panel
             if (window.forceDebugMessage) {
-                window.forceDebugMessage("Starting microphone test...", "info");
+                window.forceDebugMessage("Starting microphone test...", "info", false);
             }
             
             const micTestResult = document.getElementById('micTestResult');
@@ -105,7 +105,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 console.error("micTestResult element not found in DOM");
                 debugLog("Error: micTestResult element not found in DOM", "error");
                 if (window.forceDebugMessage) {
-                    window.forceDebugMessage("Error: micTestResult element not found in DOM", "error");
+                    window.forceDebugMessage("Error: micTestResult element not found in DOM", "error", false);
                 }
                 return;
             }
@@ -505,17 +505,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Log microphone activity every second if volume is above threshold
                 const now = Date.now();
                 if (average > 10 && now - lastLogTime > 1000) {
-                    // Force visibility for this important message
-                    if (window.debugPanel) {
-                        window.debugPanel.style.display = 'block';
-                        if (window.debugPanelToggle) {
-                            window.debugPanelToggle.style.display = 'none';
-                        }
-                    }
-                    
-                    // Use direct debug messaging for microphone activity
+                    // Use direct debug messaging without showing panel
                     if (window.forceDebugMessage) {
-                        window.forceDebugMessage(`Microphone active - volume level: ${Math.round(average)}`, "info");
+                        window.forceDebugMessage(`Microphone active - volume level: ${Math.round(average)}`, "info", false);
                     }
                     
                     debugLog(`Microphone active - volume level: ${Math.round(average)}`, "info");
@@ -558,14 +550,6 @@ document.addEventListener("DOMContentLoaded", function() {
         
         dataChannel.onmessage = (event) => {
             try {
-                // Always make debug panel visible for important messages
-                if (window.debugPanel) {
-                    window.debugPanel.style.display = 'block';
-                    if (window.debugPanelToggle) {
-                        window.debugPanelToggle.style.display = 'none';
-                    }
-                }
-                
                 // Parse the message
                 const data = JSON.parse(event.data);
                 const messageType = data.type;
@@ -573,24 +557,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Hide waiting indicator whenever we get a response
                 showWaitingIndicator(false);
                 
-                // Use direct message display to ensure visibility
+                // Use direct message display without showing the panel
                 if (window.forceDebugMessage) {
-                    window.forceDebugMessage(`Received message type: ${messageType}`, "info");
-                    window.forceDebugMessage(`Message data: ${JSON.stringify(data).substring(0, 100)}...`, "data");
+                    window.forceDebugMessage(`Received message type: ${messageType}`, "info", false);
+                    window.forceDebugMessage(`Message data: ${JSON.stringify(data).substring(0, 100)}...`, "data", false);
                 } else {
                     // Fallback to regular debug log
                     debugLog(`Received message type: ${messageType}`, "info");
-                }
-                
-                // Ensure this debug message is always shown
-                debugLog(`Received message type: ${messageType}`, "info");
-                
-                // Log full message for debugging with more visible type
-                if (window.debugPanel && window.debugPanel.style.display === 'none') {
-                    window.debugPanel = document.getElementById('debug-panel');
-                    if (window.debugPanel) {
-                        window.debugPanel.style.display = 'block';
-                    }
                 }
                 
                 // Log all messages for debugging
@@ -794,17 +767,10 @@ document.addEventListener("DOMContentLoaded", function() {
     // Toggle microphone
     function toggleMicrophone() {
         console.log("Toggle microphone called, session active:", isSessionActive);
-        // Force debug panel to be visible for this important action
-        if (window.debugPanel) {
-            window.debugPanel.style.display = 'block';
-            if (window.debugPanelToggle) {
-                window.debugPanelToggle.style.display = 'none';
-            }
-        }
         
-        // Use direct message display to ensure visibility
+        // Use direct message display to ensure visibility without showing panel
         if (window.forceDebugMessage) {
-            window.forceDebugMessage(`Toggling microphone. Session active: ${isSessionActive}`, "event");
+            window.forceDebugMessage(`Toggling microphone. Session active: ${isSessionActive}`, "event", false);
         }
         
         debugLog("Toggling microphone. Session active: " + isSessionActive, "event");
