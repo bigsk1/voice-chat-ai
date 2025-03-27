@@ -27,3 +27,8 @@ spacy==3.7.5
 spacy-legacy==3.0.12
 spacy-loggers==1.0.5
 coqui-tts==0.26.0
+httpx==0.28.1 
+aiortc==1.10.1
+aiohttp==3.11.14 
+av==14.2.0 
+websocket-client==1.8.0

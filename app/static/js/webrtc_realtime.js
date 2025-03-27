@@ -12,11 +12,10 @@ document.addEventListener("DOMContentLoaded", function() {
     const characterSelect = document.getElementById('characterSelect');
     const voiceSelect = document.getElementById('voiceSelect');
     const sessionStatus = document.getElementById('session-status');
-    const testTextInput = document.getElementById('testTextInput');
-    const sendTextBtn = document.getElementById('sendTextBtn');
     const micBtn = document.getElementById('micBtn');
     const micStatus = document.getElementById('micStatus');
     const testMicBtn = document.getElementById('testMicBtn');
+    const themeToggle = document.getElementById('theme-toggle');
     
     // Global state
     let peerConnection = null;
@@ -25,6 +24,9 @@ document.addEventListener("DOMContentLoaded", function() {
     let isSessionActive = false;
     let ephemeralKey = null;
     let audioPlayer = new Audio();
+    
+    // Set dark mode as default
+    setDarkModeDefault();
     
     // Initialize debug panel
     if (typeof window.debugLog !== 'function') {
@@ -41,17 +43,9 @@ document.addEventListener("DOMContentLoaded", function() {
     // Setup event listeners
     startBtn.addEventListener('click', startSession);
     stopBtn.addEventListener('click', stopSession);
-    sendTextBtn.addEventListener('click', sendTextMessage);
     micBtn.addEventListener('click', toggleMicrophone);
     clearBtn.addEventListener('click', clearTranscript);
     testMicBtn.addEventListener('click', testMicrophone);
-    
-    // Send text message with Enter key
-    testTextInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendTextMessage();
-        }
-    });
     
     // Add transcript message
     function addTranscriptMessage(message, type) {
@@ -376,7 +370,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
                 micBtn.disabled = false;
-                sendTextBtn.disabled = false;
                 
                 // Add session message
                 addTranscriptMessage("Session started with " + characterSelect.value, "system");
@@ -602,44 +595,8 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Send text message
     function sendTextMessage() {
-        if (!isSessionActive || !dataChannel || dataChannel.readyState !== "open") {
-            addTranscriptMessage("Cannot send message: No active session", "error");
-            return;
-        }
-        
-        const text = testTextInput.value.trim();
-        if (!text) return;
-        
-        try {
-            // Add to transcript
-            addTranscriptMessage(text, "user");
-            
-            // Create the message
-            const message = {
-                event_id: `event_${Date.now()}`,
-                type: "conversation.item.create",
-                item: {
-                    type: "message",
-                    role: "user",
-                    content: [
-                        {
-                            type: "input_text",
-                            text: text
-                        }
-                    ]
-                }
-            };
-            
-            // Send the message
-            dataChannel.send(JSON.stringify(message));
-            debugLog(`Sent text message: ${text}`);
-            
-            // Clear input
-            testTextInput.value = '';
-        } catch (error) {
-            console.error("Error sending message:", error);
-            debugLog(`Error sending message: ${error.message}`, "error");
-        }
+        // This function is no longer needed since we removed the text input field
+        console.log("Text messaging disabled");
     }
     
     // Send voice preference
@@ -768,7 +725,6 @@ document.addEventListener("DOMContentLoaded", function() {
         startBtn.disabled = false;
         stopBtn.disabled = true;
         micBtn.disabled = true;
-        sendTextBtn.disabled = true;
         
         // Reset mic UI
         micBtn.classList.remove('listening');
@@ -781,5 +737,36 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         debugLog("Session stopped");
+    }
+    
+    // Update theme toggle icon based on current mode
+    function updateThemeToggleIcon() {
+        if (!themeToggle) return; // Skip if theme toggle doesn't exist
+        
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        themeToggle.innerHTML = isDarkMode 
+            ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>'
+            : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+    }
+    
+    // Set dark mode as default or load from localStorage
+    function setDarkModeDefault() {
+        const isDarkMode = localStorage.getItem('darkMode');
+        if (isDarkMode === null) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('darkMode', 'true');
+        } else {
+            document.body.classList.toggle('dark-mode', isDarkMode === 'true');
+        }
+        updateThemeToggleIcon();
+    }
+    
+    // Toggle theme when clicking theme button
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            updateThemeToggleIcon();
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        });
     }
 }); 

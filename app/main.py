@@ -12,19 +12,11 @@ from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
-# Import the OpenAI Realtime API functions
-from .realtime_sessions import (
-    RealtimeSession,
-    create_realtime_session,
-    active_sessions,
-    broadcast_to_session_clients
-)
 import logging
 from threading import Thread
 import uuid
 import base64
 from typing import Dict, List, Any, Optional, Callable
-import websockets
 import time
 
 # Configure logging
@@ -374,6 +366,13 @@ async def proxy_openai_realtime(request: Request):
         logger.error(f"Error proxying to OpenAI: {e}")
         return HTTPException(status_code=500, detail=f"Error proxying to OpenAI: {str(e)}")
 
+# Redirect old OpenAI Realtime endpoint to WebRTC implementation
+@app.get("/openai_realtime")
+async def openai_realtime(request: Request):
+    """Redirect to WebRTC implementation"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/webrtc_realtime")
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -443,42 +442,6 @@ async def enhanced_websocket_endpoint(websocket: WebSocket):
         # Still remove the client to prevent resource leaks
         remove_client(websocket)
 
-# OpenAI Realtime route (real-time voice chat)
-@app.get("/openai_realtime")
-async def get_openai_realtime(request: Request):
-    """
-    Serves the OpenAI Realtime API page for real-time voice conversations.
-    """
-    try:
-        # Get characters from characters folder
-        characters = []
-        if os.path.exists(characters_folder):
-            characters = [d for d in os.listdir(characters_folder) 
-                        if os.path.isdir(os.path.join(characters_folder, d))]
-        
-        # Provide a fallback if no characters found
-        if not characters:
-            characters = ["assistant"]
-            logger.warning("No character folders found, using fallback assistant")
-            
-        return templates.TemplateResponse(
-            "openai_realtime.html", 
-            {
-                "request": request,
-                "characters": characters,
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error rendering OpenAI Realtime page: {e}")
-        # Fallback with minimal context
-        return templates.TemplateResponse(
-            "openai_realtime.html", 
-            {
-                "request": request,
-                "characters": ["assistant"],
-            }
-        )
-
 # WebRTC OpenAI Realtime route (direct WebRTC implementation)
 @app.get("/webrtc_realtime")
 async def get_webrtc_realtime(request: Request):
@@ -515,258 +478,10 @@ async def get_webrtc_realtime(request: Request):
             }
         )
 
-@app.websocket("/ws_openai_realtime")
-async def openai_realtime_websocket_endpoint(websocket: WebSocket):
-    """
-    WebSocket endpoint for OpenAI Realtime API communication.
-    Handles real-time audio streaming and direct WebSocket connections to OpenAI.
-    """
-    await websocket.accept()
-    
-    # Generate a unique client ID
-    client_id = str(uuid.uuid4())
-    
-    # Create message queues for this client
-    send_queue = asyncio.Queue()
-    
-    # Reference to the active session for this client
-    active_session = None
-    
-    async def handle_client_messages(websocket, send_queue, client_id):
-        """Handle messages from the client."""
-        nonlocal active_session
-        
-        while True:
-            try:
-                # Receive message from client
-                message_data = await websocket.receive()
-                logging.info(f"Received message from client: {message_data}")
-                
-                # Parse the message
-                if isinstance(message_data, dict) and "text" in message_data:
-                    # It's a text message
-                    message = json.loads(message_data["text"])
-                elif isinstance(message_data, dict) and "bytes" in message_data:
-                    # It's binary data
-                    if active_session:
-                        await active_session.process_audio_chunk(message_data["bytes"])
-                    continue
-                elif isinstance(message_data, str):
-                    # It's a string message
-                    message = json.loads(message_data)
-                else:
-                    # Unknown message format
-                    continue
-                    
-                # Handle different message types
-                if message.get("type") == "start_session" or message.get("action") == "create_session":
-                    # Close existing session if there is one
-                    if active_session:
-                        active_session.close()
-                    
-                    # Create a new session
-                    character = message.get("character", "assistant")
-                    voice = message.get("voice", "alloy")
-                    
-                    try:
-                        active_session = RealtimeSession(character=character, voice=voice)
-                        await active_session.start()
-                        
-                        # Send session created message
-                        await send_queue.put({
-                            "type": "session_created",
-                            "session_id": active_session.session_id
-                        })
-                        
-                        # Register message handler
-                        active_session.set_message_callback(
-                            lambda msg: send_queue.put_nowait(msg)
-                        )
-                        
-                    except Exception as e:
-                        logging.error(f"Error starting session: {str(e)}")
-                        await send_queue.put({
-                            "type": "error",
-                            "message": f"Failed to start session: {str(e)}"
-                        })
-                
-                elif message.get("type") == "stop_session" or message.get("action") == "close_session":
-                    # Close the session
-                    if active_session:
-                        active_session.close()
-                        active_session = None
-                        await send_queue.put({"type": "session_closed"})
-                
-                elif message.get("type") == "text" or message.get("action") == "send_text":
-                    # Send text message to the session
-                    if active_session:
-                        text = message.get("text", "")
-                        if text:
-                            await active_session.send_text(text)
-                    else:
-                        await send_queue.put({
-                            "type": "error",
-                            "message": "No active session"
-                        })
-
-                # Debug commands
-                elif message.get("type") == "debug" or message.get("action") == "debug":
-                    cmd = message.get("command", "").lower()
-                    
-                    if cmd == "status":
-                        # Return status of current session
-                        status_info = {
-                            "type": "debug_info",
-                            "active_session": bool(active_session),
-                            "timestamp": time.time()
-                        }
-                        
-                        if active_session:
-                            status_info.update({
-                                "session_id": active_session.session_id,
-                                "session_active": active_session.active,
-                                "session_created_at": active_session.created_at,
-                                "session_last_activity": active_session.last_activity,
-                                "user_speaking": active_session.user_is_speaking,
-                                "ai_speaking": active_session.ai_is_speaking,
-                                "character": active_session.character,
-                                "model": active_session.model,
-                                "voice": active_session.voice,
-                                "websocket_connected": bool(active_session.ws and active_session.ws.sock and active_session.ws.sock.connected)
-                            })
-                        
-                        await send_queue.put(status_info)
-                    
-                    elif cmd == "toggle_audio_debug":
-                        # Toggle audio debugging
-                        import os
-                        current = os.environ.get("DEBUG_AUDIO", "false").lower() == "true"
-                        os.environ["DEBUG_AUDIO"] = str(not current).lower()
-                        
-                        await send_queue.put({
-                            "type": "debug_info",
-                            "message": f"Audio debugging {'disabled' if current else 'enabled'}"
-                        })
-                    
-                    elif cmd == "toggle_websocket_debug":
-                        # Toggle websocket debugging
-                        import os
-                        current = os.environ.get("DEBUG_WEBSOCKET", "false").lower() == "true"
-                        os.environ["DEBUG_WEBSOCKET"] = str(not current).lower()
-                        
-                        await send_queue.put({
-                            "type": "debug_info",
-                            "message": f"WebSocket debugging {'disabled' if current else 'enabled'}"
-                        })
-                    
-                    elif cmd == "help":
-                        # Show available debug commands
-                        await send_queue.put({
-                            "type": "debug_info",
-                            "message": "Available debug commands:\nstatus - Show session status\ntoggle_audio_debug - Toggle audio debugging\ntoggle_websocket_debug - Toggle WebSocket debugging\nhelp - Show this message"
-                        })
-                
-                elif message.get("type") == "audio" or message.get("action") == "send_audio":
-                    # Process audio data
-                    if active_session:
-                        audio_data = message.get("audio_data")
-                        if audio_data:
-                            try:
-                                # Convert base64 to binary
-                                binary_audio = base64.b64decode(audio_data)
-                                await active_session.process_audio_chunk(binary_audio)
-                            except Exception as e:
-                                logging.error(f"Error processing audio: {str(e)}")
-                    else:
-                        await send_queue.put({
-                            "type": "error",
-                            "message": "No active session"
-                        })
-                
-            except json.JSONDecodeError as e:
-                logging.error(f"Invalid JSON: {str(e)}")
-                await send_queue.put({
-                    "type": "error",
-                    "message": "Invalid message format"
-                })
-            except websockets.exceptions.ConnectionClosedOK:
-                # Connection closed normally
-                break
-            except websockets.exceptions.ConnectionClosedError:
-                # Connection closed with error
-                break
-            except Exception as e:
-                logging.error(f"Error handling client message: {str(e)}")
-                await send_queue.put({
-                    "type": "error",
-                    "message": f"Error processing message: {str(e)}"
-                })
-                break
-
-    async def handle_server_messages(websocket, send_queue):
-        """Send messages from the queue to the client."""
-        while True:
-            message = await send_queue.get()
-            try:
-                await websocket.send_json(message)
-            except Exception as e:
-                logging.error(f"Error sending message to client: {str(e)}")
-                break
-    
-    try:
-        # Start the tasks for handling messages
-        client_task = asyncio.create_task(handle_client_messages(websocket, send_queue, client_id))
-        server_task = asyncio.create_task(handle_server_messages(websocket, send_queue))
-        
-        # Wait for either task to complete (or raise an exception)
-        done, pending = await asyncio.wait(
-            [client_task, server_task],
-            return_when=asyncio.FIRST_COMPLETED
-        )
-        
-        # Cancel any pending tasks
-        for task in pending:
-            task.cancel()
-            
-        # Check for exceptions in completed tasks
-        for task in done:
-            try:
-                await task
-            except Exception as e:
-                logging.error(f"Task error: {str(e)}")
-                
-    except Exception as e:
-        logging.error(f"WebSocket error: {str(e)}")
-    
-    finally:
-        # Close the active session if it exists
-        if active_session:
-            try:
-                active_session.close()  # Use synchronous close
-                await send_queue.put({"type": "session_closed"})
-            except Exception as e:
-                logging.error(f"Error closing session: {str(e)}")
-        
-        # Close the WebSocket connection
-        try:
-            await websocket.close()
-        except Exception as e:
-            logging.error(f"Error closing WebSocket: {str(e)}")
-
 def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')
     
     try:
-        # First, close all active realtime sessions
-        if active_sessions:
-            print(f"Closing {len(active_sessions)} active realtime sessions...")
-            for session_id, session in list(active_sessions.items()):
-                print(f"Closing realtime session: {session_id}")
-                try:
-                    session.close()  # Synchronous close
-                except Exception as e:
-                    print(f"Error closing session {session_id}: {e}")
-        
         # Stop any active enhanced conversation
         try:
             # For async shutdown in sync context, create a new event loop
@@ -813,61 +528,3 @@ if __name__ == "__main__":
         print("\nServer stopped by keyboard interrupt.")
     finally:
         print("Shutdown complete.")
-
-# Define missing functions
-async def broadcast_to_session_clients(session_id, message):
-    """Broadcast a message to all clients connected to a session"""
-    from .realtime_sessions import active_sessions
-    
-    if session_id in active_sessions:
-        session = active_sessions[session_id]
-        for client_queue in session.client_connections:
-            try:
-                await client_queue.put(message)
-            except Exception as e:
-                logger.error(f"Error broadcasting message to client: {e}")
-
-async def create_realtime_session(character, model=None, voice=None, client_id=None):
-    """Create a new realtime session - wrapper for RealtimeSession"""
-    from .realtime_sessions import RealtimeSession, active_sessions
-    from .app_logic import load_character_prompt
-    
-    try:
-        # Use defaults if not provided
-        model = model or os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview-2024-12-17")
-        voice = voice or "alloy"
-        
-        # Load character instructions
-        character_instructions = load_character_prompt(character)
-        
-        # Create session ID
-        session_id = f"realtime_{uuid.uuid4().hex}"
-        
-        # Initialize session
-        session = RealtimeSession(
-            session_id=session_id,
-            character=character,
-            model=model, 
-            voice=voice
-        )
-        
-        # Start session
-        if await session.start():
-            # Register session
-            active_sessions[session_id] = session
-            
-            # Add client if specified
-            if client_id and client_id in client_queues:
-                session.client_connections.add(client_queues[client_id])
-            
-            logger.info(f"Created realtime session: {session_id}")
-            return session_id
-        else:
-            logger.error("Failed to start realtime session")
-            return None
-    except Exception as e:
-        logger.error(f"Error creating realtime session: {e}")
-        return None
-
-# Define a client queue dictionary
-client_queues = {}
