@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAI Realtime with WebRTC</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Voice visualization styles */
+        .voice-visualization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            margin: 10px 0;
+            gap: 4px;
+        }
+        
+        .voice-bar {
+            width: 6px;
+            height: 5px; /* Default height when not active */
+            background-color: #ccc;
+            border-radius: 3px;
+            transition: height 0.1s ease;
+        }
+        
+        .active-bar {
+            background-color: #00cc66;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Make sure the voice-visualization containers are pre-populated with bars */
+        #userVoiceVisualization:empty::before,
+        #aiVoiceVisualization:empty::before {
+            content: "";
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        
+        /* Transcript styles */
+        .transcript-container {
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #1a1a1a;
+        }
+        
+        .system-message {
+            color: #888;
+            font-style: italic;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        
+        .error-message {
+            color: #ff5555;
+            margin: 5px 0;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .user-speech {
+            color: #55aaff;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        
+        .ai-speech {
+            color: #55ff55;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <div class="container mt-4">
+        <div class="card bg-dark text-white">
+            <div class="card-header">
+                <h2>OpenAI Realtime API with WebRTC</h2>
+                <p>This feature uses OpenAI's new WebRTC Realtime API for continuous voice streaming. Speak naturally with the AI with minimal latency.</p>
+                <div class="d-flex align-items-center">
+                    <span class="mr-2">Session Status:</span>
+                    <span id="session-status" class="badge badge-secondary">Inactive</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <button id="startBtn" class="btn btn-success btn-block">Start Session</button>
+                    </div>
+                    <div class="col-md-4">
+                        <button id="stopBtn" class="btn btn-danger btn-block" disabled>Stop Session</button>
+                    </div>
+                    <div class="col-md-4">
+                        <button id="clearBtn" class="btn btn-secondary btn-block">Clear Transcript</button>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-12 text-center">
+                        <button id="testMicBtn" class="btn btn-info">Test Microphone</button>
+                        <div id="micTestResult" class="mt-2 text-center" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <!-- Add text input field for testing -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-group">
+                            <input type="text" id="testTextInput" class="form-control" placeholder="Type a message to test communication...">
+                            <div class="input-group-append">
+                                <button id="sendTextBtn" class="btn btn-primary" disabled>Send Text</button>
+                            </div>
+                        </div>
+                        <small class="text-muted">Use this to test if OpenAI is responding without microphone issues</small>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="characterSelect">Speaking as Character:</label>
+                        <select id="characterSelect" class="form-control">
+                            {% for character in characters %}
+                            <option value="{{ character }}">{{ character|replace('_', ' ')|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="voiceSelect">Voice:</label>
+                        <select id="voiceSelect" class="form-control">
+                            <option value="alloy">Alloy - female</option>
+                            <option value="echo">Echo - male</option>
+                            <option value="fable">Fable - female</option>
+                            <option value="onyx">Onyx - male</option>
+                            <option value="nova">Nova - female</option>
+                            <option value="shimmer">Shimmer - female</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <p>Press the microphone button and start speaking. The AI will respond naturally as your conversation flows.</p>
+                
+                <div class="text-center mb-4">
+                    <button id="micBtn" class="btn btn-primary rounded-circle" style="width: 80px; height: 80px; font-size: 24px" disabled>
+                        <i class="fa fa-microphone"></i>
+                    </button>
+                    <div id="micStatus" class="mt-2">Click to speak</div>
+                    
+                    <!-- User voice visualization -->
+                    <div id="userVoiceVisualization" class="voice-visualization hidden">
+                        <!-- Voice bars will be added here -->
+                        <div class="voice-bar"></div>
+                        <div class="voice-bar"></div>
+                        <div class="voice-bar"></div>
+                        <div class="voice-bar"></div>
+                        <div class="voice-bar"></div>
+                        <div class="voice-bar"></div>
+                        <div class="voice-bar"></div>
+                        <div class="voice-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- Horizontal dots -->
+                <div class="text-center mb-3">
+                    <span class="dots">
+                        {% for i in range(8) %}
+                        <span class="dot">•</span>
+                        {% endfor %}
+                    </span>
+                </div>
+                
+                <div class="card bg-dark">
+                    <div class="card-header">
+                        <h5>Conversation Transcript</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="transcript" class="transcript-container">
+                            <div class="system-message">Connected to server</div>
+                            <div class="system-message">Click 'Start Session' to begin</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI voice visualization -->
+                <div id="aiVoiceVisualization" class="voice-visualization mt-3 hidden">
+                    <!-- Voice bars will be added here -->
+                    <div class="voice-bar"></div>
+                    <div class="voice-bar"></div>
+                    <div class="voice-bar"></div>
+                    <div class="voice-bar"></div>
+                    <div class="voice-bar"></div>
+                    <div class="voice-bar"></div>
+                    <div class="voice-bar"></div>
+                    <div class="voice-bar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Include debug panel script and main script -->
+    <script src="{{ url_for('static', path='js/debug_panel.js') }}"></script>
+    <script src="{{ url_for('static', path='js/webrtc_realtime.js') }}"></script>
+</body>
+</html> 

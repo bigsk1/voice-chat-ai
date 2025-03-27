@@ -262,3 +262,35 @@ def save_conversation_history(conversation_history):
         logging.error(f"Error saving conversation history: {e}")
         return {"status": "error", "message": str(e)}
     return {"status": "success"}
+
+def is_client_active(client):
+    """Check if a client is still active"""
+    # This is a placeholder - implement connection checking as needed
+    return True
+
+def load_character_prompt(character_name):
+    """
+    Load the character prompt from the character's text file.
+    
+    Args:
+        character_name (str): The name of the character folder.
+        
+    Returns:
+        str: The character prompt text.
+    """
+    try:
+        character_file_path = os.path.join(characters_folder, character_name, f"{character_name}.txt")
+        if not os.path.exists(character_file_path):
+            print(f"Character file not found: {character_file_path}")
+            # Return a default prompt for the assistant character
+            return "You are a helpful AI assistant."
+            
+        with open(character_file_path, 'r', encoding='utf-8') as file:
+            character_prompt = file.read()
+            
+        print(f"Loaded character prompt for {character_name}: {len(character_prompt)} chars")
+        return character_prompt
+    except Exception as e:
+        print(f"Error loading character prompt: {e}")
+        # Return a default prompt for the assistant character
+        return "You are a helpful AI assistant."

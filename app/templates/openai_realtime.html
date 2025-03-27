@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Voice Chat AI with OpenAI Realtime API">
+    <meta name="keywords" content="AI, voice chat, OpenAI, GPT-4o, real-time conversations">
+    <meta name="author" content="bigsk1">
+    <title>Voice Chat AI - OpenAI Realtime API</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+    <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* OpenAI Realtime API specific styles */
+        .control-button {
+            margin: 0 8px;
+        }
+        
+        /* Match button size with main page */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .controls button {
+            padding: 0.5rem 1rem;
+            flex-grow: 1;
+            max-width: 200px;
+            font-size: 1rem;
+        }
+        
+        /* Message types */
+        .system-message {
+            color: #777;
+            font-size: 0.9rem;
+            text-align: center;
+            margin: 0.5rem 0;
+            font-style: italic;
+        }
+        
+        .error-message {
+            color: #d9534f;
+            background-color: rgba(217, 83, 79, 0.1);
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            font-weight: bold;
+        }
+        
+        /* Big microphone button for central voice interaction */
+        .big-mic-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            font-size: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .big-mic-button:hover {
+            background-color: #0069d9;
+            transform: scale(1.05);
+        }
+        
+        .big-mic-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .big-mic-button.listening {
+            background-color: #28a745;
+            animation: pulse 1.5s infinite;
+        }
+        
+        /* Voice activity visualization */
+        .voice-activity {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            margin: 20px 0;
+        }
+        
+        .voice-bar {
+            background-color: #4CAF50;
+            width: 6px;
+            height: 10px;
+            margin: 0 3px;
+            border-radius: 3px;
+            transition: height 0.1s ease;
+        }
+        
+        .voice-visualization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            margin: 10px 0;
+            gap: 4px;
+        }
+        
+        .activity-label {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #aaa;
+        }
+        
+        /* Audio waveform animation */
+        @keyframes audio-wave {
+            0% { height: 5px; }
+            50% { height: 40px; }
+            100% { height: 5px; }
+        }
+        
+        .active-bar {
+            background-color: #00cc66;
+        }
+        
+        /* Session status badge */
+        .session-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin: 0 8px;
+        }
+        
+        .session-status.active {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .session-status.inactive {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        /* Transcript area */
+        .transcript-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #222;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+        
+        .transcript-title {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #ccc;
+        }
+        
+        .user-speech {
+            color: #66b3ff;
+            margin-bottom: 5px;
+        }
+        
+        .ai-speech {
+            color: #6EE7B7;
+            margin-bottom: 10px;
+        }
+        
+        /* Feature highlight */
+        .feature-highlight {
+            background-color: #1a2433;
+            border-left: 4px solid #007bff;
+            padding: 10px 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        /* Instructions */
+        .instructions {
+            margin: 15px 0;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        /* Pulse animation for active recording */
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Hidden elements */
+        .hidden {
+            display: none;
+        }
+        
+        /* Dark mode specific styles */
+        .dark-mode .feature-highlight {
+            background-color: #1a2433;
+            border-left-color: #007bff;
+        }
+        
+        .dark-mode .transcript-container {
+            background-color: #222;
+            border-color: #333;
+        }
+        
+        .dark-mode .transcript-title {
+            color: #ccc;
+        }
+        
+        /* Character and voice selection */
+        .setting-group {
+            margin-bottom: 1rem;
+        }
+        
+        .settings-select {
+            padding: 0.5rem;
+            border-radius: 4px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+        }
+        
+        /* Status display */
+        .status-display {
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+        
+        /* Additional styles for voice visualization */
+        .voice-visualization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            margin: 10px 0;
+            gap: 4px;
+        }
+        
+        .voice-bar {
+            width: 6px;
+            height: 5px; /* Default height when not active */
+            background-color: #ccc;
+            border-radius: 3px;
+            transition: height 0.1s ease;
+        }
+        
+        .active-bar {
+            background-color: #00cc66;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Make sure the voice-visualization containers are pre-populated with bars */
+        #userVoiceVisualization:empty::before,
+        #aiVoiceVisualization:empty::before {
+            content: "";
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body class="dark-mode">
+    <header>
+        <h1>
+            Voice Chat AI
+            <div id="mic-icon" class="mic-off">&#x1F399;</div>
+        </h1>
+        <div class="header-controls">
+            <button id="theme-toggle" aria-label="Toggle dark/light mode">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="/">Dashboard</a></li>
+                    <li><a href="/enhanced">OpenAI Enhanced</a></li>
+                    <li><a href="/openai_realtime" class="active">OpenAI Realtime</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <main>
+        <div class="app-container">
+            <div class="feature-highlight">
+                <h3>OpenAI Realtime API Voice Conversation</h3>
+                <p>This feature uses OpenAI's new Realtime API for continuous voice streaming. Speak naturally with the AI with minimal latency.</p>
+                <p class="status-display">Session Status: <span id="session-status" class="session-status inactive">No Session</span></p>
+            </div>
+            
+            <div class="controls">
+                <button id="startBtn" class="control-button">Start Session</button>
+                <button id="stopBtn" class="control-button" disabled>Stop Session</button>
+                <button id="clearBtn" class="control-button">Clear Transcript</button>
+            </div>
+            
+            <div class="setting-group">
+                <label for="characterSelect">Speaking as Character:</label>
+                <select id="characterSelect" class="settings-select">
+                    {% for character in characters %}
+                    <option value="{{ character }}">{{ character|replace('_', ' ')|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label for="voiceSelect">Voice:</label>
+                <select id="voiceSelect" class="settings-select">
+                    <option value="alloy">Alloy - female</option>
+                    <option value="echo">Echo - male</option>
+                    <option value="fable">Fable - male</option>
+                    <option value="onyx">Onyx - male</option>
+                    <option value="nova">Nova - female</option>
+                    <option value="shimmer">Shimmer - female</option>
+                </select>
+            </div>
+            
+            <div class="instructions">
+                <p>Press the microphone button and start speaking. The AI will respond naturally as your conversation flows.</p>
+            </div>
+            
+            <!-- Big central microphone button -->
+            <button id="micBtn" class="big-mic-button" disabled>
+                <i class="material-icons">mic</i>
+            </button>
+            
+            <p id="micStatus" class="activity-label">Click to speak</p>
+            
+            <!-- Voice activity visualization - user -->
+            <div class="voice-visualization" id="userVoiceVisualization">
+                <div class="voice-bar" style="--i: 0"></div>
+                <div class="voice-bar" style="--i: 1"></div>
+                <div class="voice-bar" style="--i: 2"></div>
+                <div class="voice-bar" style="--i: 3"></div>
+                <div class="voice-bar" style="--i: 4"></div>
+                <div class="voice-bar" style="--i: 5"></div>
+                <div class="voice-bar" style="--i: 6"></div>
+                <div class="voice-bar" style="--i: 7"></div>
+                <div class="voice-bar" style="--i: 8"></div>
+            </div>
+            
+            <!-- Voice activity visualization - AI -->
+            <div class="voice-visualization" id="aiVoiceVisualization">
+                <div class="voice-bar" style="--i: 8"></div>
+                <div class="voice-bar" style="--i: 7"></div>
+                <div class="voice-bar" style="--i: 6"></div>
+                <div class="voice-bar" style="--i: 5"></div>
+                <div class="voice-bar" style="--i: 4"></div>
+                <div class="voice-bar" style="--i: 3"></div>
+                <div class="voice-bar" style="--i: 2"></div>
+                <div class="voice-bar" style="--i: 1"></div>
+                <div class="voice-bar" style="--i: 0"></div>
+            </div>
+            
+            <!-- Transcript section -->
+            <div class="transcript-container">
+                <div class="transcript-title">Conversation Transcript</div>
+                <div id="transcript"></div>
+            </div>
+        </div>
+    </main>
+    
+    <audio id="audioPlayer" style="display: none;"></audio>
+    
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <button id="startBtn" class="btn btn-success btn-block">Start Session</button>
+        </div>
+        <div class="col-md-4">
+            <button id="stopBtn" class="btn btn-danger btn-block" disabled>Stop Session</button>
+        </div>
+        <div class="col-md-4">
+            <button id="clearBtn" class="btn btn-secondary btn-block">Clear Transcript</button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12 text-center">
+            <button id="testMicBtn" class="btn btn-info">Test Microphone</button>
+            <div id="micTestResult" class="mt-2 text-center" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Add text input field for testing -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="input-group">
+                <input type="text" id="testTextInput" class="form-control" placeholder="Type a message to test communication...">
+                <div class="input-group-append">
+                    <button id="sendTextBtn" class="btn btn-primary">Send Text</button>
+                </div>
+            </div>
+            <small class="text-muted">Use this to test if OpenAI is responding without microphone issues</small>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', path='js/openai_realtime.js') }}"></script>
+</body>
+</html> 

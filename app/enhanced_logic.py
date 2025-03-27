@@ -32,6 +32,34 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"  # Control detailed debug 
 # Quit phrases that will stop the conversation when detected
 QUIT_PHRASES = ["quit", "exit", "leave", "end", "bye", "goodbye"]
 
+def load_character_prompt(character_name):
+    """
+    Load the character prompt from the character's text file.
+    
+    Args:
+        character_name (str): The name of the character folder.
+        
+    Returns:
+        str: The character prompt text.
+    """
+    try:
+        character_file_path = os.path.join(characters_folder, character_name, f"{character_name}.txt")
+        if not os.path.exists(character_file_path):
+            if DEBUG:
+                print(f"Character file not found: {character_file_path}")
+            return None
+            
+        with open(character_file_path, 'r', encoding='utf-8') as file:
+            character_prompt = file.read()
+            
+        if DEBUG:
+            print(f"Loaded character prompt for {character_name}: {len(character_prompt)} chars")
+            
+        return character_prompt
+    except Exception as e:
+        print(f"Error loading character prompt: {e}")
+        return None
+
 async def send_message_to_enhanced_clients(message):
     """Send message to clients using the enhanced websocket."""
     for client in clients:
