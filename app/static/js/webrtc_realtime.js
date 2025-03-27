@@ -92,7 +92,24 @@ document.addEventListener("DOMContentLoaded", function() {
     // Test microphone function
     async function testMicrophone() {
         try {
+            console.log("Testing microphone...");
+            debugLog("Starting microphone test...", "info");
+            
+            // Use direct debug messaging
+            if (window.forceDebugMessage) {
+                window.forceDebugMessage("Starting microphone test...", "info");
+            }
+            
             const micTestResult = document.getElementById('micTestResult');
+            if (!micTestResult) {
+                console.error("micTestResult element not found in DOM");
+                debugLog("Error: micTestResult element not found in DOM", "error");
+                if (window.forceDebugMessage) {
+                    window.forceDebugMessage("Error: micTestResult element not found in DOM", "error");
+                }
+                return;
+            }
+            
             micTestResult.textContent = "Testing microphone...";
             micTestResult.style.display = "block";
             
@@ -105,6 +122,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     autoGainControl: true
                 }
             });
+            
+            debugLog("Microphone access granted", "success");
             
             // Create audio context
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -122,7 +141,9 @@ document.addEventListener("DOMContentLoaded", function() {
             let peakVolume = 0;
             let testDuration = 0;
             const testStartTime = Date.now();
-            const testTimeout = 3000; // 3 seconds
+            const testTimeout = 3000;
+            
+            debugLog("Audio processing pipeline ready", "info");
             
             scriptProcessor.onaudioprocess = function() {
                 const array = new Uint8Array(analyser.frequencyBinCount);
@@ -138,6 +159,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Update peak volume
                 if (average > peakVolume) {
                     peakVolume = average;
+                    debugLog(`New peak volume: ${Math.round(peakVolume)}`, "data");
                 }
                 
                 // Animate mic test UI
@@ -157,15 +179,16 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (peakVolume < 10) {
                         micTestResult.textContent = `Microphone test complete. Peak volume: ${Math.round(peakVolume)}. WARNING: Very low volume detected. Check your microphone.`;
                         micTestResult.style.color = "#ff0000";
+                        debugLog(`Microphone test complete. Peak volume: ${Math.round(peakVolume)}. WARNING: Very low volume detected.`, "warning");
                     } else if (peakVolume < 30) {
                         micTestResult.textContent = `Microphone test complete. Peak volume: ${Math.round(peakVolume)}. Low volume detected. Consider adjusting your microphone.`;
                         micTestResult.style.color = "#ff8800";
+                        debugLog(`Microphone test complete. Peak volume: ${Math.round(peakVolume)}. Low volume detected.`, "warning");
                     } else {
                         micTestResult.textContent = `Microphone test complete. Peak volume: ${Math.round(peakVolume)}. Your microphone is working properly.`;
                         micTestResult.style.color = "#00cc00";
+                        debugLog(`Microphone test complete. Peak volume: ${Math.round(peakVolume)}. Microphone is working properly.`, "success");
                     }
-                    
-                    debugLog(`Microphone test complete. Peak volume: ${Math.round(peakVolume)}`, "info");
                     
                     // Close audio context
                     if (audioContext.state !== 'closed') {
@@ -186,6 +209,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     
                     micTestResult.textContent = "Microphone test timed out. Try again.";
                     micTestResult.style.color = "#ff0000";
+                    debugLog("Microphone test timed out", "error");
                     
                     // Close audio context
                     if (audioContext.state !== 'closed') {
@@ -197,9 +221,11 @@ document.addEventListener("DOMContentLoaded", function() {
         } catch (error) {
             console.error("Microphone test error:", error);
             const micTestResult = document.getElementById('micTestResult');
-            micTestResult.textContent = `Microphone access error: ${error.message}`;
-            micTestResult.style.display = "block";
-            micTestResult.style.color = "#ff0000";
+            if (micTestResult) {
+                micTestResult.textContent = `Microphone access error: ${error.message}`;
+                micTestResult.style.display = "block";
+                micTestResult.style.color = "#ff0000";
+            }
             
             debugLog(`Microphone test error: ${error.message}`, "error");
         }
@@ -261,16 +287,23 @@ document.addEventListener("DOMContentLoaded", function() {
             // Add event listeners for connection status
             peerConnection.oniceconnectionstatechange = () => {
                 console.log("ICE connection state changed to:", peerConnection.iceConnectionState);
+                debugLog(`ICE connection state changed to: ${peerConnection.iceConnectionState}`, "event");
             };
             
             peerConnection.onicecandidate = (event) => {
                 console.log("ICE candidate event:", event.candidate ? "new candidate" : "all candidates gathered");
+                if (event.candidate) {
+                    debugLog("New ICE candidate gathered", "info");
+                } else {
+                    debugLog("All ICE candidates gathered", "success");
+                }
             };
             
             // Setup audio playback
             audioPlayer.autoplay = true;
             peerConnection.ontrack = e => {
                 console.log(`Received ${e.track.kind} track from OpenAI`);
+                debugLog(`Received ${e.track.kind} track from OpenAI`, "success");
                 audioPlayer.srcObject = e.streams[0];
             };
             
@@ -443,6 +476,53 @@ document.addEventListener("DOMContentLoaded", function() {
             console.log("Audio track:", audioTrack.label, "- enabled:", audioTrack.enabled);
             peerConnection.addTrack(audioTrack, micStream);
             
+            // Add debug logging for microphone activity
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            const microphone = audioContext.createMediaStreamSource(micStream);
+            const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+            
+            analyser.smoothingTimeConstant = 0.8;
+            analyser.fftSize = 1024;
+            
+            microphone.connect(analyser);
+            analyser.connect(scriptProcessor);
+            scriptProcessor.connect(audioContext.destination);
+            
+            let lastLogTime = 0;
+            
+            scriptProcessor.onaudioprocess = function() {
+                const array = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(array);
+                
+                // Get average volume
+                let values = 0;
+                for (let i = 0; i < array.length; i++) {
+                    values += array[i];
+                }
+                const average = values / array.length;
+                
+                // Log microphone activity every second if volume is above threshold
+                const now = Date.now();
+                if (average > 10 && now - lastLogTime > 1000) {
+                    // Force visibility for this important message
+                    if (window.debugPanel) {
+                        window.debugPanel.style.display = 'block';
+                        if (window.debugPanelToggle) {
+                            window.debugPanelToggle.style.display = 'none';
+                        }
+                    }
+                    
+                    // Use direct debug messaging for microphone activity
+                    if (window.forceDebugMessage) {
+                        window.forceDebugMessage(`Microphone active - volume level: ${Math.round(average)}`, "info");
+                    }
+                    
+                    debugLog(`Microphone active - volume level: ${Math.round(average)}`, "info");
+                    lastLogTime = now;
+                }
+            };
+            
             console.log("Microphone setup complete");
             return true;
         } catch (error) {
@@ -478,12 +558,40 @@ document.addEventListener("DOMContentLoaded", function() {
         
         dataChannel.onmessage = (event) => {
             try {
+                // Always make debug panel visible for important messages
+                if (window.debugPanel) {
+                    window.debugPanel.style.display = 'block';
+                    if (window.debugPanelToggle) {
+                        window.debugPanelToggle.style.display = 'none';
+                    }
+                }
+                
                 // Parse the message
                 const data = JSON.parse(event.data);
                 const messageType = data.type;
                 
                 // Hide waiting indicator whenever we get a response
                 showWaitingIndicator(false);
+                
+                // Use direct message display to ensure visibility
+                if (window.forceDebugMessage) {
+                    window.forceDebugMessage(`Received message type: ${messageType}`, "info");
+                    window.forceDebugMessage(`Message data: ${JSON.stringify(data).substring(0, 100)}...`, "data");
+                } else {
+                    // Fallback to regular debug log
+                    debugLog(`Received message type: ${messageType}`, "info");
+                }
+                
+                // Ensure this debug message is always shown
+                debugLog(`Received message type: ${messageType}`, "info");
+                
+                // Log full message for debugging with more visible type
+                if (window.debugPanel && window.debugPanel.style.display === 'none') {
+                    window.debugPanel = document.getElementById('debug-panel');
+                    if (window.debugPanel) {
+                        window.debugPanel.style.display = 'block';
+                    }
+                }
                 
                 // Log all messages for debugging
                 debugLog(`Received message: ${JSON.stringify(data)}`, "data");
@@ -496,6 +604,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     
                     if (text) {
                         addTranscriptMessage(text, "ai");
+                        // Add explicit debug log for AI speech
+                        debugLog(`AI responded: ${text}`, "success");
                     }
                     
                     // Show AI voice visualization during speech
@@ -521,7 +631,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     
                 } else if (messageType === "audio_buffer.meta.received") {
                     // Audio buffer meta info
-                    debugLog("Audio received by API", "info");
+                    debugLog("Audio received by API - user is speaking", "info");
                     // Show user voice visualization
                     userVoiceVisualization.classList.remove('hidden');
                     // Simulate voice bars animation
@@ -529,7 +639,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     
                 } else if (messageType === "audio_buffer.committed") {
                     // Audio buffer committed
-                    debugLog("Audio buffer committed", "success");
+                    debugLog("Audio buffer committed - user finished speaking", "success");
                     // Hide user voice visualization
                     userVoiceVisualization.classList.add('hidden');
                     
@@ -684,6 +794,19 @@ document.addEventListener("DOMContentLoaded", function() {
     // Toggle microphone
     function toggleMicrophone() {
         console.log("Toggle microphone called, session active:", isSessionActive);
+        // Force debug panel to be visible for this important action
+        if (window.debugPanel) {
+            window.debugPanel.style.display = 'block';
+            if (window.debugPanelToggle) {
+                window.debugPanelToggle.style.display = 'none';
+            }
+        }
+        
+        // Use direct message display to ensure visibility
+        if (window.forceDebugMessage) {
+            window.forceDebugMessage(`Toggling microphone. Session active: ${isSessionActive}`, "event");
+        }
+        
         debugLog("Toggling microphone. Session active: " + isSessionActive, "event");
         
         if (!isSessionActive) {

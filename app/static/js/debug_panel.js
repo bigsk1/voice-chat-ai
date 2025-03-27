@@ -148,6 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create toggle button
     const toggleButton = document.createElement('button');
     toggleButton.textContent = 'Debug Panel';
+    toggleButton.id = 'debug-panel-toggle';
     toggleButton.style.cssText = `
         position: fixed;
         bottom: 10px;
@@ -174,6 +175,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.body.appendChild(toggleButton);
     
+    // Store references to elements globally for easier access
+    window.debugPanel = debugPanel;
+    window.debugPanelToggle = toggleButton;
+    
     // Flag to prevent recursion
     let isLogging = false;
     
@@ -183,6 +188,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const log = document.getElementById('debug-log');
         if (!log) return;
+        
+        // Make sure debug panel is visible when logging 
+        const panel = document.getElementById('debug-panel');
+        if (panel && panel.style.display === 'none') {
+            panel.style.display = 'block';
+            // Use the global reference to the toggle button
+            if (window.debugPanelToggle) {
+                window.debugPanelToggle.style.display = 'none';
+            }
+        }
         
         const entry = document.createElement('div');
         
@@ -250,9 +265,26 @@ document.addEventListener('DOMContentLoaded', function() {
     window.debugLog = function(message, type = 'info') {
         isLogging = true;
         try {
+            // Force the debug panel to be visible
+            if (window.debugPanel) {
+                window.debugPanel.style.display = 'block';
+                if (window.debugPanelToggle) {
+                    window.debugPanelToggle.style.display = 'none';
+                }
+            }
+            
             internalLog(message, type);
             
-            // Show the debug panel automatically on error or if auto-show is enabled
+            // Always show the debug panel when a message is logged
+            const panel = document.getElementById('debug-panel');
+            if (panel) {
+                panel.style.display = 'block';
+                if (toggleButton) {
+                    toggleButton.style.display = 'none';
+                }
+            }
+            
+            // Original auto-show logic still kept as a fallback
             if ((type === 'error' || 
                 (document.getElementById('auto-show-debug') && document.getElementById('auto-show-debug').checked)) && 
                 document.getElementById('debug-panel').style.display === 'none') {
@@ -266,7 +298,65 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Log a startup message to verify the panel is working
     setTimeout(() => {
+        // Direct approach to show messages
+        const logElement = document.getElementById('debug-log');
+        if (logElement) {
+            const testEntry = document.createElement('div');
+            testEntry.style.color = '#55ff55';
+            testEntry.style.marginBottom = '3px';
+            testEntry.innerHTML = `<span style="color:#777">[${new Date().toLocaleTimeString()}]</span> Debug panel initialized and ready`;
+            logElement.appendChild(testEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        } else {
+            console.error("Could not find debug-log element");
+        }
+        
         window.debugLog('Debug panel initialized and ready', 'success');
+        
+        // Test the panel is working
+        window.forceDebugMessage = function(message, type = 'info') {
+            try {
+                const logElement = document.getElementById('debug-log');
+                if (!logElement) return;
+                
+                // Show panel
+                const panel = document.getElementById('debug-panel');
+                if (panel) {
+                    panel.style.display = 'block';
+                }
+                
+                // Create entry
+                const entry = document.createElement('div');
+                const timestamp = new Date().toLocaleTimeString();
+                
+                // Set color based on type
+                let color = '#aaffaa';
+                switch(type.toLowerCase()) {
+                    case 'error': color = '#ff5555'; break;
+                    case 'warning': color = '#ffaa55'; break;
+                    case 'success': color = '#55ff55'; break;
+                    case 'event': color = '#55aaff'; break;
+                    case 'data': color = '#aa55ff'; break;
+                }
+                
+                entry.style.color = color;
+                entry.style.marginBottom = '3px';
+                entry.innerHTML = `<span style="color:#777">[${timestamp}]</span> ${message}`;
+                
+                logElement.appendChild(entry);
+                logElement.scrollTop = logElement.scrollHeight;
+                
+                return true;
+            } catch (error) {
+                console.error("Force debug message error:", error);
+                return false;
+            }
+        };
+        
+        // Add initial messages
+        window.forceDebugMessage('Debug panel is now active', 'success');
+        window.forceDebugMessage('Test the microphone by clicking the Test Microphone button', 'info');
+        window.forceDebugMessage('Start a session to begin talking with the AI', 'info');
     }, 500);
     
     // Intercept console.log and other console methods
