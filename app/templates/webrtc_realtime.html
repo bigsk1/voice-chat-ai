@@ -300,7 +300,7 @@
             <div class="character-selection">
                 <div class="form-group">
                     <label for="character-select">Speaking as Character:</label>
-                    <select id="character-select" class="form-control">
+                    <select id="character-select" class="form-control" style="width: 300px; max-width: 100%;">
                         {% for character in characters %}
                         <option value="{{ character }}">{{ character }}</option>
                         {% endfor %}
@@ -309,7 +309,7 @@
                 
                 <div class="form-group">
                     <label for="voice-select">Voice:</label>
-                    <select id="voice-select" class="form-control">
+                    <select id="voice-select" class="form-control" style="width: 300px; max-width: 100%;">
                         <option value="alloy">Alloy - female</option>
                         <option value="echo">Echo - male</option>
                         <option value="fable">Fable - male</option>
@@ -343,8 +343,8 @@
             <!-- Waiting indicator - hidden by default and only shown when needed -->
             <div class="dots hidden" id="waitingIndicator"></div>
             
-            <h3>Conversation Transcript</h3>
-            <div id="transcript" class="transcript-container"></div>
+            <h3>Activity Log</h3>
+            <div id="transcript" class="transcript-container" style="height: 200px;"></div>
         </div>
     </main>
     
