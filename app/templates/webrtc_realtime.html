@@ -209,6 +209,50 @@
             flex: 1;
             min-width: 120px;
         }
+
+        /* New styles for better spacing and responsiveness */
+        .character-selection {
+            margin: 20px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .form-group select {
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #444;
+        }
+        
+        /* Make everything more responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .controls-row {
+                flex-direction: column;
+            }
+            
+            .controls-row button {
+                width: 100%;
+            }
+            
+            .mic-button {
+                width: 70px;
+                height: 70px;
+            }
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -250,81 +294,54 @@
                 <button id="testMicBtn" class="btn">Test Microphone</button>
             </div>
             
-            <div id="micTestResult" style="display: none; text-align: center; margin: 10px 0;"></div>
-            
-            <div class="select-container" style="margin-top: 15px; margin-bottom: 20px;">
-                <div class="select-row">
-                    <div class="select-group">
-                        <label for="characterSelect">Speaking as Character:</label>
-                        <select id="characterSelect" class="form-control">
-                            {% for character in characters %}
-                            <option value="{{ character }}">{{ character|replace('_', ' ')|title }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="select-group">
-                        <label for="voiceSelect">Voice:</label>
-                        <select id="voiceSelect" class="form-control">
-                            <option value="alloy">Alloy - female</option>
-                            <option value="echo">Echo - male</option>
-                            <option value="fable">Fable - female</option>
-                            <option value="onyx">Onyx - male</option>
-                            <option value="nova">Nova - female</option>
-                            <option value="shimmer">Shimmer - female</option>
-                        </select>
-                    </div>
+            <div class="character-selection">
+                <div class="form-group">
+                    <label for="character-select">Speaking as Character:</label>
+                    <select id="character-select" class="form-control">
+                        {% for character in characters %}
+                        <option value="{{ character }}">{{ character }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </div>
-            
-            <p style="margin-bottom: 25px;">Press the microphone button and start speaking. The AI will respond naturally as your conversation flows.</p>
-            
-            <div class="mic-button-container">
-                <button id="micBtn" class="mic-button" disabled>
-                    <i class="fa fa-microphone"></i>
-                </button>
-                <div id="micStatus">Click to speak</div>
                 
-                <!-- User voice visualization -->
-                <div id="userVoiceVisualization" class="voice-visualization hidden">
-                    <!-- Voice bars will be added here -->
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
+                <div class="form-group">
+                    <label for="voice-select">Voice:</label>
+                    <select id="voice-select" class="form-control">
+                        <option value="alloy">Alloy - female</option>
+                        <option value="echo">Echo - male</option>
+                        <option value="fable">Fable - male</option>
+                        <option value="onyx">Onyx - male</option>
+                        <option value="nova">Nova - female</option>
+                        <option value="shimmer">Shimmer - female</option>
+                        <option value="sage">Sage - female</option>
+                        <option value="coral">Coral - female</option>
+                        <option value="ash">Ash - male</option>
+                        <option value="valley">Valley - female</option>
+                    </select>
                 </div>
             </div>
+
+            <p>Press the microphone button and start speaking. The AI will respond naturally as your conversation flows.</p>
             
-            <!-- Horizontal dots -->
-            <div class="dots">
-                {% for i in range(8) %}
-                <span class="dot">•</span>
-                {% endfor %}
-            </div>
-            
-            <div class="transcript-card">
-                <h3>Conversation Transcript</h3>
-                <div id="transcript" class="transcript-container">
-                    <div class="system-message">Connected to server</div>
-                    <div class="system-message">Click 'Start Session' to begin</div>
+            <!-- Microphone button -->
+            <div class="mic-button-container">
+                <div class="mic-button" id="micBtn">
+                    <i class="fas fa-microphone"></i>
                 </div>
+                <p id="micStatus">Click to speak</p>
             </div>
             
-            <!-- AI voice visualization -->
-            <div id="aiVoiceVisualization" class="voice-visualization mt-3 hidden">
-                <!-- Voice bars will be added here -->
-                <div class="voice-bar"></div>
-                <div class="voice-bar"></div>
-                <div class="voice-bar"></div>
-                <div class="voice-bar"></div>
-                <div class="voice-bar"></div>
-                <div class="voice-bar"></div>
-                <div class="voice-bar"></div>
-                <div class="voice-bar"></div>
+            <!-- Voice visualizations -->
+            <div class="voice-container" style="margin-bottom: 20px;">
+                <div id="userVoiceVisualization" class="voice-visualization hidden"></div>
+                <div id="aiVoiceVisualization" class="voice-visualization hidden"></div>
             </div>
+            
+            <!-- Waiting indicator - hidden by default and only shown when needed -->
+            <div class="dots hidden" id="waitingIndicator"></div>
+            
+            <h3>Conversation Transcript</h3>
+            <div id="transcript" class="transcript-container"></div>
         </div>
     </main>
     

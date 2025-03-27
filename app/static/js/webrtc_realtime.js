@@ -5,16 +5,19 @@
 
 document.addEventListener("DOMContentLoaded", function() {
     // DOM elements
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const transcript = document.getElementById('transcript');
-    const characterSelect = document.getElementById('characterSelect');
-    const voiceSelect = document.getElementById('voiceSelect');
-    const sessionStatus = document.getElementById('session-status');
-    const micBtn = document.getElementById('micBtn');
+    const startButton = document.getElementById('startBtn');
+    const stopButton = document.getElementById('stopBtn');
+    const clearButton = document.getElementById('clearBtn');
+    const testMicButton = document.getElementById('testMicBtn');
+    const micButton = document.getElementById('micBtn');
     const micStatus = document.getElementById('micStatus');
-    const testMicBtn = document.getElementById('testMicBtn');
+    const transcript = document.getElementById('transcript');
+    const sessionStatus = document.getElementById('session-status');
+    const characterSelect = document.getElementById('character-select');
+    const voiceSelect = document.getElementById('voice-select');
+    const userVoiceVisualization = document.getElementById('userVoiceVisualization');
+    const aiVoiceVisualization = document.getElementById('aiVoiceVisualization');
+    const waitingIndicator = document.getElementById('waitingIndicator');
     const themeToggle = document.getElementById('theme-toggle');
     
     // Global state
@@ -41,11 +44,27 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     
     // Setup event listeners
-    startBtn.addEventListener('click', startSession);
-    stopBtn.addEventListener('click', stopSession);
-    micBtn.addEventListener('click', toggleMicrophone);
-    clearBtn.addEventListener('click', clearTranscript);
-    testMicBtn.addEventListener('click', testMicrophone);
+    startButton.addEventListener('click', startSession);
+    stopButton.addEventListener('click', stopSession);
+    micButton.addEventListener('click', toggleMicrophone);
+    clearButton.addEventListener('click', clearTranscript);
+    testMicButton.addEventListener('click', testMicrophone);
+    
+    // Voice selection change handler
+    voiceSelect.addEventListener('change', function() {
+        const selectedVoice = voiceSelect.value;
+        if (isSessionActive && dataChannel && dataChannel.readyState === 'open') {
+            sendVoicePreference(selectedVoice);
+            addTranscriptMessage(`Voice changed to ${selectedVoice}`, "system");
+        }
+    });
+    
+    // Character selection change handler
+    characterSelect.addEventListener('change', function() {
+        const selectedCharacter = characterSelect.value;
+        addTranscriptMessage(`Character changed to ${selectedCharacter}`, "system");
+        // Character will be applied on next session start
+    });
     
     // Add transcript message
     function addTranscriptMessage(message, type) {
@@ -209,7 +228,7 @@ document.addEventListener("DOMContentLoaded", function() {
             sessionStatus.textContent = "Connecting...";
             sessionStatus.classList.remove("badge-secondary");
             sessionStatus.classList.add("badge-warning");
-            startBtn.disabled = true;
+            startButton.disabled = true;
             
             console.log("Fetching ephemeral key...");
             // Get ephemeral key from server
@@ -367,13 +386,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 sessionStatus.textContent = "Active";
                 sessionStatus.classList.remove("badge-warning");
                 sessionStatus.classList.add("badge-success");
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-                micBtn.disabled = false;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                micButton.disabled = false;
                 
                 // Add session message
                 addTranscriptMessage("Session started with " + characterSelect.value, "system");
-                addTranscriptMessage("You can now speak or type messages", "system");
+                addTranscriptMessage("You can now speak", "system");
                 
                 // Start microphone automatically
                 toggleMicrophone();
@@ -389,7 +408,7 @@ document.addEventListener("DOMContentLoaded", function() {
             sessionStatus.textContent = "Error";
             sessionStatus.classList.remove("badge-warning");
             sessionStatus.classList.add("badge-danger");
-            startBtn.disabled = false;
+            startButton.disabled = false;
             
             // Add error message
             addTranscriptMessage(`Failed to start session: ${error.message}`, "error");
@@ -463,6 +482,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 const data = JSON.parse(event.data);
                 const messageType = data.type;
                 
+                // Hide waiting indicator whenever we get a response
+                showWaitingIndicator(false);
+                
                 // Log all messages for debugging
                 debugLog(`Received message: ${JSON.stringify(data)}`, "data");
                 
@@ -477,7 +499,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                     
                     // Show AI voice visualization during speech
-                    document.getElementById('aiVoiceVisualization').classList.remove('hidden');
+                    aiVoiceVisualization.classList.remove('hidden');
                     // Simulate voice bars animation
                     animateVoiceBars('aiVoiceVisualization');
                     
@@ -485,7 +507,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     // Message completed
                     debugLog("AI message completed", "success");
                     // Hide AI voice visualization
-                    document.getElementById('aiVoiceVisualization').classList.add('hidden');
+                    aiVoiceVisualization.classList.add('hidden');
                     
                 } else if (messageType === "conversation.item.text.delta") {
                     // Text delta - partial text updates
@@ -501,7 +523,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     // Audio buffer meta info
                     debugLog("Audio received by API", "info");
                     // Show user voice visualization
-                    document.getElementById('userVoiceVisualization').classList.remove('hidden');
+                    userVoiceVisualization.classList.remove('hidden');
                     // Simulate voice bars animation
                     animateVoiceBars('userVoiceVisualization');
                     
@@ -509,7 +531,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     // Audio buffer committed
                     debugLog("Audio buffer committed", "success");
                     // Hide user voice visualization
-                    document.getElementById('userVoiceVisualization').classList.add('hidden');
+                    userVoiceVisualization.classList.add('hidden');
                     
                 } else if (messageType === "session.updated") {
                     // Session update confirmation
@@ -553,6 +575,16 @@ document.addEventListener("DOMContentLoaded", function() {
         const voiceVisualization = document.getElementById(elementId);
         if (!voiceVisualization) return;
         
+        // Check if we already have voice bars, if not create them
+        if (voiceVisualization.querySelectorAll('.voice-bar').length === 0) {
+            // Create 8 voice bars
+            for (let i = 0; i < 8; i++) {
+                const bar = document.createElement('div');
+                bar.classList.add('voice-bar');
+                voiceVisualization.appendChild(bar);
+            }
+        }
+        
         const bars = voiceVisualization.querySelectorAll('.voice-bar');
         
         // Clear any existing animation
@@ -593,11 +625,15 @@ document.addEventListener("DOMContentLoaded", function() {
         animate();
     }
     
-    // Send text message
-    function sendTextMessage() {
-        // This function is no longer needed since we removed the text input field
-        console.log("Text messaging disabled");
+    // Function to show/hide waiting indicator
+    function showWaitingIndicator(show) {
+        if (show) {
+            waitingIndicator.classList.remove('hidden');
+        } else {
+            waitingIndicator.classList.add('hidden');
+        }
     }
+    
     
     // Send voice preference
     function sendVoicePreference(voice) {
@@ -648,8 +684,11 @@ document.addEventListener("DOMContentLoaded", function() {
     // Toggle microphone
     function toggleMicrophone() {
         console.log("Toggle microphone called, session active:", isSessionActive);
+        debugLog("Toggling microphone. Session active: " + isSessionActive, "event");
+        
         if (!isSessionActive) {
             addTranscriptMessage("Cannot use microphone: No active session", "error");
+            debugLog("Cannot use microphone: No active session", "error");
             return;
         }
         
@@ -657,37 +696,46 @@ document.addEventListener("DOMContentLoaded", function() {
             // Toggle mic state
             const audioTracks = micStream.getAudioTracks();
             console.log("Audio tracks:", audioTracks.length);
+            debugLog(`Found ${audioTracks.length} audio tracks`, "info");
+            
             if (audioTracks.length > 0) {
                 const isEnabled = audioTracks[0].enabled;
                 console.log("Current mic state:", isEnabled ? "enabled" : "disabled", "- toggling to", !isEnabled ? "enabled" : "disabled");
+                debugLog(`Current mic state: ${isEnabled ? "enabled" : "disabled"} - toggling to ${!isEnabled ? "enabled" : "disabled"}`, "info");
                 audioTracks[0].enabled = !isEnabled;
                 
                 // Update UI
                 if (!isEnabled) {
                     // Enabling
-                    micBtn.classList.add('listening');
+                    micButton.classList.add('listening');
                     micStatus.textContent = "Listening... (speak now)";
                     micStatus.style.color = "#ff3300";
                     console.log("Microphone enabled");
+                    debugLog("Microphone enabled - speak now to test audio pipeline", "success");
                 } else {
                     // Disabling
-                    micBtn.classList.remove('listening');
+                    micButton.classList.remove('listening');
                     micStatus.textContent = "Click to speak";
                     micStatus.style.color = "";
                     console.log("Microphone disabled");
+                    debugLog("Microphone disabled", "warning");
                 }
             } else {
                 console.error("No audio tracks found in mic stream");
+                debugLog("No audio tracks found in microphone stream", "error");
             }
         } else {
             // Need to set up microphone
             console.log("No mic stream found, setting up microphone...");
+            debugLog("No microphone stream found, setting up microphone...", "warning");
             setupMicrophone().then(success => {
                 console.log("Microphone setup result:", success);
+                debugLog(`Microphone setup result: ${success ? "SUCCESS" : "FAILED"}`, success ? "success" : "error");
                 if (success) {
-                    micBtn.classList.add('listening');
+                    micButton.classList.add('listening');
                     micStatus.textContent = "Listening... (speak now)";
                     micStatus.style.color = "#ff3300";
+                    debugLog("Microphone ready - speak now to test audio pipeline", "success");
                 }
             });
         }
@@ -722,12 +770,12 @@ document.addEventListener("DOMContentLoaded", function() {
         sessionStatus.textContent = "Inactive";
         sessionStatus.classList.remove("badge-success", "badge-warning", "badge-danger");
         sessionStatus.classList.add("badge-secondary");
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-        micBtn.disabled = true;
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        micButton.disabled = true;
         
         // Reset mic UI
-        micBtn.classList.remove('listening');
+        micButton.classList.remove('listening');
         micStatus.textContent = "Click to speak";
         micStatus.style.color = "";
         

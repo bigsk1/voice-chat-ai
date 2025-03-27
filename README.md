@@ -16,6 +16,7 @@ Get up and running fast with Voice Chat AI! 🔊
 - [**Run with Docker**](#install-with-docker): Use Docker run or Docker Compose
 - [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env`.
 - [**OpenAI Enhanced**](#openai-enhanced): Use OpenAI Enhanced Mode to speak with the AI in a more human like way with emotions.
+- [**OpenAI Realtime**](#openai-realtime): Experience real-time conversations with OpenAI's WebRTC-based Realtime API.
 - [**Add New Characters**](#adding-new-characters): Add new characters to the project.
 - [**Troubleshooting**](#troubleshooting): Fix common audio or CUDA errors.
 
@@ -465,6 +466,23 @@ You can learn more about it here: https://platform.openai.com/docs/guides/text-t
 You can find the demo here: https://www.openai.fm/
 
 By adding Voice Instructions in the system prompt you can guide the AI to respond in a certain way.
+
+## OpenAI Realtime
+
+The OpenAI Realtime feature uses WebRTC to connect directly to OpenAI's Realtime API, enabling continuous voice streaming with minimal latency for the most natural conversation experience.
+
+### RealTime Features
+
+- **Direct WebRTC Connection**: Connect directly to OpenAI's API for the lowest possible latency.
+- **Zero Turn-Taking**: No need to wait for the AI to finish before speaking - interrupt naturally like a real conversation.
+- **Character Instructions**: Use different character personalities and customize the interaction.
+
+### Using OpenAI Realtime
+
+1. Navigate to the "OpenAI Realtime" tab in the application
+2. Select your character and voice preference
+3. Click "Start Session" to establish the connection
+4. Click the microphone button and start speaking naturally
 
 ## Adding New Characters
 

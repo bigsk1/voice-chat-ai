@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         border-radius: 5px;
         z-index: 9999;
         overflow-y: auto;
-        display: none;
+        display: block;
         border: 1px solid #00ff00;
         box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
     `;
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
         margin-bottom: 10px;
         font-style: italic;
     `;
-    introMsg.textContent = 'Debug information will appear here. Click "Send Text" or speak to see data flow.';
+    introMsg.textContent = 'Debug information will appear here. Interact with the app to see messages.';
     debugPanel.appendChild(introMsg);
     
     // Create the log area
@@ -99,8 +99,48 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('debug-log').innerHTML = '';
     };
     
+    // Add autoshow checkbox
+    const autoShowContainer = document.createElement('div');
+    autoShowContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+    `;
+    
+    const autoShowCheckbox = document.createElement('input');
+    autoShowCheckbox.type = 'checkbox';
+    autoShowCheckbox.id = 'auto-show-debug';
+    autoShowCheckbox.checked = true;
+    autoShowCheckbox.style.marginRight = '5px';
+    
+    const autoShowLabel = document.createElement('label');
+    autoShowLabel.htmlFor = 'auto-show-debug';
+    autoShowLabel.textContent = 'Auto-show on messages';
+    autoShowLabel.style.fontSize = '11px';
+    autoShowLabel.style.color = '#aaffaa';
+    
+    autoShowContainer.appendChild(autoShowCheckbox);
+    autoShowContainer.appendChild(autoShowLabel);
+    
     footerControls.appendChild(clearBtn);
+    footerControls.appendChild(autoShowContainer);
     debugPanel.appendChild(footerControls);
+    
+    // Add test button
+    const testBtn = document.createElement('button');
+    testBtn.textContent = 'Test Log';
+    testBtn.style.cssText = `
+        background-color: #333;
+        color: #fff;
+        border: 1px solid #5555aa;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        margin-top: 10px;
+    `;
+    testBtn.onclick = function() {
+        window.debugLog('Test message - if you see this, debug logging is working!', 'success');
+    };
+    debugPanel.appendChild(testBtn);
     
     // Add to the document
     document.body.appendChild(debugPanel);
@@ -121,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 12px;
         cursor: pointer;
         z-index: 9998;
+        display: none;
     `;
     
     toggleButton.onclick = function() {
@@ -188,6 +229,14 @@ document.addEventListener('DOMContentLoaded', function() {
         log.appendChild(entry);
         log.scrollTop = log.scrollHeight; // Scroll to bottom
         
+        // If debug panel is hidden and auto-show is enabled, show the panel
+        if (document.getElementById('debug-panel').style.display === 'none' && 
+            document.getElementById('auto-show-debug') && 
+            document.getElementById('auto-show-debug').checked) {
+            document.getElementById('debug-panel').style.display = 'block';
+            toggleButton.style.display = 'none';
+        }
+        
         // If debug panel is hidden, show a notification on the toggle button
         if (document.getElementById('debug-panel').style.display === 'none') {
             toggleButton.style.backgroundColor = color;
@@ -203,8 +252,10 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             internalLog(message, type);
             
-            // Show the debug panel automatically on error
-            if (type === 'error' && document.getElementById('debug-panel').style.display === 'none') {
+            // Show the debug panel automatically on error or if auto-show is enabled
+            if ((type === 'error' || 
+                (document.getElementById('auto-show-debug') && document.getElementById('auto-show-debug').checked)) && 
+                document.getElementById('debug-panel').style.display === 'none') {
                 document.getElementById('debug-panel').style.display = 'block';
                 toggleButton.style.display = 'none';
             }
@@ -212,6 +263,11 @@ document.addEventListener('DOMContentLoaded', function() {
             isLogging = false;
         }
     };
+    
+    // Log a startup message to verify the panel is working
+    setTimeout(() => {
+        window.debugLog('Debug panel initialized and ready', 'success');
+    }, 500);
     
     // Intercept console.log and other console methods
     const originalConsoleLog = console.log;
@@ -277,7 +333,4 @@ document.addEventListener('DOMContentLoaded', function() {
             isLogging = false;
         }
     };
-    
-    // Add an explicit debug message
-    internalLog('Debug panel initialized and ready', 'success');
 }); 
