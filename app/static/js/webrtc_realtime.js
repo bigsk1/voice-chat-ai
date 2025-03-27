@@ -427,6 +427,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 addTranscriptMessage("Session started with " + characterSelect.value, "system");
                 addTranscriptMessage("You can now speak", "system");
                 
+                // Set mic icon to waiting state
+                updateHeaderMicIcon(false);
+                
                 // Start microphone automatically
                 toggleMicrophone();
                 console.log("Session started successfully");
@@ -501,6 +504,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     values += array[i];
                 }
                 const average = values / array.length;
+                
+                // Update header mic icon based on volume
+                if (average > 10) {
+                    // Speaking - make mic icon pulsing red
+                    updateHeaderMicIcon(true);
+                } else {
+                    // Silent - turn off mic icon pulse
+                    updateHeaderMicIcon(false);
+                }
                 
                 // Log microphone activity every second if volume is above threshold
                 const now = Date.now();
@@ -801,6 +813,9 @@ document.addEventListener("DOMContentLoaded", function() {
                     micStatus.style.color = "#ff3300";
                     console.log("Microphone enabled");
                     debugLog("Microphone enabled - speak now to test audio pipeline", "success");
+                    
+                    // Update header mic icon to waiting state
+                    updateHeaderMicIcon(false);
                 } else {
                     // Disabling
                     micButton.classList.remove('listening');
@@ -808,6 +823,9 @@ document.addEventListener("DOMContentLoaded", function() {
                     micStatus.style.color = "";
                     console.log("Microphone disabled");
                     debugLog("Microphone disabled", "warning");
+                    
+                    // Update header mic icon to off state when mic disabled
+                    updateHeaderMicIcon(false);
                 }
             } else {
                 console.error("No audio tracks found in mic stream");
@@ -868,6 +886,9 @@ document.addEventListener("DOMContentLoaded", function() {
         micStatus.textContent = "Click to speak";
         micStatus.style.color = "";
         
+        // Reset header mic icon
+        updateHeaderMicIcon(false);
+        
         // Add status message
         if (transcript) {
             addTranscriptMessage("Session ended", "system");
@@ -905,5 +926,53 @@ document.addEventListener("DOMContentLoaded", function() {
             updateThemeToggleIcon();
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
         });
+    }
+    
+    // Add CSS for microphone icon states
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+        #mic-icon.active {
+            color: #e74c3c;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        #mic-icon.mic-off {
+            color: #6c757d;
+        }
+    `;
+    document.head.appendChild(styleEl);
+    
+    // Function to update header mic icon
+    function updateHeaderMicIcon(isActive) {
+        const micIcon = document.getElementById('mic-icon');
+        if (!micIcon) return;
+        
+        // Check if mic is currently enabled (via the central mic button)
+        const isMicEnabled = micStream && micStream.getAudioTracks().length > 0 && 
+                            micStream.getAudioTracks()[0].enabled;
+        
+        if (isActive && isMicEnabled) {
+            // Speaking AND mic is enabled - make icon pulse red
+            micIcon.classList.remove('mic-off', 'mic-waiting');
+            micIcon.classList.add('mic-on', 'pulse-animation');
+        } else if (isSessionActive && isMicEnabled) {
+            // Session active and mic enabled but not speaking - waiting state
+            micIcon.classList.remove('mic-off', 'mic-on', 'pulse-animation');
+            micIcon.classList.add('mic-waiting');
+        } else if (isSessionActive && !isMicEnabled) {
+            // Session active but mic is disabled - show as off
+            micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
+            micIcon.classList.add('mic-off');
+        } else {
+            // Session not active - off state
+            micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
+            micIcon.classList.add('mic-off');
+        }
     }
 }); 
