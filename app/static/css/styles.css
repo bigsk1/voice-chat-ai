@@ -386,7 +386,9 @@ a:hover {
 
     .controls {
         flex-direction: column;
-        align-items: stretch;
+        gap: 20px;
+        margin: 0 auto 15px auto;
+        width: 30%;
     }
 
     button {
