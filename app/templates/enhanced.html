@@ -131,7 +131,20 @@
             .header-controls {
                 margin-top: 10px;
                 width: 100%;
-                justify-content: center;
+                justify-content: space-between;
+                display: flex;
+                flex-direction: row;
+            }
+            
+            .header-controls .button-group {
+                display: flex;
+                gap: 10px;
+                margin-left: 5px;
+            }
+            
+            .header-controls .main-nav {
+                margin-left: 0;
+                margin-right: 5px;
             }
             
             #messages {
@@ -157,6 +170,12 @@
                 width: 100%;
             }
         }
+        .header-controls #theme-toggle {
+            margin-top: 10px;
+        }
+        .header-controls #download-button {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -166,18 +185,20 @@
             <div id="mic-icon" class="mic-off">&#x1F399;</div>
         </h1>
         <div class="header-controls">
-            <button id="theme-toggle" aria-label="Toggle dark/light mode">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                </svg>
-            </button>
-            <button id="download-button" aria-label="Download conversation history" title="Download conversation history">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-            </button>
+            <div class="button-group">
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="download-button" aria-label="Download conversation history" title="Download conversation history">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+            </div>
             <nav class="main-nav">
                 <ul>
                     <li><a href="/">Dashboard</a></li>
