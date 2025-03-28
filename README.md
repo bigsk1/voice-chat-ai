@@ -622,11 +622,21 @@ If you continue to have issues after these steps, creating a fresh virtual envir
 
 ## Watch the Demos
 
+OpenAI RealTime
+
+[![Watch the video](https://img.youtube.com/vi/0X4WTKfhnaU/maxresdefault.jpg)](https://youtu.be/0X4WTKfhnaU)
+
+Click on the thumbnail to open the video☝️
+
+---
+
 OpenAI Enhanced
 
 [![Watch the video](https://img.youtube.com/vi/TjHwVwzUUvM/maxresdefault.jpg)](https://youtu.be/TjHwVwzUUvM)
 
 Click on the thumbnail to open the video☝️
+
+---
 
 GPU Only mode CLI
 
