@@ -633,14 +633,12 @@
                     <select id="voice-select" class="form-control" style="width: 300px; max-width: 100%;">
                         <option value="alloy">Alloy - female</option>
                         <option value="ash">Ash - male</option>
+                        <option value="ballad">Ballad - male</option>
                         <option value="coral">Coral - female</option>
                         <option value="echo">Echo - male</option>
-                        <option value="fable">Fable - female</option>
-                        <option value="nova">Nova - female</option>
-                        <option value="onyx">Onyx - male</option>
                         <option value="sage">Sage - female</option>
                         <option value="shimmer">Shimmer - female</option>
-                        <option value="verse">Verse - female</option>
+                        <option value="verse">Verse - male</option>
                     </select>
                 </div>
             </div>
@@ -697,6 +695,28 @@
         <p><a href="https://github.com/bigsk1/voice-chat-ai" target="_blank">GitHub Repository</a></p>
     </footer>
     
+    <!-- Add at the start of the JavaScript section -->
+    <script>
+        // Initialize WebRTC configuration with model from server
+        const rtcConfig = {
+            model: "{{ realtime_model }}"
+        };
+        
+        // Theme toggle functionality
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            document.documentElement.classList.toggle('dark-mode');
+            
+            // Store the preference
+            const isDarkMode = document.documentElement.classList.contains('dark-mode');
+            localStorage.setItem('dark-mode', isDarkMode);
+        });
+        
+        // Initialize theme based on saved preference
+        if (localStorage.getItem('dark-mode') === 'false') {
+            document.documentElement.classList.remove('dark-mode');
+        }
+    </script>
+
     <!-- Include debug panel script and main script -->
     <script src="{{ url_for('static', path='js/debug_panel.js') }}"></script>
     <script src="{{ url_for('static', path='js/webrtc_realtime.js') }}"></script>

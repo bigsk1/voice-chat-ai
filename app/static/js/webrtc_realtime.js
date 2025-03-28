@@ -386,8 +386,17 @@ document.addEventListener("DOMContentLoaded", function() {
                 throw new Error("Failed to get SDP from local description");
             }
             
+            // Configuration/Settings
+            const wsEndpoint = rtcConfig.wsEndpoint || `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/webrtc`;
+            const videoEnabled = rtcConfig.videoEnabled || false;
+            const audioEnabled = rtcConfig.audioEnabled || true;
+            const defaultModel = "gpt-4o-realtime-preview-2024-12-17"; // Default fallback model
+            
+            // Fetch model from server-side configuration or use default
+            let model = rtcConfig.model || defaultModel;
+            debugLog(`Using model: ${model}`, 'info');
+            
             // Construct URL for our proxy endpoint instead of the direct OpenAI endpoint
-            const model = "gpt-4o-realtime-preview-2024-12-17";
             const proxyUrl = `/openai_realtime_proxy?model=${model}`;
             
             // Log SDP being sent

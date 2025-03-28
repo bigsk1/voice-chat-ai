@@ -351,6 +351,8 @@ OPENAI_MODEL_TTS=gpt-4o-mini-tts
 # OpenAI Enhanced Mode Transcription Model
 # Model options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+# OpenAI Realtime model for WebRTC implementation
+OPENAI_REALTIME_MODEL=gpt-4o-realtime-preview-2024-12-17
 
 # ElevenLabs Configuration:
 ELEVENLABS_API_KEY=your_api_key_here

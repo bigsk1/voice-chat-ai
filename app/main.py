@@ -331,8 +331,9 @@ async def proxy_openai_realtime(request: Request):
         body = await request.body()
         sdp = body.decode('utf-8')
         
-        # Get the model parameter from query params
-        model = request.query_params.get('model', 'gpt-4o-realtime-preview-2024-12-17')
+        # Get the model parameter from query params or default from environment
+        default_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview-2024-12-17")
+        model = request.query_params.get('model', default_model)
         
         # Log the request (without the full SDP for privacy)
         logger.info(f"Proxying WebRTC connection to OpenAI Realtime API for model: {model}")
@@ -456,12 +457,16 @@ async def get_webrtc_realtime(request: Request):
         if not characters:
             characters = ["assistant"]
             logger.warning("No character folders found, using fallback assistant")
+        
+        # Get realtime model from environment variable or use default
+        realtime_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview-2024-12-17")
             
         return templates.TemplateResponse(
             "webrtc_realtime.html", 
             {
                 "request": request,
                 "characters": characters,
+                "realtime_model": realtime_model,
             }
         )
     except Exception as e:
@@ -472,6 +477,7 @@ async def get_webrtc_realtime(request: Request):
             {
                 "request": request,
                 "characters": ["assistant"],
+                "realtime_model": "gpt-4o-realtime-preview-2024-12-17",  # Default fallback
             }
         )
 
