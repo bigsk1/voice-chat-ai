@@ -58,11 +58,11 @@ header {
 .header-controls {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
 }
 
 .header-controls .main-nav {
-    margin-left: 15px;
+    margin-left: 5px;
 }
 
 h1 {
@@ -154,7 +154,7 @@ main {
 
 .controls {
     display: flex;
-    gap: 1rem;
+    gap: 2rem;
     margin-bottom: 1rem;
     flex-wrap: wrap;
     justify-content: center;
@@ -243,13 +243,6 @@ a:hover {
     height: 24px;
     color: var(--text-color);
 }
-
-/* Add this new style for the voice animation container
-#voice-animation {
-    width: 40px;
-    height: 40px;
-    margin: 0 1rem;
-} */
 
 #download-button {
     background: none;

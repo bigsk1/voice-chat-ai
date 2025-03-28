@@ -25,11 +25,14 @@
             width: 100%;
         }
         
-        .controls button {
-            padding: 0.5rem 1rem;
+        .controls button, .control-button {
+            padding: 8px 12px;
             flex-grow: 1;
             max-width: 200px;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            text-align: center;
+            border-radius: 4px;
+            font-weight: normal;
         }
         
         /* Message types */
@@ -158,14 +161,16 @@
                 width: 30%;
             }
             
-            .controls button {
+            .controls button, .control-button {
                 max-width: 100%;
                 width: 100%;
                 margin: 0;
+                height: 32px;
             }
             
             .control-button {
                 margin: 0;
+                font-weight: normal;
             }
         }
         
@@ -188,10 +193,10 @@
             }
         }
         .header-controls #theme-toggle {
-            margin-top: 10px;
+            margin-top: 12px;
         }
         .header-controls #download-button {
-            margin-top: 10px;
+            margin-top: 12px;
         }
     </style>
 </head>
