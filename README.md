@@ -6,7 +6,7 @@
 
 Voice Chat AI is a project that allows you to interact with different AI characters using speech. You can choose between various characters, each with unique personalities and voices. Have a serious conversation with Albert Einstein or role play with the OS from the movie HER.
 
-You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at. 
+You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at.
 
 New -  WebRTC Real Time API you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model to make the AI more human like with emotions and expressive voices.
 
@@ -317,10 +317,13 @@ On windows docker desktop using wsl - run in windows
 ```bash
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
+---
+
+> **💡 Pro Tip:**  What I have found to be the best setup is xAI and grok chat model, using voices with Elevenlabs and transcription using OpenAI or local faster whisper on GPU. The fastest real conversation is with OpenAI Realtime. The best quality is not running app in Docker.
 
 ## Configuration
 
-1. Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled based on the variables you add.
+ Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled on startup based on the variables you add. In the UI many settings can be changed on the fly. If you are not using certain providers just leave the default's as it and don't select it in the UI.
 
 ```env
 # Conditional API Usage:
@@ -351,6 +354,7 @@ OPENAI_MODEL_TTS=gpt-4o-mini-tts
 # OpenAI Enhanced Mode Transcription Model
 # Model options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+
 # OpenAI Realtime model for WebRTC implementation
 OPENAI_REALTIME_MODEL=gpt-4o-realtime-preview-2024-12-17
 
@@ -618,15 +622,15 @@ If you continue to have issues after these steps, creating a fresh virtual envir
 
 ## Watch the Demos
 
-[![Watch the video](https://img.youtube.com/vi/jKaZkSt2mww/maxresdefault.jpg)](https://youtu.be/jKaZkSt2mww)
+OpenAI Enhanced
+
+[![Watch the video](https://img.youtube.com/vi/TjHwVwzUUvM/maxresdefault.jpg)](https://youtu.be/TjHwVwzUUvM)
 
 Click on the thumbnail to open the video☝️
 
----
+GPU Only mode CLI
 
-CLI
-
-GPU - 100% local - ollama llama3, xtts-v2
+100% local - ollama llama3, xtts-v2
 
 [![Watch the video](https://img.youtube.com/vi/WsWbYnITdCo/maxresdefault.jpg)](https://youtu.be/WsWbYnITdCo)
 
