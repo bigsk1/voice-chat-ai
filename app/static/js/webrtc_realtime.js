@@ -79,7 +79,11 @@ document.addEventListener("DOMContentLoaded", function() {
     characterSelect.addEventListener('change', function() {
         const selectedCharacter = characterSelect.value;
         addTranscriptMessage(`Character changed to ${selectedCharacter}`, "system");
-        // Character will be applied on next session start
+        
+        // If session is active, recommend restarting for new character to take effect
+        if (isSessionActive) {
+            addTranscriptMessage("Please stop and restart the session for the new character to take effect", "system");
+        }
     });
     
     // Add transcript message
@@ -564,22 +568,31 @@ document.addEventListener("DOMContentLoaded", function() {
         dataChannel.onopen = () => {
             debugLog("Data channel opened", "success");
             
-            // Example: Send character instructions
+            // Get character and voice settings
             const character = characterSelect.value;
             const voice = voiceSelect.value;
             
             // Set voice preference
             sendVoicePreference(voice);
             
-            // Use a default instruction string formatted for the character
-            const characterName = characterSelect.options[characterSelect.selectedIndex].text;
-            const defaultInstructions = `You are ${characterName}. Speak in the style of ${characterName}. Keep your responses concise and engaging.`;
-            
-            // Send the instructions immediately
-            sendInstructions(defaultInstructions);
-            
-            // Log the instructions
-            debugLog(`Using character instructions for ${characterName}`, "info");
+            // Fetch and use the actual character prompt
+            fetchCharacterPrompt(character)
+                .then(instructions => {
+                    // Send the instructions immediately
+                    sendInstructions(instructions);
+                    
+                    // Log the instructions
+                    debugLog(`Using character instructions for ${character}`, "info");
+                })
+                .catch(error => {
+                    // Fallback to simple instructions if fetch fails
+                    const characterName = characterSelect.options[characterSelect.selectedIndex].text;
+                    const fallbackInstructions = `You are ${characterName}. Speak in the style of ${characterName}. Keep your responses concise and engaging.`;
+                    
+                    sendInstructions(fallbackInstructions);
+                    debugLog(`Using fallback instructions for ${characterName}`, "warning");
+                    console.error("Error fetching character prompt:", error);
+                });
         };
         
         dataChannel.onmessage = (event) => {
@@ -751,6 +764,29 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
+    // Function to fetch character prompt from server
+    async function fetchCharacterPrompt(characterName) {
+        debugLog(`Fetching character prompt for: ${characterName}`, "info");
+        try {
+            const response = await fetch(`/api/character/${characterName}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch character prompt: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            debugLog(`Received prompt for ${characterName}: ${data.prompt.length} chars`, "success");
+            console.log(`Character prompt for ${characterName}:`, data.prompt);
+            return data.prompt;
+        } catch (error) {
+            console.error("Error fetching character prompt:", error);
+            debugLog(`Error fetching character prompt: ${error.message}`, "error");
+            throw error;
+        }
+    }
     
     // Send voice preference
     function sendVoicePreference(voice) {
@@ -775,27 +811,25 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
-    // Send character instructions
+    // Send instructions to the API
     function sendInstructions(instructions) {
-        if (!isSessionActive || !dataChannel || dataChannel.readyState !== "open") {
+        if (!dataChannel || dataChannel.readyState !== 'open') {
+            console.error("Data channel not open");
+            debugLog("Data channel not open, can't send instructions", "error");
             return;
         }
         
-        try {
-            const message = {
-                event_id: `event_${Date.now()}`,
-                type: "session.update",
-                session: {
-                    instructions: instructions
-                }
-            };
-            
-            dataChannel.send(JSON.stringify(message));
-            debugLog(`Set instructions: ${instructions.substring(0, 50)}...`);
-        } catch (error) {
-            console.error("Error setting instructions:", error);
-            debugLog(`Error setting instructions: ${error.message}`, true);
-        }
+        console.log("Sending instructions to API:", instructions);
+        debugLog(`Sending instructions (${instructions.length} chars)`, "info");
+        
+        const message = {
+            type: "session.update",
+            session: {
+                instructions: instructions
+            }
+        };
+        
+        dataChannel.send(JSON.stringify(message));
     }
     
     // Toggle microphone

@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
-from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models
+from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 import logging
 from threading import Thread
@@ -480,6 +480,18 @@ async def get_webrtc_realtime(request: Request):
                 "realtime_model": "gpt-4o-realtime-preview-2024-12-17",  # Default fallback
             }
         )
+
+@app.get("/api/character/{character_name}")
+async def get_character_prompt(character_name: str):
+    """
+    Get the prompt for a specific character
+    """
+    try:
+        prompt = load_character_prompt(character_name)
+        return {"prompt": prompt}
+    except Exception as e:
+        logger.error(f"Error loading character prompt: {e}")
+        return {"error": str(e)}
 
 def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')
