@@ -203,25 +203,32 @@
         .controls-row {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 50px;
             flex-wrap: wrap;
+            justify-content: center;
         }
         
         .controls-row button {
-            flex: 1;
-            min-width: 80px;
+            flex: 0 1 auto;
+            min-width: 160px;
             white-space: nowrap;
         }
 
         /* New styles for better spacing and responsiveness */
         .character-selection {
             margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         .form-group {
             margin-bottom: 15px;
             display: flex;
             flex-direction: column;
+            text-align: center;
+            width: 300px;
+            max-width: 100%;
         }
         
         .form-group label {
@@ -235,6 +242,12 @@
             background-color: #333;
             color: white;
             border: 1px solid #444;
+            width: 100%;
+        }
+        
+        /* Center the instructional text */
+        .container > p {
+            text-align: center;
         }
         
         /* Make everything more responsive */
@@ -604,7 +617,7 @@
     
     <main>
         <div class="container">
-            <h2>OpenAI Realtime API</h2>
+            <h2>OpenAI Realtime webRTC</h2>
             <p>This feature uses OpenAI's Realtime API for continuous voice streaming. Speak naturally with the AI with minimal latency.</p>
             
             <div class="status-container">
