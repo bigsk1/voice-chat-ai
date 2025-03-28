@@ -387,9 +387,6 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             
             // Configuration/Settings
-            const wsEndpoint = rtcConfig.wsEndpoint || `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/webrtc`;
-            const videoEnabled = rtcConfig.videoEnabled || false;
-            const audioEnabled = rtcConfig.audioEnabled || true;
             const defaultModel = "gpt-4o-realtime-preview-2024-12-17"; // Default fallback model
             
             // Fetch model from server-side configuration or use default
