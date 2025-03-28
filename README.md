@@ -475,7 +475,7 @@ The OpenAI Realtime feature uses WebRTC to connect directly to OpenAI's Realtime
 
 ### RealTime Features
 
-![Image](https://github.com/user-attachments/assets/322a6c13-9d40-48ee-91e7-448e67489584)
+https://github.com/user-attachments/assets/d1cc9ca4-e750-4c36-816e-6f27b8caeec1
 
 - **Direct WebRTC Connection**: Connect directly to OpenAI's API for the lowest possible latency.
 - **Zero Turn-Taking**: No need to wait for the AI to finish before speaking - interrupt naturally like a real conversation.
