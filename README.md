@@ -6,7 +6,9 @@
 
 Voice Chat AI is a project that allows you to interact with different AI characters using speech. You can choose between various characters, each with unique personalities and voices. Have a serious conversation with Albert Einstein or role play with the OS from the movie HER.
 
-You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at.
+You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at. 
+
+New -  WebRTC Real Time API you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model to make the AI more human like with emotions and expressive voices.
 
 ## Quick Start
 
@@ -36,7 +38,7 @@ Get up and running fast with Voice Chat AI! 🔊
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
 - **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
-https://github.com/user-attachments/assets/ff17eeed-3117-413f-94b1-21970c44f377
+https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e
 
 ## Installation
 
@@ -455,6 +457,8 @@ Press start to start talking. Take a break hit stop, when ready again hit start 
 http://localhost:8000/
 
 ## OpenAI Enhanced
+
+![Image](https://github.com/user-attachments/assets/5c62bbfc-7f1d-48a8-8a83-4a2488a1bc0b)
 
 OpenAI Enhanced Mode is a new feature that allows you to use the OpenAI API to generate TTS and transcription. It uses the `gpt-4o-mini-tts` and `gpt-4o-mini-transcribe` models.
 You can learn more about it here: https://platform.openai.com/docs/guides/text-to-speech

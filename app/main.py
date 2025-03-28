@@ -15,9 +15,6 @@ from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversat
 import logging
 from threading import Thread
 import uuid
-import base64
-from typing import Dict, List, Any, Optional, Callable
-import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -25,7 +22,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 # Define available characters
-CHARACTERS = ["assistant", "wizard", "pirate", "alien", "robot", "detective", "cowboy"]
+# CHARACTERS = ["assistant", "wizard", "pirate", "alien", "robot", "detective", "cowboy"]
 
 app = FastAPI()
 
