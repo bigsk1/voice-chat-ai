@@ -431,7 +431,7 @@ a:hover {
     }
 }
 
-/* Add styles for navigation */
+/* Navigation styles */
 .main-nav {
     display: flex;
     justify-content: center;
@@ -459,6 +459,7 @@ a:hover {
     text-decoration: none;
     color: #ccc;
     transition: background-color 0.3s;
+    white-space: nowrap;
 }
 
 .main-nav a:hover {
@@ -469,6 +470,30 @@ a:hover {
     background-color: #555;
     color: white;
     font-weight: bold;
+}
+
+/* Media query for mobile navigation */
+@media (max-width: 480px) {
+    .header-controls {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .main-nav {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-top: 5px;
+    }
+    
+    .main-nav ul {
+        width: 100%;
+    }
+    
+    .main-nav a {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
 }
 
 /* Enhanced page styles */

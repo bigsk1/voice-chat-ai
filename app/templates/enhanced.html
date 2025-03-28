@@ -116,6 +116,47 @@
                 opacity: 1;
             }
         }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 5px;
+            }
+            
+            header {
+                flex-direction: column;
+                padding: 10px 5px;
+            }
+            
+            .header-controls {
+                margin-top: 10px;
+                width: 100%;
+                justify-content: center;
+            }
+            
+            #messages {
+                max-height: 50vh;
+            }
+        }
+        
+        /* Small phone styles */
+        @media (max-width: 480px) {
+            body {
+                font-size: 14px;
+            }
+            
+            h1 {
+                font-size: 1.3rem;
+            }
+            
+            .container {
+                padding: 5px;
+            }
+            
+            .form-group select, .form-group button {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="dark-mode">
