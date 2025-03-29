@@ -368,6 +368,9 @@ ELEVENLABS_TTS_VOICE=your_voice_id_here
 XTTS_SPEED=1.1
 COQUI_TOS_AGREED=1
 
+# Maximum character length for audio generation - set to 2000+ if using escape_master character
+MAX_CHAR_LENGTH=500
+
 # OpenAI Configuration:
 # OpenAI API Key for models and speech (replace with your actual API key)
 OPENAI_API_KEY=your_api_key_here

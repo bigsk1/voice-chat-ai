@@ -44,6 +44,7 @@ ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
 ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
+MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
 os.environ["COQUI_TOS_AGREED"] = "1"
 
@@ -768,13 +769,13 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, c
 async def execute_once(question_prompt):
     temp_image_path = os.path.join(output_dir, 'temp_img.jpg')
     
-    # Determine the audio file format based on the TTS provider
+    # Determine the audio file format based on the TTS provider this is for the image analysis only see app_logic.py for the user chatbot conversation
     if TTS_PROVIDER == 'elevenlabs':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.mp3')  # Use mp3 for ElevenLabs
-        max_char_length = 500  # Set a higher limit for ElevenLabs
+        max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for ElevenLabs
     elif TTS_PROVIDER == 'openai':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for OpenAI
-        max_char_length = 500  # Set a higher limit for OpenAI
+        max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
     else:
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for XTTS
         max_char_length = 250  # Set a lower limit for XTTS

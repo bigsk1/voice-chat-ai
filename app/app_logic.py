@@ -29,6 +29,9 @@ import requests
 router = APIRouter()
 characters_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "characters")
 
+# Maximum character length for audio generation
+MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
+
 # Global variable to store the current transcription model
 FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 current_transcription_model = "gpt-4o-mini-transcribe"
@@ -83,8 +86,9 @@ async def process_text(user_input):
 
     chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
     sanitized_response = sanitize_response(chatbot_response)
-    if len(sanitized_response) > 400:  # Limit response length for audio generation
-        sanitized_response = sanitized_response[:500] + "..."
+    # Limit the response length to the MAX_CHAR_LENGTH for audio generation
+    if len(sanitized_response) > MAX_CHAR_LENGTH:
+        sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
     prompt2 = sanitized_response
     await process_and_play(prompt2, character_audio_file)
 
