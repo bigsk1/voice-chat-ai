@@ -323,7 +323,7 @@ docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubunt
 
 ## Configuration
 
- Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled on startup based on the variables you add. In the UI many settings can be changed on the fly. If you are not using certain providers just leave the default's as it and don't select it in the UI.
+ Rename the .env.sample to `.env` in the root directory of the project and configure it with the necessary environment variables: - The app is controlled on startup based on the variables you add. In the UI many settings can be changed on the fly. If you are not using certain providers just leave the default's as is and don't select it in the UI.
 
 ```env
 # Conditional API Usage:
@@ -344,7 +344,7 @@ CHARACTER_NAME=pirate
 TTS_PROVIDER=elevenlabs
 
 # OpenAI TTS Voice - Used when TTS_PROVIDER is set to openai above
-# Voice options: alloy, echo, fable, onyx, nova, shimmer
+# Voice options: alloy, echo, fable, onyx, nova, shimmer, ash, coral, sage
 OPENAI_TTS_VOICE=onyx
 
 # OpenAI Enhanced Mode TTS Model-  NEW it uses emotions and is better
@@ -360,12 +360,12 @@ OPENAI_REALTIME_MODEL=gpt-4o-realtime-preview-2024-12-17
 
 # ElevenLabs Configuration:
 ELEVENLABS_API_KEY=your_api_key_here
-# Default voice ID
-ELEVENLABS_TTS_VOICE=pgCnBQgKPGkIP8fJuita
+# Default voice ID - find voice id's in your elevenlabs account
+ELEVENLABS_TTS_VOICE=your_voice_id_here
 
 # XTTS Configuration:
 # The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
-XTTS_SPEED=1.2
+XTTS_SPEED=1.1
 COQUI_TOS_AGREED=1
 
 # OpenAI Configuration:
@@ -432,7 +432,7 @@ The app needs an `elevenlabs_voices.json` file. This file stores your voice IDs 
 2. You can mount your own version using a volume:
 
    ```bash
-   docker run -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json
+   -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json
    ```
 
 #### Example format
