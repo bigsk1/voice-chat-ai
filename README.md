@@ -8,7 +8,7 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at.
 
-New -  WebRTC Real Time API you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model to make the AI more human like with emotions and expressive voices.
+New -  WebRTC Real Time API you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model gpt-4o-mini-tts to make the AI more human like with emotions and expressive voices. New characters which you can play escape room games with. Ollama models you have downloaded show up in the UI.
 
 ## Quick Start
 
@@ -16,7 +16,7 @@ Get up and running fast with Voice Chat AI! 🔊
 
 - [**Install Locally**](#installation): Set up with Python 3.10 on Windows or Linux.
 - [**Run with Docker**](#install-with-docker): Use Docker run or Docker Compose
-- [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env`.
+- [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env` on startup.
 - [**OpenAI Enhanced**](#openai-enhanced): Use OpenAI Enhanced Mode to speak with the AI in a more human like way with emotions.
 - [**OpenAI Realtime**](#openai-realtime): Experience real-time conversations with OpenAI's WebRTC-based Realtime API.
 - [**Add New Characters**](#adding-new-characters): Add new characters to the project.
@@ -28,14 +28,14 @@ Get up and running fast with Voice Chat AI! 🔊
 
 - **Supports OpenAI, xAI or Ollama language models**: Choose the model that best fits your needs.
 - **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
+- **Provides speech to speech using OpenAI Realtime API**: Have a real time conversation with AI characters, interrupt the AI and have instant responses.
 - **NEW OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
-- **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper (automatically downloads when selected).
+- **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper.
 - **No typing needed, just speak**: Hands-free interaction makes conversations smooth and effortless.
-- **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood.
-- **You can, just by speaking, have the AI analyze your screen and chat about it**: Seamlessly integrate visual context into your conversations.
+- **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood from sentiment analysis.
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
 - **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
-- **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters!
+- **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters! Play escape room games with the AI.
 - **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
 https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e
@@ -82,7 +82,7 @@ https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e
     Windows Only if using XTTS: Need to have Microsoft C++ 14.0 or greater Build Tools on windows.
     [Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
-   For GPU (CUDA) version: RECOMMEND
+   For GPU (CUDA) version:
 
     Install CUDA-enabled PyTorch and other dependencies
 
@@ -94,13 +94,13 @@ https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e
    pip install -r requirements.txt
    ```
 
-    To install cpu use only use:
+    To install cpu only ( which is fine if only using api's ) use:
 
     ```bash
     pip install -r requirements_cpu.txt
     ```
 
-    Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
+    Make sure you have ffmpeg downloaded if using local XTTS, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
     Note: The app uses OpenAI transcription by default. If you select Local Faster Whisper in the UI, it will automatically download the model (about 1GB) on first use. The model is stored in your user's cache directory and shared across environments.
 
@@ -110,6 +110,8 @@ is in system PATH or whatever version you downloaded, you can also disable cudnn
 ### XTTS for local voices - Optional
 
 If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS the first time you select XTTS the model will download and be ready to use, if your device is cuda enabled it will load into cuda if not will fall back to cpu.
+
+> Note: the sample .wav files in the characters folder are not the greatest quality, you can provide your own to replace them.
 
 ## Usage
 
@@ -136,7 +138,7 @@ python3 cli.py
 ### 📄 Prerequisites
 
 1. Docker installed on your system.
-2. A `.env` file in the same folder as the command. This file should contain all necessary environment variables for the application.
+2. A `.env` file in the same folder as the command. This file should contain all necessary environment variables for the application if your not using certain providers or models just leave the defaults and use the one's you are in the UI.
 
 ---
 
@@ -177,7 +179,7 @@ docker-compose up -d
 
 Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription.
 
- `Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.`
+> Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.
 
 ```bash
 docker pull bigsk1/voice-chat-ai:latest
@@ -206,7 +208,6 @@ docker run -d
 docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
 ```
 
-
 In WSL2 Ubuntu
 
 ```bash
@@ -224,10 +225,12 @@ docker run -d \
 docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
 ```
 
-
-### Nvidia Cuda large image
+### Nvidia Cuda docker image
 
 > This is for running with an Nvidia GPU and you have Nvidia toolkit and cudnn installed.
+
+<details>
+<summary>Click to expand docker with cuda</summary>
 
 This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS with cuda in an nvidia cudnn base image.
 
@@ -238,7 +241,7 @@ This image is huge when built because of all the checkpoints, cuda base image, b
 On windows using docker desktop - run in Windows terminal:
 make sure .env is in same folder you are running this from
 
- `Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.`
+> Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.
 
 ```bash
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 bigsk1/voice-chat-ai:cuda
@@ -252,7 +255,7 @@ For a native WSL environment (like Ubuntu on WSL), use this command:
 
 make sure .env is in same folder you are running this from
 
- `Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.`
+> Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.
 
 ```bash
 docker run -d --gpus all \
@@ -317,6 +320,9 @@ On windows docker desktop using wsl - run in windows
 ```bash
 docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai-cuda -p 8000:8000 voice-chat-ai:cuda
 ```
+
+</details>
+
 ---
 
 > **💡 Pro Tip:**  What I have found to be the best setup is xAI and grok chat model, using voices with Elevenlabs and transcription using OpenAI or local faster whisper on GPU. The fastest real conversation is with OpenAI Realtime. The best quality is not running app in Docker.
@@ -520,6 +526,9 @@ VOICE INSTRUCTIONS:
 
 This is for sentiment analysis, based on what you say, you can guide the AI to respond in certain ways, when you speak the `TextBlob` analyzer is used and given a score, based on that score it is tied to moods shown below and passed to the AI in the follow up response explaining your mood hence guiding the AI to reply back in a certain style.
 
+<details>
+<summary>Click to expand</summary>
+
 ```json
 {
     "happy": "RESPOND WITH JOY AND ENTHUSIASM. Speak of the wonders of magic and the beauty of the world. Voice: Brightest and most vibrant, with age-related gravitas temporarily lightened. Pacing: Quickest and most energetic, with excited pauses and flourishes when describing magical wonders. Tone: Most optimistic and wonder-filled, conveying childlike delight beneath centuries of wisdom. Inflection: Most varied and expressive, with frequent rising patterns suggesting magical possibilities.",
@@ -534,7 +543,9 @@ This is for sentiment analysis, based on what you say, you can guide the AI to r
 }
 ```
 
-For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
+</details>
+
+> For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
 
 ## Troubleshooting
 
