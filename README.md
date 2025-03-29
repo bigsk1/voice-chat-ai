@@ -347,7 +347,7 @@ TTS_PROVIDER=elevenlabs
 # Voice options: alloy, echo, fable, onyx, nova, shimmer, ash, coral, sage
 OPENAI_TTS_VOICE=onyx
 
-# OpenAI Enhanced Mode TTS Model-  NEW it uses emotions and is better
+# OpenAI TTS Model - New it uses emotions see https://www.openai.fm/ 
 # Model options: gpt-4o-mini-tts, tts-1, tts-1-hd
 OPENAI_MODEL_TTS=gpt-4o-mini-tts
 

@@ -32,6 +32,7 @@ CHARACTER_NAME = os.getenv('CHARACTER_NAME', 'wizard')
 TTS_PROVIDER = os.getenv('TTS_PROVIDER', 'openai')
 OPENAI_TTS_URL = os.getenv('OPENAI_TTS_URL', 'https://api.openai.com/v1/audio/speech')
 OPENAI_TTS_VOICE = os.getenv('OPENAI_TTS_VOICE', 'alloy')
+OPENAI_MODEL_TTS = os.getenv('OPENAI_MODEL_TTS', 'gpt-4o-mini-tts')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/completions')
@@ -334,14 +335,14 @@ async def openai_text_to_speech(prompt, output_path):
 
     async with aiohttp.ClientSession() as session:
         if file_extension == 'wav':
-            pcm_data = await fetch_pcm_audio("tts-1", OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL, session)
+            pcm_data = await fetch_pcm_audio(OPENAI_MODEL_TTS, OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL, session)
             save_pcm_as_wav(pcm_data, output_path)
         else:
             try:
                 async with session.post(
                     url=OPENAI_TTS_URL,
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                    json={"model": "tts-1", "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension},
+                    json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension},
                     timeout=30
                 ) as response:
                     response.raise_for_status()
@@ -918,7 +919,7 @@ async def fallback_to_openai_image_analysis(encoded_image, question_prompt):
 async def generate_speech(text, temp_audio_path):
     if TTS_PROVIDER == 'openai':
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {OPENAI_API_KEY}"}
-        payload = {"model": "tts-1", "voice": OPENAI_TTS_VOICE, "input": text, "response_format": "wav"}
+        payload = {"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": text, "response_format": "wav"}
         async with aiohttp.ClientSession() as session:
             async with session.post(OPENAI_TTS_URL, headers=headers, json=payload, timeout=30) as response:
                 if response.status == 200:
