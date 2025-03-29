@@ -33,6 +33,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/completions')
 OPENAI_TRANSCRIPTION_MODEL = os.getenv('OPENAI_TRANSCRIPTION_MODEL', 'gpt-4o-mini-transcribe')
+OPENAI_MODEL_TTS = os.getenv('OPENAI_MODEL_TTS', 'gpt-4o-mini-tts')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
 XAI_MODEL = os.getenv('XAI_MODEL', 'grok-2-1212')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
@@ -165,6 +166,7 @@ print(f"Model provider: {MODEL_PROVIDER}")
 print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
+print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'local' if TTS_PROVIDER == 'xtts' else 'Unknown'}")
 print("To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...")
 
 # Function to synthesize speech using XTTS
@@ -252,7 +254,7 @@ def openai_text_to_speech(prompt, output_path):
     file_extension = Path(output_path).suffix.lstrip('.').lower()
 
     if file_extension == 'wav':
-        pcm_data = fetch_pcm_audio("tts-1", OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL)
+        pcm_data = fetch_pcm_audio(OPENAI_MODEL_TTS, OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL)
         save_pcm_as_wav(pcm_data, output_path)
     else:
         try:
@@ -263,7 +265,7 @@ def openai_text_to_speech(prompt, output_path):
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "tts-1",
+                    "model": OPENAI_MODEL_TTS,
                     "voice": OPENAI_TTS_VOICE,
                     "input": prompt,
                     "response_format": file_extension
@@ -694,7 +696,7 @@ def generate_speech(text, temp_audio_path):
             "Authorization": f"Bearer {OPENAI_API_KEY}"
         }
         payload = {
-            "model": "tts-1",
+            "model": OPENAI_MODEL_TTS,
             "voice": OPENAI_TTS_VOICE,
             "input": text,
             "response_format": "wav"
