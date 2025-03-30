@@ -374,7 +374,7 @@ ELEVENLABS_TTS_VOICE=your_voice_id_here
 XTTS_SPEED=1.1
 COQUI_TOS_AGREED=1
 
-# Maximum character length for audio generation - set to 2000+ if using game characters
+# Maximum character length for audio generation - set to 2000+ if using game characters or stories
 MAX_CHAR_LENGTH=500
 
 # OpenAI Configuration:

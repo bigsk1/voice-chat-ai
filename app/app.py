@@ -993,8 +993,8 @@ async def user_chatbot_conversation():
                 sanitized_response = sanitized_response[:400] + "..."
             prompt2 = sanitized_response
             await process_and_play(prompt2, character_audio_file)  # Note the 'await' here
-            if len(conversation_history) > 20:
-                conversation_history = conversation_history[-20:]
+            if len(conversation_history) > 30:
+                conversation_history = conversation_history[-30:]
 
             # Save conversation history after each message exchange
             save_conversation_history(conversation_history)

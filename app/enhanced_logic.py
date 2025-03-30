@@ -572,9 +572,9 @@ async def enhanced_conversation_loop():
                 # Add to conversation history
                 local_conversation_history.append({"role": "assistant", "content": ai_response})
                 
-                # Manage conversation history size - keep last 20 messages
-                if len(local_conversation_history) > 20:
-                    local_conversation_history = local_conversation_history[-20:]
+                # Manage conversation history size - keep last 30 messages may need to increase for stories
+                if len(local_conversation_history) > 30:
+                    local_conversation_history = local_conversation_history[-30:]
                 
                 # Update global conversation history
                 conversation_history = local_conversation_history.copy()
@@ -734,6 +734,13 @@ async def start_enhanced_conversation(character=None, speed=None, model=None, vo
     # Clear the in-memory history completely
     conversation_history.clear()
     
+    # note: This history clearing is important to prevent character mixing when switching characters and pages
+    # However, it does cause story_ and game_ characters to restart their narratives on each session
+    # todo: Future enhancement - consider special handling for story_/game_ characters to maintain
+    # continuity across sessions when desired (e.g., check if character name starts with "story_" or "game_")
+    # This would allow players to stop and resume interactive stories without losing progress
+    # Also a upload button in UI to upload a conversation history file to continue a conversation from there
+    
     # Reload conversation history from file to ensure it's in sync
     try:
         history_file = "conversation_history.txt"
@@ -773,6 +780,10 @@ async def start_enhanced_conversation(character=None, speed=None, model=None, vo
             # Set the global conversation history
             conversation_history = temp_history
             print(f"Loaded {len(conversation_history)} messages from history file")
+            
+            # TODO: Future enhancement - Add support for uploading saved conversation history files
+            # This would complement the existing download functionality in the UI
+            # and allow users to restore previous story progress or interesting conversations
         else:
             # File doesn't exist or is empty
             print("No history found or empty history file, starting with empty conversation")
