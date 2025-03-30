@@ -254,6 +254,17 @@ document.addEventListener("DOMContentLoaded", function() {
         micIcon.classList.remove('mic-waiting');
     }
 
+    function adjustScrollPosition() {
+        const conversation = document.getElementById('conversation');
+        if (isAISpeaking) {
+            // Add some buffer space to ensure animation is visible
+            conversation.scrollTop = conversation.scrollHeight - 250;
+        } else {
+            // When not speaking, scroll to bottom but leave some space
+            conversation.scrollTop = conversation.scrollHeight - 100;
+        }
+    }
+
     function showVoiceAnimation() {
         voiceAnimation.classList.remove('hidden');
         adjustScrollPosition();
@@ -261,15 +272,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function hideVoiceAnimation() {
         voiceAnimation.classList.add('hidden');
-        adjustScrollPosition();
-        processQueuedMessages();
-    }
-
-    function adjustScrollPosition() {
-        const conversation = document.getElementById('conversation');
-        if (isAISpeaking) {
-            conversation.scrollTop = conversation.scrollHeight;
-        }
+        // Only scroll back to bottom with buffer after animation is hidden
+        setTimeout(() => {
+            // Short delay to ensure smooth transition
+            adjustScrollPosition();
+            processQueuedMessages();
+        }, 100);
     }
 
     function displayMessage(message, className = '') {
@@ -327,7 +335,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         messages.appendChild(messageElement);
-        adjustScrollPosition();
+        // Adjust scroll position whenever a message is added
+        setTimeout(() => adjustScrollPosition(), 10);
     }
 
     startButton.addEventListener('click', function() {

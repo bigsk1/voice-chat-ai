@@ -135,6 +135,8 @@ main {
     margin-left: 0;
     margin-right: auto;
     border-bottom-left-radius: 4px;
+    margin-bottom: 0.5rem;
+    width: 85%; /* Increase width to prevent messages stopping short */
 }
 
 .user-message {
@@ -142,8 +144,9 @@ main {
     color: var(--user-message-color);
     align-self: flex-end;
     margin-left: auto;
-    margin-right: 0;
+    margin-right: 10px; /* Add right margin for user messages */
     border-bottom-right-radius: 4px;
+    margin-bottom: 0.5rem;
 }
 
 /* Style for code blocks */
@@ -164,33 +167,32 @@ main {
     color: #777;
     font-size: 0.9rem;
     text-align: center;
-    margin: 0.5rem 0;
+    margin: 0.5rem auto;
     font-style: italic;
-    background-color: rgba(0, 0, 0, 0.05);
     padding: 8px;
-    border-radius: 8px;
     max-width: none;
     width: 90%;
-    margin-left: auto;
-    margin-right: auto;
+    background-color: transparent; /* Remove background */
+    border-radius: 0; /* Remove border radius */
+    box-shadow: none; /* Remove shadow */
 }
 
 .error-message {
     color: #d9534f;
-    background-color: rgba(217, 83, 79, 0.1);
     padding: 0.5rem;
-    border-radius: 8px;
     margin: 0.5rem auto;
     font-weight: bold;
     max-width: none;
     width: 90%;
     text-align: center;
+    background-color: transparent; /* Remove background */
+    border-radius: 0; /* Remove border radius */
 }
 
 #messages {
     display: flex;
     flex-direction: column;
-    padding-bottom: 20px; /* Add padding to the bottom of the messages container */
+    padding-bottom: 100px;
 }
 
 .controls {
@@ -316,7 +318,7 @@ a:hover {
 
 #voice-animation {
     position: sticky;
-    bottom: 10px;
+    bottom: 80px;
     left: 50%;
     transform: translateX(-50%);
     width: 150px;
@@ -328,6 +330,7 @@ a:hover {
     background-color: var(--conversation-bg);
     border-radius: 50%;
     box-shadow: 0 0 10px var(--shadow-color);
+    transition: opacity 0.3s ease;
 }
 
 #voice-animation svg {
@@ -367,7 +370,7 @@ a:hover {
 /* Voice animation for Enhanced page */
 #voiceWaveAnimation {
     position: sticky;
-    bottom: 10px;
+    bottom: 80px;
     left: 50%;
     transform: translateX(-50%);
     width: 150px;
@@ -379,6 +382,7 @@ a:hover {
     background-color: var(--conversation-bg);
     border-radius: 50%;
     box-shadow: 0 0 10px var(--shadow-color);
+    transition: opacity 0.3s ease;
 }
 
 #voiceWaveAnimation svg {

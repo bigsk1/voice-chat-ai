@@ -227,7 +227,14 @@ document.addEventListener("DOMContentLoaded", function() {
     function adjustScrollPosition() {
         // Ensure the conversation is scrolled down even with voice animation
         setTimeout(() => {
-            conversation.scrollTop = conversation.scrollHeight;
+            const height = conversation.scrollHeight;
+            if (isAISpeaking) {
+                // Leave more space when speaking to show animation
+                conversation.scrollTop = height - 250;
+            } else {
+                // Leave a bit of space when not speaking
+                conversation.scrollTop = height - 100;
+            }
         }, 10);
     }
     
@@ -277,7 +284,8 @@ document.addEventListener("DOMContentLoaded", function() {
         const voiceWave = document.getElementById('voiceWaveAnimation');
         if (voiceWave) {
             voiceWave.classList.add('hidden');
-            adjustScrollPosition();
+            // Small delay before adjusting scroll
+            setTimeout(() => adjustScrollPosition(), 100);
         }
     }
     
