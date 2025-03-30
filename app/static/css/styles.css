@@ -120,9 +120,12 @@ main {
 
 .ai-message, .user-message {
     margin: 0.5rem 0;
-    padding: 0.5rem;
-    border-radius: 8px;
-    max-width: 80%;
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    max-width: 90%;
+    word-wrap: break-word;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    line-height: 1.5;
 }
 
 .ai-message {
@@ -130,25 +133,63 @@ main {
     color: var(--ai-message-color);
     align-self: flex-start;
     margin-left: 0;
-    margin-right: 0;
-    max-width: calc(100% - 120px); 
-    margin-bottom: 2rem;
+    margin-right: auto;
+    border-bottom-left-radius: 4px;
 }
 
 .user-message {
     background-color: var(--primary-color);
     color: var(--user-message-color);
     align-self: flex-end;
-    margin-left: 60%;
+    margin-left: auto;
+    margin-right: 0;
+    border-bottom-right-radius: 4px;
+}
+
+/* Style for code blocks */
+.ai-message pre, .user-message pre {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 8px 0;
+}
+
+.ai-message code, .user-message code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.system-message {
+    color: #777;
+    font-size: 0.9rem;
+    text-align: center;
+    margin: 0.5rem 0;
+    font-style: italic;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 8px;
+    border-radius: 8px;
+    max-width: none;
+    width: 90%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .error-message {
-    color: red;
+    color: #d9534f;
+    background-color: rgba(217, 83, 79, 0.1);
+    padding: 0.5rem;
+    border-radius: 8px;
+    margin: 0.5rem auto;
     font-weight: bold;
-    font-style: italic;
+    max-width: none;
+    width: 90%;
+    text-align: center;
 }
 
 #messages {
+    display: flex;
+    flex-direction: column;
     padding-bottom: 20px; /* Add padding to the bottom of the messages container */
 }
 

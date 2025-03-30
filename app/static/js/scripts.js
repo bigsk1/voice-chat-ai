@@ -278,14 +278,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // Strip out <think>...</think> blocks
         formattedMessage = formattedMessage.replace(/<think>[\s\S]*?<\/think>/g, '');
         
-        // Format code blocks
-        if (formattedMessage.includes('```')) {
-            formattedMessage = formattedMessage.replace(/```(.*?)```/gs, function(match, p1) {
-                return `<pre><code>${p1}</code></pre>`;
-            });
-        }
-    
-        const messageElement = document.createElement('p');
+        const messageElement = document.createElement('div');
         if (className) {
             messageElement.className = className;
         } else if (formattedMessage.startsWith('You:')) {
@@ -294,7 +287,45 @@ document.addEventListener("DOMContentLoaded", function() {
         } else {
             messageElement.className = 'ai-message';
         }
-        messageElement.innerHTML = formattedMessage;
+        
+        // Handle code blocks
+        if (formattedMessage.includes('```')) {
+            // Split by code blocks and process each segment
+            let segments = formattedMessage.split(/(```(?:.*?)```)/gs);
+            segments.forEach(segment => {
+                if (segment.startsWith('```') && segment.endsWith('```')) {
+                    // This is a code block
+                    const codeContent = segment.slice(3, -3).trim();
+                    const preElement = document.createElement('pre');
+                    const codeElement = document.createElement('code');
+                    codeElement.textContent = codeContent;
+                    preElement.appendChild(codeElement);
+                    messageElement.appendChild(preElement);
+                } else if (segment.trim()) {
+                    // This is regular text
+                    // Handle newlines in regular text
+                    segment.split('\n').forEach((line, index) => {
+                        if (index > 0) {
+                            messageElement.appendChild(document.createElement('br'));
+                        }
+                        messageElement.appendChild(document.createTextNode(line));
+                    });
+                }
+            });
+        } else {
+            // Handle newlines in the message (no code blocks)
+            if (formattedMessage.includes('\n')) {
+                formattedMessage.split('\n').forEach((line, index) => {
+                    if (index > 0) {
+                        messageElement.appendChild(document.createElement('br'));
+                    }
+                    messageElement.appendChild(document.createTextNode(line));
+                });
+            } else {
+                messageElement.textContent = formattedMessage;
+            }
+        }
+        
         messages.appendChild(messageElement);
         adjustScrollPosition();
     }
@@ -415,9 +446,9 @@ document.addEventListener("DOMContentLoaded", function() {
                                     // Display previous message if exists
                                     if (currentSpeaker && currentMessage) {
                                         if (currentSpeaker === 'User') {
-                                            displayMessage(currentMessage, 'user-message');
+                                            displayMessage(`You: ${currentMessage}`);
                                         } else {
-                                            displayMessage(currentMessage, 'ai-message');
+                                            displayMessage(currentMessage);
                                         }
                                     }
                                     
@@ -428,9 +459,9 @@ document.addEventListener("DOMContentLoaded", function() {
                                     // Display previous message if exists
                                     if (currentSpeaker && currentMessage) {
                                         if (currentSpeaker === 'User') {
-                                            displayMessage(currentMessage, 'user-message');
+                                            displayMessage(`You: ${currentMessage}`);
                                         } else {
-                                            displayMessage(currentMessage, 'ai-message');
+                                            displayMessage(currentMessage);
                                         }
                                     }
                                     
@@ -446,20 +477,17 @@ document.addEventListener("DOMContentLoaded", function() {
                             // Display the last message
                             if (currentSpeaker && currentMessage) {
                                 if (currentSpeaker === 'User') {
-                                    displayMessage(currentMessage, 'user-message');
+                                    displayMessage(`You: ${currentMessage}`);
                                 } else {
-                                    displayMessage(currentMessage, 'ai-message');
+                                    displayMessage(currentMessage);
                                 }
                             }
                             
                             // Add a note that this is previous history
-                            const historyNote = document.createElement('div');
-                            historyNote.className = 'system-message';
-                            historyNote.textContent = `Previous conversation history loaded for ${selectedCharacter.replace('_', ' ')}. Press Start to continue.`;
-                            messages.appendChild(historyNote);
+                            displayMessage(`Previous conversation history loaded for ${selectedCharacter.replace('_', ' ')}. Press Start to continue.`, "system-message");
                             
                             // Scroll to bottom to show latest messages
-                            messages.scrollTop = messages.scrollHeight;
+                            conversation.scrollTop = conversation.scrollHeight;
                         }
                     })
                     .catch(error => {

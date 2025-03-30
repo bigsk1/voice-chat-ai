@@ -3,7 +3,7 @@ import asyncio
 from threading import Thread
 from fastapi import APIRouter
 from pydantic import BaseModel
-from .shared import clients, continue_conversation, conversation_history, get_current_character
+from .shared import clients, continue_conversation, conversation_history
 from .app import (
     analyze_mood,
     chatgpt_streamed,
