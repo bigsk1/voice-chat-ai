@@ -132,7 +132,7 @@ main {
     background-color: var(--secondary-color);
     color: var(--ai-message-color);
     align-self: flex-start;
-    margin-left: 0;
+    margin-left: 5px;
     margin-right: auto;
     border-bottom-left-radius: 4px;
     margin-bottom: 0.5rem;
@@ -144,7 +144,7 @@ main {
     color: var(--user-message-color);
     align-self: flex-end;
     margin-left: auto;
-    margin-right: 10px; /* Add right margin for user messages */
+    margin-right: 20px; /* Add right margin for user messages */
     border-bottom-right-radius: 4px;
     margin-bottom: 0.5rem;
 }
@@ -449,15 +449,17 @@ a:hover {
     }
 
     #voice-animation {
-        width: 30px; /* Smaller animation for mobile */
-        height: 30px;
-        margin: 0 0.5rem;
+        width: 100px; /* Larger animation for mobile */
+        height: 100px;
+        margin: 0 auto;
+        bottom: 40px; /* Position higher on mobile */
     }
 
     #voiceWaveAnimation {
-        width: 30px;
-        height: 30px;
-        margin: 0 0.5rem;
+        width: 100px; /* Larger animation for mobile */
+        height: 100px;
+        margin: 0 auto;
+        bottom: 40px; /* Position higher on mobile */
     }
 }
 
