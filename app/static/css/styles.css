@@ -634,3 +634,12 @@ a:hover {
         opacity: 0.6;
     }
 }
+
+/* Add specific styling for webRTC transcript to override global styles */
+.transcript-container,
+.user-speech, 
+.ai-speech, 
+.system-message.webrtc, 
+.error-message.webrtc {
+    text-align: left !important;
+}
