@@ -379,11 +379,95 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     characterSelect.addEventListener('change', function() {
+        const selectedCharacter = this.value;
+        console.log(`Character selected: ${selectedCharacter}`);
+        
+        // Clear existing conversation display
+        messages.innerHTML = '';
+        
+        // Set the selected character
         fetch('/set_character', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ character: this.value })
-        });
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ character: selectedCharacter })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Character set response:', data);
+            
+            // Check if this is a story/game character and fetch history
+            if (selectedCharacter.startsWith('story_') || selectedCharacter.startsWith('game_')) {
+                // Fetch history for this character
+                fetch('/get_character_history')
+                    .then(response => response.json())
+                    .then(historyData => {
+                        if (historyData.status === 'success' && historyData.history) {
+                            // Display the history
+                            const historyLines = historyData.history.split('\n');
+                            let currentSpeaker = null;
+                            let currentMessage = '';
+                            
+                            // Process each line
+                            historyLines.forEach(line => {
+                                if (line.startsWith('User:')) {
+                                    // Display previous message if exists
+                                    if (currentSpeaker && currentMessage) {
+                                        if (currentSpeaker === 'User') {
+                                            displayMessage(currentMessage, 'user-message');
+                                        } else {
+                                            displayMessage(currentMessage, 'ai-message');
+                                        }
+                                    }
+                                    
+                                    // Start new user message
+                                    currentSpeaker = 'User';
+                                    currentMessage = line.substring(5).trim();
+                                } else if (line.startsWith('Assistant:')) {
+                                    // Display previous message if exists
+                                    if (currentSpeaker && currentMessage) {
+                                        if (currentSpeaker === 'User') {
+                                            displayMessage(currentMessage, 'user-message');
+                                        } else {
+                                            displayMessage(currentMessage, 'ai-message');
+                                        }
+                                    }
+                                    
+                                    // Start new assistant message
+                                    currentSpeaker = 'Assistant';
+                                    currentMessage = line.substring(10).trim();
+                                } else if (line.trim() && currentSpeaker) {
+                                    // Continuation of current message
+                                    currentMessage += '\n' + line;
+                                }
+                            });
+                            
+                            // Display the last message
+                            if (currentSpeaker && currentMessage) {
+                                if (currentSpeaker === 'User') {
+                                    displayMessage(currentMessage, 'user-message');
+                                } else {
+                                    displayMessage(currentMessage, 'ai-message');
+                                }
+                            }
+                            
+                            // Add a note that this is previous history
+                            const historyNote = document.createElement('div');
+                            historyNote.className = 'system-message';
+                            historyNote.textContent = `Previous conversation history loaded for ${selectedCharacter.replace('_', ' ')}. Press Start to continue.`;
+                            messages.appendChild(historyNote);
+                            
+                            // Scroll to bottom to show latest messages
+                            messages.scrollTop = messages.scrollHeight;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching character history:', error);
+                    });
+            }
+        })
+        .catch(error => console.error('Error setting character:', error));
     });
 
     providerSelect.addEventListener('change', setProvider);

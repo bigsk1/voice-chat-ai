@@ -7,10 +7,10 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPExcept
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
-from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt
+from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 import logging
 from threading import Thread
@@ -139,10 +139,26 @@ async def get_enhanced_defaults():
 
 @app.post("/set_character")
 async def set_character(request: Request):
-    data = await request.json()
-    character = data.get("character")
-    if not character:
-        return {"status": "error", "message": "Character name is required"}
+    try:
+        data = await request.json()
+        character = data.get("character")
+        if not character:
+            return {"status": "error", "message": "Character name is required"}
+        
+        # Import the set_character function from app_logic
+        from .app_logic import set_api_character
+        from pydantic import BaseModel
+        
+        # Create a model for the function
+        class CharacterModel(BaseModel):
+            character: str
+        
+        # Call the function with the character model
+        result = await set_api_character(CharacterModel(character=character))
+        return result
+    except Exception as e:
+        print(f"Error setting character: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.post("/start_conversation")
 async def start_conversation_route():
@@ -182,10 +198,45 @@ async def stop_enhanced_conversation_route():
 
 @app.post("/clear_history")
 async def clear_history():
-    global conversation_history # noqa: F824
-    conversation_history.clear()  # Clear the in-memory conversation history
-    save_conversation_history(conversation_history)  # Save the cleared state to the file
-    return {"status": "cleared"}
+    """Clear the conversation history."""
+    try:
+        # Import with alias to avoid potential shadowing issues
+        from .shared import conversation_history, get_current_character as get_character
+        
+        current_character = get_character()
+        
+        # Check if this is a story or game character
+        is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+        print(f"Clearing history for {current_character} ({is_story_character=})")
+        
+        # Clear the in-memory history
+        conversation_history.clear()
+        
+        if is_story_character:
+            # Clear character-specific history file
+            character_dir = os.path.join(characters_folder, current_character)
+            history_file = os.path.join(character_dir, "conversation_history.txt")
+            
+            if os.path.exists(history_file):
+                os.remove(history_file)
+                print(f"Deleted character-specific history file for {current_character}")
+            
+            # Write empty history to character-specific file
+            save_character_specific_history(conversation_history, current_character)
+        else:
+            # Clear global history file
+            history_file = "conversation_history.txt"
+            if os.path.exists(history_file):
+                os.remove(history_file)
+                print(f"Deleted global history file")
+            
+            # Write empty history to global file
+            save_conversation_history(conversation_history)
+        
+        return {"status": "cleared"}
+    except Exception as e:
+        print(f"Error clearing history: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.get("/download_history")
 async def download_history():
@@ -209,62 +260,52 @@ async def download_history():
 
 @app.get("/download_enhanced_history")
 async def download_enhanced_history():
-    # First load history from file to ensure we have the latest content
+    """Download the conversation history."""
     try:
-        history_file = "conversation_history.txt"
-        temp_history = []
-        if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
-            # File exists and has content, load it
-            with open(history_file, "r", encoding="utf-8") as file:
-                current_role = None
-                current_content = ""
+        # Import with alias to avoid potential shadowing issues
+        from .shared import get_current_character as get_character
+        
+        current_character = get_character()
+        
+        # Check if this is a story or game character
+        is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+        print(f"Downloading history for {current_character} ({is_story_character=})")
+        
+        if is_story_character:
+            # Get from character-specific history file
+            character_dir = os.path.join(characters_folder, current_character)
+            history_file = os.path.join(character_dir, "conversation_history.txt")
+            
+            if not os.path.exists(history_file) or os.path.getsize(history_file) == 0:
+                # Create an empty history file if it doesn't exist
+                with open(history_file, "w", encoding="utf-8") as f:
+                    f.write(f"No conversation history found for {current_character}.\n")
                 
-                for line in file:
-                    line = line.strip()
-                    if line.startswith("User:"):
-                        # Save previous message if exists
-                        if current_role:
-                            temp_history.append({"role": current_role, "content": current_content.strip()})
-                        
-                        # Start new user message
-                        current_role = "user"
-                        current_content = line[5:].strip()
-                    elif line.startswith("Assistant:"):
-                        # Save previous message if exists
-                        if current_role:
-                            temp_history.append({"role": current_role, "content": current_content.strip()})
-                        
-                        # Start new assistant message
-                        current_role = "assistant"
-                        current_content = line[10:].strip()
-                    else:
-                        # Continue previous message
-                        current_content += "\n" + line
-                
-                # Add the last message
-                if current_role:
-                    temp_history.append({"role": current_role, "content": current_content.strip()})
-        
-        # Create a temporary file with a unique name different from the main history file
-        temp_file = f"temp_download_{uuid.uuid4().hex}.txt"
-        
-        # Format it the same way as the save_conversation_history function in app.py
-        with open(temp_file, "w", encoding="utf-8") as file:
-            for message in temp_history:
-                role = message["role"].capitalize()
-                content = message["content"]
-                file.write(f"{role}: {content}\n")
-        
-        # Return the file and ensure it will be cleaned up after sending
-        return FileResponse(
-            temp_file,
-            media_type="text/plain",
-            filename="conversation_history.txt",
-            background=BackgroundTask(lambda: os.remove(temp_file) if os.path.exists(temp_file) else None)
-        )
+            # Generate download filename based on character
+            download_filename = f"{current_character}_history.txt"
+            
+            return FileResponse(
+                history_file,
+                media_type="text/plain",
+                filename=download_filename
+            )
+        else:
+            # Get from global history file
+            history_file = "conversation_history.txt"
+            
+            if not os.path.exists(history_file) or os.path.getsize(history_file) == 0:
+                # Create an empty history file if it doesn't exist
+                with open(history_file, "w", encoding="utf-8") as f:
+                    f.write("No conversation history found.\n")
+            
+            return FileResponse(
+                history_file,
+                media_type="text/plain",
+                filename="conversation_history.txt"
+            )
     except Exception as e:
-        print(f"Error creating download file: {e}")
-        return HTTPException(status_code=500, detail="Failed to create download file")
+        print(f"Error downloading history: {e}")
+        return PlainTextResponse(f"Error downloading history: {str(e)}", status_code=500)
 
 @app.post("/set_transcription_model")
 async def update_transcription_model(request: Request):
@@ -415,30 +456,44 @@ async def websocket_endpoint(websocket: WebSocket):
         remove_client(websocket)
 
 @app.websocket("/ws_enhanced")
-async def enhanced_websocket_endpoint(websocket: WebSocket):
+async def websocket_enhanced_endpoint(websocket: WebSocket):
     await websocket.accept()
+    
+    # Import with alias to avoid potential shadowing issues
+    from .shared import clients, add_client, remove_client
+    
+    # Add client to the list
     add_client(websocket)
+    print(f"Enhanced WebSocket client {id(websocket)} connected")
+    logging.info("connection open")
+    
+    # Notify client they are connected successfully
     try:
-        # Just keep the connection alive without actively reading
-        # Simply notify the client that the connection is established
-        await websocket.send_json({"action": "connected", "message": "WebSocket connection established"})
-        
-        # Wait for the client to disconnect rather than actively reading
+        await websocket.send_json({"action": "connected"})
+    except:
+        pass
+    
+    try:
+        # Process messages from the client
         while True:
-            # This will raise WebSocketDisconnect when client disconnects
-            # Process only control messages and heartbeats
-            data = await websocket.receive()
-            # logging.info(f"Received message from client: {data}")
-            # Don't try to parse or process normal text messages
-            if data["type"] == "websocket.disconnect":
-                raise WebSocketDisconnect(1000)
+            data = await websocket.receive_text()
+            try:
+                message = json.loads(data)
+                if message.get("action") == "ping":
+                    # Respond to heartbeats
+                    await websocket.send_json({"action": "pong"})
+            except json.JSONDecodeError:
+                # Not a JSON message
+                pass
+                
     except WebSocketDisconnect:
-        remove_client(websocket)
-        logger.info(f"Client disconnected from enhanced websocket")
+        logging.info("Client disconnected from enhanced websocket")
     except Exception as e:
-        logger.error(f"Error in enhanced websocket: {e}")
-        # Still remove the client to prevent resource leaks
+        logging.error(f"Error in enhanced websocket: {e}")
+    finally:
+        # Remove client from the list on any error or disconnect
         remove_client(websocket)
+        print(f"Enhanced WebSocket client {id(websocket)} disconnected")
 
 # WebRTC OpenAI Realtime route (direct WebRTC implementation)
 @app.get("/webrtc_realtime")
@@ -492,6 +547,37 @@ async def get_character_prompt(character_name: str):
     except Exception as e:
         logger.error(f"Error loading character prompt: {e}")
         return {"error": str(e)}
+
+@app.get("/get_character_history")
+async def get_character_history():
+    """Get conversation history for currently selected character."""
+    try:
+        # Import with alias to avoid potential shadowing issues
+        from .shared import get_current_character as get_character
+        
+        current_character = get_character()
+        
+        # Check if this is a story or game character
+        is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+        print(f"Getting history for {current_character} ({is_story_character=})")
+        
+        if is_story_character:
+            # Get from character-specific history file
+            character_dir = os.path.join(characters_folder, current_character)
+            history_file = os.path.join(character_dir, "conversation_history.txt")
+            
+            if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history_text = f.read()
+                return {"status": "success", "history": history_text, "character": current_character}
+            else:
+                return {"status": "empty", "history": "", "character": current_character}
+        else:
+            # For non-story characters, return empty history
+            return {"status": "not_story_character", "history": "", "character": current_character}
+    except Exception as e:
+        print(f"Error getting character history: {e}")
+        return {"status": "error", "message": str(e)}
 
 def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')

@@ -110,6 +110,16 @@ document.addEventListener("DOMContentLoaded", function() {
                 isAISpeaking = false;
                 processQueuedMessages(); // Process any remaining messages
                 console.log("Conversation stopped");
+            } else if (data.action === "clear_character_switch") {
+                // Clear the conversation messages when switching characters
+                const messagesContainer = document.getElementById('messages');
+                messagesContainer.innerHTML = '';
+                console.log("Cleared conversation due to character switch");
+                
+                // Display the character switch message if provided
+                if (data.message) {
+                    displayMessage(data.message, data.type || "system-message");
+                }
             } else if (data.action === "error") {
                 console.error("Error:", data.message);
                 displayMessage(data.message, "error-message");
@@ -130,7 +140,9 @@ document.addEventListener("DOMContentLoaded", function() {
                     // System messages like character selection are displayed with system styling
                     displayMessage(data.message, "system-message");
                 } else {
-                    // Queue AI messages to display after audio finishes
+                    // AI messages - queue to display after audio completes
+                    // Instead of displaying immediately, add to queue and wait for audio to finish
+                    console.log("Queueing AI message for display after audio");
                     aiMessageQueue.push(data.message);
                     if (!isAISpeaking) {
                         processQueuedMessages();
@@ -181,6 +193,8 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     
     function displayMessage(message, className = "") {
+        // Only log errors, not regular messages
+        
         const messagesContainer = document.getElementById('messages');
         const messageElement = document.createElement("div");
         
@@ -193,7 +207,18 @@ document.addEventListener("DOMContentLoaded", function() {
             messageElement.className = "ai-message";
         }
         
-        messageElement.textContent = message;
+        // Handle newlines in the message
+        if (message.includes('\n')) {
+            message.split('\n').forEach((line, index) => {
+                if (index > 0) {
+                    messageElement.appendChild(document.createElement('br'));
+                }
+                messageElement.appendChild(document.createTextNode(line));
+            });
+        } else {
+            messageElement.textContent = message;
+        }
+        
         messagesContainer.appendChild(messageElement);
         conversation.scrollTop = conversation.scrollHeight;
         adjustScrollPosition();
@@ -486,6 +511,97 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }, 30000); // Every 30 seconds
     }
+    
+    // Character selection change handler
+    characterSelect.addEventListener('change', function() {
+        const selectedCharacter = this.value;
+        console.log(`Character selected: ${selectedCharacter}`);
+        
+        // Clear existing conversation display
+        const messagesContainer = document.getElementById('messages');
+        messagesContainer.innerHTML = '';
+        
+        // Set the selected character
+        fetch('/set_character', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ character: selectedCharacter })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Character set response:', data);
+            
+            // Check if this is a story/game character and fetch history
+            if (selectedCharacter.startsWith('story_') || selectedCharacter.startsWith('game_')) {
+                // Fetch history for this character
+                fetch('/get_character_history')
+                    .then(response => response.json())
+                    .then(historyData => {
+                        if (historyData.status === 'success' && historyData.history) {
+                            // Display the history
+                            const historyLines = historyData.history.split('\n');
+                            let currentSpeaker = null;
+                            let currentMessage = '';
+                            
+                            // Process each line
+                            historyLines.forEach(line => {
+                                if (line.startsWith('User:')) {
+                                    // Display previous message if exists
+                                    if (currentSpeaker && currentMessage) {
+                                        if (currentSpeaker === 'User') {
+                                            displayMessage(`You: ${currentMessage}`);
+                                        } else {
+                                            displayMessage(currentMessage);
+                                        }
+                                    }
+                                    
+                                    // Start new user message
+                                    currentSpeaker = 'User';
+                                    currentMessage = line.substring(5).trim();
+                                } else if (line.startsWith('Assistant:')) {
+                                    // Display previous message if exists
+                                    if (currentSpeaker && currentMessage) {
+                                        if (currentSpeaker === 'User') {
+                                            displayMessage(`You: ${currentMessage}`);
+                                        } else {
+                                            displayMessage(currentMessage);
+                                        }
+                                    }
+                                    
+                                    // Start new assistant message
+                                    currentSpeaker = 'Assistant';
+                                    currentMessage = line.substring(10).trim();
+                                } else if (line.trim() && currentSpeaker) {
+                                    // Continuation of current message
+                                    currentMessage += '\n' + line;
+                                }
+                            });
+                            
+                            // Display the last message
+                            if (currentSpeaker && currentMessage) {
+                                if (currentSpeaker === 'User') {
+                                    displayMessage(`You: ${currentMessage}`);
+                                } else {
+                                    displayMessage(currentMessage);
+                                }
+                            }
+                            
+                            // Add a note that this is previous history
+                            displayMessage(`Previous conversation history loaded for ${selectedCharacter.replace('_', ' ')}. Press Start to continue.`, "system-message");
+                            
+                            // Scroll to bottom to show latest messages
+                            conversation.scrollTop = conversation.scrollHeight;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching character history:', error);
+                    });
+            }
+        })
+        .catch(error => console.error('Error setting character:', error));
+    });
     
     // Initialize
     loadThemePreference();

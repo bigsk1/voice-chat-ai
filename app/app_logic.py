@@ -2,6 +2,7 @@ import os
 import asyncio
 from threading import Thread
 from fastapi import APIRouter
+from pydantic import BaseModel
 from .shared import clients, continue_conversation, conversation_history, get_current_character
 from .app import (
     analyze_mood,
@@ -25,6 +26,10 @@ from .transcription import transcribe_audio
 import json
 import logging
 import requests
+
+# Define the CharacterModel
+class CharacterModel(BaseModel):
+    character: str
 
 router = APIRouter()
 characters_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "characters")
@@ -75,7 +80,10 @@ async def send_message_to_all_clients(message):
             print(f"Error sending message to client: {e}")
 
 async def process_text(user_input):
-    current_character = get_current_character()
+    # Import with alias to avoid potential shadowing issues
+    from .shared import get_current_character as get_character
+    
+    current_character = get_character()
     character_folder = os.path.join('characters', current_character)
     character_prompt_file = os.path.join(character_folder, f"{current_character}.txt")
     character_audio_file = os.path.join(character_folder, f"{current_character}.wav")
@@ -93,7 +101,19 @@ async def process_text(user_input):
     await process_and_play(prompt2, character_audio_file)
 
     conversation_history.append({"role": "assistant", "content": chatbot_response})
-    save_conversation_history(conversation_history)
+    
+    # Check if this is a story or game character
+    is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+    
+    if is_story_character:
+        # Save to character-specific history file
+        save_character_specific_history(conversation_history, current_character)
+        print(f"Saved character-specific history for {current_character}")
+    else:
+        # Save to global history file
+        save_conversation_history(conversation_history)
+        print(f"Saved global history for {current_character}")
+        
     return chatbot_response
 
 quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave."]
@@ -110,10 +130,94 @@ screenshot_phrases = [
 @router.post("/start_conversation")
 async def start_conversation():
     global continue_conversation # noqa: F824
+    
+    # Set flag to continue conversation
     continue_conversation = True
-    conversation_thread = Thread(target=asyncio.run, args=(conversation_loop(),))
-    conversation_thread.start()
-    return {"message": "Conversation started"}
+    
+    # Import with alias to avoid potential shadowing issues
+    from .shared import conversation_history, get_current_character as get_character, set_conversation_active
+    
+    # Get the current character
+    current_character = get_character()
+    print(f"Starting conversation with character: {current_character}")
+    
+    # Set conversation_active to True
+    set_conversation_active(True)
+    
+    # Determine if character is story/game character
+    is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+    
+    # Handle history based on character type
+    if is_story_character:
+        # For story/game characters: preserve existing history or load from character-specific file
+        print(f"Using character-specific history for {current_character}")
+        loaded_history = load_character_specific_history(current_character)
+        if loaded_history:
+            # Clear existing history and load from file
+            conversation_history.clear()
+            conversation_history.extend(loaded_history)
+            print(f"Loaded {len(loaded_history)} messages from character-specific history")
+        else:
+            # If no history exists, make sure in-memory history is cleared too
+            conversation_history.clear()
+            print("No previous character-specific history found, starting fresh")
+    else:
+        # For standard characters: make sure we're starting with an empty history
+        print(f"Clearing conversation history for standard character: {current_character}")
+        conversation_history.clear()
+        
+        # Load history from file - only for existing global history
+        history_file = "conversation_history.txt"
+        if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
+            print("Loading history from global file")
+            temp_history = []
+            with open(history_file, "r", encoding="utf-8") as file:
+                current_role = None
+                current_content = ""
+                
+                for line in file:
+                    line = line.strip()
+                    if not line:  # Skip empty lines
+                        continue
+                        
+                    if line.startswith("User:"):
+                        # Save previous message if exists
+                        if current_role:
+                            temp_history.append({"role": current_role, "content": current_content.strip()})
+                        
+                        # Start new user message
+                        current_role = "user"
+                        current_content = line[5:].strip()
+                    elif line.startswith("Assistant:"):
+                        # Save previous message if exists
+                        if current_role:
+                            temp_history.append({"role": current_role, "content": current_content.strip()})
+                        
+                        # Start new assistant message
+                        current_role = "assistant"
+                        current_content = line[10:].strip()
+                    else:
+                        # Continue previous message
+                        current_content += "\n" + line
+                
+                # Add the last message
+                if current_role:
+                    temp_history.append({"role": current_role, "content": current_content.strip()})
+            
+            # Add loaded messages to conversation history
+            conversation_history.extend(temp_history)
+            print(f"Loaded {len(temp_history)} messages from global history")
+    
+    print(f"Starting conversation with character {current_character}, history size: {len(conversation_history)}")
+    
+    # Wait for speech
+    # print("Waiting for speech...")
+    await send_message_to_clients({"type": "waiting"})
+    
+    # Start conversation thread
+    Thread(target=asyncio.run, args=(conversation_loop(),)).start()
+    
+    return {"status": "started"}
 
 @router.post("/stop_conversation")
 async def stop_conversation():
@@ -123,10 +227,26 @@ async def stop_conversation():
 
 async def conversation_loop():
     global continue_conversation # noqa: F824
+    
+    # Import with alias to avoid potential shadowing issues
+    from .shared import get_current_character as get_character
+    
     while continue_conversation:
         user_input = await record_audio_and_transcribe() 
         conversation_history.append({"role": "user", "content": user_input})
-        save_conversation_history(conversation_history)
+        
+        # Get current character to check if it's a story/game character
+        current_character = get_character()
+        is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+        
+        # Save history based on character type
+        if is_story_character:
+            save_character_specific_history(conversation_history, current_character)
+            print(f"Saved user input to character-specific history for {current_character}")
+        else:
+            save_conversation_history(conversation_history)
+            # print(f"Saved user input to global history for {current_character}")
+            
         await send_message_to_clients(f"You: {user_input}")
         print(f"You: {user_input}")
 
@@ -148,7 +268,7 @@ async def conversation_loop():
             chatbot_response = f"An error occurred: {e}"
             print(chatbot_response)
 
-        current_character = get_current_character()
+        current_character = get_character()
         await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}")
         # print(f"{current_character.capitalize()}: {chatbot_response}")
 
@@ -173,8 +293,11 @@ def set_env_variable(key: str, value: str):
 
 def adjust_prompt(mood):
     """Load mood-specific prompts from the character's prompts.json file."""
+    # Import with alias to avoid potential shadowing issues
+    from .shared import get_current_character as get_character
+    
     # Get the current character
-    current_character = get_current_character()
+    current_character = get_character()
     
     # Look for character-specific prompts first
     character_prompts_path = os.path.join(characters_folder, current_character, 'prompts.json')
@@ -217,10 +340,6 @@ def adjust_prompt(mood):
         print(f"Error loading prompts: {e}")
         mood_prompts = {}
 
-    # The key issue: we only want to log the mood, not the entire prompt
-    # Just print the mood name, not the full prompt text
-    print(f"Detected mood: {mood}")
-    
     # Get the mood prompt but don't print it in normal logging
     mood_prompt = mood_prompts.get(mood, "")
     
@@ -298,3 +417,148 @@ def load_character_prompt(character_name):
         print(f"Error loading character prompt: {e}")
         # Return a default prompt for the assistant character
         return "You are a helpful AI assistant."
+
+def save_character_specific_history(history, character_name):
+    """
+    Save conversation history to a character-specific file for story/game characters.
+    Only to be used for characters with names starting with story_ or game_
+    
+    Args:
+        history: The conversation history to save
+        character_name: The name of the character
+        
+    Returns:
+        dict: Status of the operation
+    """
+    try:
+        # Only process for story/game characters
+        if not character_name.startswith("story_") and not character_name.startswith("game_"):
+            print(f"Not a story/game character: {character_name}, using global history instead")
+            return save_conversation_history(history)
+            
+        # Create character-specific history file path
+        character_dir = os.path.join(characters_folder, character_name)
+        history_file = os.path.join(character_dir, "conversation_history.txt")
+        
+        print(f"Saving character-specific history for {character_name}")
+        
+        with open(history_file, "w", encoding="utf-8") as file:
+            for message in history:
+                role = message["role"].capitalize()
+                content = message["content"]
+                file.write(f"{role}: {content}\n\n")  # Extra newline for readability
+                
+        print(f"Saved {len(history)} messages to character-specific history file")
+        return {"status": "success"}
+    except Exception as e:
+        logging.error(f"Error saving character-specific history: {e}")
+        return {"status": "error", "message": str(e)}
+
+def load_character_specific_history(character_name):
+    """
+    Load conversation history from a character-specific file for story/game characters.
+    Only to be used for characters with names starting with story_ or game_
+    
+    Args:
+        character_name: The name of the character
+        
+    Returns:
+        list: The conversation history or an empty list if not found
+    """
+    try:
+        # Only process for story/game characters
+        if not character_name.startswith("story_") and not character_name.startswith("game_"):
+            print(f"Not a story/game character: {character_name}, using global history instead")
+            return []
+            
+        # Create character-specific history file path
+        character_dir = os.path.join(characters_folder, character_name)
+        history_file = os.path.join(character_dir, "conversation_history.txt")
+        
+        # Check if file exists
+        if not os.path.exists(history_file) or os.path.getsize(history_file) == 0:
+            print(f"No character-specific history found for {character_name}")
+            return []
+            
+        print(f"Loading character-specific history for {character_name}")
+        
+        temp_history = []
+        with open(history_file, "r", encoding="utf-8") as file:
+            current_role = None
+            current_content = ""
+            
+            for line in file:
+                line = line.strip()
+                if not line:  # Skip empty lines
+                    continue
+                    
+                if line.startswith("User:"):
+                    # Save previous message if exists
+                    if current_role:
+                        temp_history.append({"role": current_role, "content": current_content.strip()})
+                    
+                    # Start new user message
+                    current_role = "user"
+                    current_content = line[5:].strip()
+                elif line.startswith("Assistant:"):
+                    # Save previous message if exists
+                    if current_role:
+                        temp_history.append({"role": current_role, "content": current_content.strip()})
+                    
+                    # Start new assistant message
+                    current_role = "assistant"
+                    current_content = line[10:].strip()
+                else:
+                    # Continue previous message
+                    current_content += "\n" + line
+            
+            # Add the last message
+            if current_role:
+                temp_history.append({"role": current_role, "content": current_content.strip()})
+                
+        print(f"Loaded {len(temp_history)} messages from character-specific history file")
+        return temp_history
+    except Exception as e:
+        logging.error(f"Error loading character-specific history: {e}")
+        return []
+
+@router.post("/set_character")
+async def set_api_character(character: CharacterModel):
+    """Set the current character."""
+    # Import with alias to avoid potential shadowing issues
+    from .shared import set_current_character, get_current_character, conversation_history
+    
+    previous_character = get_current_character()
+    new_character = character.character
+    
+    print(f"Switching character: {previous_character} -> {new_character}")
+    
+    # Always save the previous character's history if needed
+    is_previous_story_character = previous_character and (
+        previous_character.startswith("story_") or previous_character.startswith("game_")
+    )
+    
+    if is_previous_story_character and conversation_history:
+        # Save the current history to character-specific file before switching
+        save_character_specific_history(conversation_history, previous_character)
+        print(f"Saved history for previous character: {previous_character}")
+    
+    # Set the new character
+    set_current_character(new_character)
+    
+    # Always clear the global history when switching characters
+    conversation_history.clear()
+    print(f"Cleared in-memory conversation history")
+    
+    # Delete the global history file and create a new empty one
+    history_file = "conversation_history.txt"
+    if os.path.exists(history_file):
+        os.remove(history_file)
+        print(f"Deleted global history file")
+    
+    # Create empty history file
+    with open(history_file, "w", encoding="utf-8") as f:
+        pass
+    print(f"Created empty global history file")
+    
+    return {"status": "success", "message": f"Character set to {new_character}"}
