@@ -8,7 +8,9 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at.
 
-New -  WebRTC Real Time API you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model gpt-4o-mini-tts to make the AI more human like with emotions and expressive voices. New characters which you can play escape room games with. Ollama models you have downloaded show up in the UI.
+New - WebRTC Real Time API you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model gpt-4o-mini-tts to make the AI more human like with emotions and expressive voices.
+
+New - Games you can play with AI as it guides you, New story mode to follow various story lines. Conversation history is saved to pick up where you left off later.
 
 ## Quick Start
 
@@ -35,7 +37,7 @@ Get up and running fast with Voice Chat AI! 🔊
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood from sentiment analysis.
 - **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
 - **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
-- **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters! Play escape room games with the AI.
+- **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters! Play escape room games, follow story lines, and more.
 - **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
 https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e

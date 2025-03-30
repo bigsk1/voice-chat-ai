@@ -132,11 +132,11 @@ main {
     background-color: var(--secondary-color);
     color: var(--ai-message-color);
     align-self: flex-start;
-    margin-left: 5px;
+    margin-left: 15px;
     margin-right: auto;
     border-bottom-left-radius: 4px;
     margin-bottom: 0.5rem;
-    width: 85%; /* Increase width to prevent messages stopping short */
+    width: 100%; /* Increase width to prevent messages stopping short */
 }
 
 .user-message {
@@ -144,7 +144,7 @@ main {
     color: var(--user-message-color);
     align-self: flex-end;
     margin-left: auto;
-    margin-right: 20px; /* Add right margin for user messages */
+    margin-right: 55px; /* Add right margin for user messages */
     border-bottom-right-radius: 4px;
     margin-bottom: 0.5rem;
 }
