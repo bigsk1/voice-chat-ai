@@ -182,7 +182,7 @@ async def stop_enhanced_conversation_route():
 
 @app.post("/clear_history")
 async def clear_history():
-    global conversation_history
+    global conversation_history # noqa: F824
     conversation_history.clear()  # Clear the in-memory conversation history
     save_conversation_history(conversation_history)  # Save the cleared state to the file
     return {"status": "cleared"}

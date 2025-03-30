@@ -20,7 +20,7 @@ continue_conversation = False  # Added missing variable
 # Functions to get and set shared state
 def get_current_character():
     """Get the current character."""
-    global current_character
+    global current_character # noqa: F824
     return current_character
 
 def set_current_character(character):
@@ -30,7 +30,7 @@ def set_current_character(character):
 
 def is_conversation_active():
     """Check if a conversation is active."""
-    global conversation_active
+    global conversation_active # noqa: F824
     return conversation_active
 
 def set_conversation_active(active):

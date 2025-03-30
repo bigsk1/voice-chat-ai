@@ -109,7 +109,7 @@ screenshot_phrases = [
 
 @router.post("/start_conversation")
 async def start_conversation():
-    global continue_conversation
+    global continue_conversation # noqa: F824
     continue_conversation = True
     conversation_thread = Thread(target=asyncio.run, args=(conversation_loop(),))
     conversation_thread.start()
@@ -117,12 +117,12 @@ async def start_conversation():
 
 @router.post("/stop_conversation")
 async def stop_conversation():
-    global continue_conversation
+    global continue_conversation # noqa: F824
     continue_conversation = False
     return {"message": "Conversation stopped"}
 
 async def conversation_loop():
-    global continue_conversation
+    global continue_conversation # noqa: F824
     while continue_conversation:
         user_input = await record_audio_and_transcribe() 
         conversation_history.append({"role": "user", "content": user_input})
