@@ -374,7 +374,7 @@ ELEVENLABS_TTS_VOICE=your_voice_id_here
 XTTS_SPEED=1.1
 COQUI_TOS_AGREED=1
 
-# Maximum character length for audio generation - set to 2000+ if using escape_master character
+# Maximum character length for audio generation - set to 2000+ if using game characters
 MAX_CHAR_LENGTH=500
 
 # OpenAI Configuration:
@@ -434,6 +434,26 @@ The app needs an `elevenlabs_voices.json` file. This file stores your voice IDs 
 
 1. Create/edit `elevenlabs_voices.json` and add your voice IDs from your ElevenLabs account
 2. In the web UI, you can select these voices from the dropdown menu
+
+> Use this command to get back professional and generated voices in your account, it will create the elevenlabs_voices.json file so run it in the root of project. Add your elevenlabs api key.
+
+Linux:
+
+```bash
+export ELEVENLABS_API_KEY=your_api_key_here
+```
+
+```bash
+curl -s -X GET https://api.elevenlabs.io/v1/voices \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" | \
+  jq '{ voices: [ .voices[] | select(.category == "professional" or .category == "generated") | {id: .voice_id, name: .name} ] }' > elevenlabs_voices.json
+```
+
+Windows Powershell:
+
+```bash
+$env:ELEVENLABS_API_KEY="your-api-key"; @{ voices = (Invoke-RestMethod -Uri "https://api.elevenlabs.io/v1/voices" -Headers @{ "xi-api-key" = $env:ELEVENLABS_API_KEY } -Method Get).voices | Where-Object { $_.category -eq "professional" -or $_.category -eq "generated" } | ForEach-Object { @{ id = $_.voice_id; name = $_.name } } } | ConvertTo-Json -Depth 3 | Set-Content -Encoding UTF8 "elevenlabs_voices.json"
+```
 
 #### For Docker users
 
