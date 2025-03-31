@@ -548,6 +548,9 @@ async def enhanced_conversation_loop():
                     await send_message_to_enhanced_clients({"message": "No speech detected or there was an error. Please try again.", "type": "system-message"})
                     continue
                 
+                # Print user input to CLI with "You:" prefix
+                print("\033[96mYou:", user_input + "\033[0m")  # Cyan text for user messages
+                
                 # Display user message
                 await send_message_to_enhanced_clients({"message": f"You: {user_input}"})
                 await send_message_to_enhanced_clients({"action": "mic", "status": "processing"})
@@ -653,7 +656,6 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
     """Get chat completion from OpenAI using the specified model."""
     try:
         # Import required libraries
-        import json
         import aiohttp
         import os
         

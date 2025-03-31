@@ -269,7 +269,8 @@ async def conversation_loop():
             print(chatbot_response)
 
         current_character = get_character()
-        await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}")
+        await send_message_to_clients(chatbot_response)
+        # await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}") # to use for character names
         # print(f"{current_character.capitalize()}: {chatbot_response}")
 
 def set_env_variable(key: str, value: str):
