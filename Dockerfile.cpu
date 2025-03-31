@@ -46,6 +46,7 @@ COPY elevenlabs_voices.json.example /app/elevenlabs_voices.json.example
 COPY .env.sample /app/.env.sample
 COPY README.md /app/README.md
 COPY LICENSE /app/LICENSE
+COPY docs /app/docs
 
 # Install Python dependencies (without cache to reduce image size)
 RUN pip install --upgrade pip && pip install --no-cache-dir -r /app/requirements.txt

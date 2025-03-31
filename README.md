@@ -8,9 +8,11 @@ Voice Chat AI is a project that allows you to interact with different AI charact
 
 You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at.
 
-New - WebRTC Real Time API you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model gpt-4o-mini-tts to make the AI more human like with emotions and expressive voices.
+WebRTC Real Time API with OpenAI you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model gpt-4o-mini-tts to make the AI more human like with emotions and expressive voices.
 
-New - Games you can play with AI as it guides you, New story mode to follow various story lines. Conversation history is saved to pick up where you left off later.
+Check out the game and story documentation:
+- [Games Documentation](docs/games.md): Play interactive games with various game master characters.
+- [Stories Documentation](docs/stories.md): Experience immersive story adventures with AI characters.
 
 ## Quick Start
 
@@ -21,6 +23,7 @@ Get up and running fast with Voice Chat AI! 🔊
 - [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env` on startup.
 - [**OpenAI Enhanced**](#openai-enhanced): Use OpenAI Enhanced Mode to speak with the AI in a more human like way with emotions.
 - [**OpenAI Realtime**](#openai-realtime): Experience real-time conversations with OpenAI's WebRTC-based Realtime API.
+- [**Game & Story Modes**](#game--story-modes): Explore interactive games and immersive storytelling experiences.
 - [**Add New Characters**](#adding-new-characters): Add new characters to the project.
 - [**Troubleshooting**](#troubleshooting): Fix common audio or CUDA errors.
 
@@ -31,13 +34,12 @@ Get up and running fast with Voice Chat AI! 🔊
 - **Supports OpenAI, xAI or Ollama language models**: Choose the model that best fits your needs.
 - **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
 - **Provides speech to speech using OpenAI Realtime API**: Have a real time conversation with AI characters, interrupt the AI and have instant responses.
-- **NEW OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
+- **OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
 - **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper.
-- **No typing needed, just speak**: Hands-free interaction makes conversations smooth and effortless.
 - **Analyzes user mood and adjusts AI responses accordingly**: Get personalized responses based on your mood from sentiment analysis.
-- **Easy configuration through environment variables**: Customize the application to suit your preferences with minimal effort.
-- **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect..
+- **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect. on the fly.
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters! Play escape room games, follow story lines, and more.
+- **Interactive Games & Stories**: Enjoy 15+ different game types (word puzzles, trivia, escape rooms) and interactive storytelling adventures.
 - **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
 https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e
@@ -48,7 +50,7 @@ https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e
 
 - Python 3.10
 - ffmpeg
-- Ollama models or Openai API or xAI for chat
+- Ollama models or OpenAI or xAI for chat
 - Local XTTS or Openai API or ElevenLabs API for speech
 - Microsoft C++ Build Tools on windows
 - Microphone
@@ -176,8 +178,6 @@ docker-compose up -d
 ```
 
 ### 🐳 Docker run
-
-### without Nvidia Cuda - cpu mode
 
 Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription.
 
@@ -523,6 +523,32 @@ https://github.com/user-attachments/assets/d1cc9ca4-e750-4c36-816e-6f27b8caeec1
 3. Click "Start Session" to establish the connection
 4. Click the microphone button and start speaking naturally
 
+## Game & Story Modes
+
+Interactive gameplay and storytelling experiences that transform your AI conversations into structured, immersive adventures.
+
+### Game Characters
+
+The application includes over 15 different game types where AI characters act as game masters, guiding you through various challenges:
+
+- **Word Games**: Hangman, Word Weaver, Alphabet Race, Silly Sentences
+- **Trivia & Puzzles**: Movie Quotes, Animal Facts, History Mystery, What's My Job
+- **Logic & Creativity**: Jester's Truth, Escape Master, Opposite Master, Guess Gibberish
+
+[View full games documentation](docs/games.md) for detailed descriptions of all available games.
+
+### Story Adventures
+
+Enjoy immersive storytelling experiences with AI-driven narratives across various settings:
+
+- **Noir Detective**: Solve mysteries in a gritty urban landscape
+- **Space Station**: Navigate challenges on an interstellar vessel
+- **Oregon Trail**: Experience frontier survival adventures
+- **Wilderness**: Explore untamed natural environments
+- **Haunted Mansion**: Brave supernatural challenges in a spooky setting
+
+[View full stories documentation](docs/stories.md) for all available story adventures.
+
 ## Adding New Characters
 
 1. Create a new folder for the character in the project's characters directory, (e.g. `character/wizard`).
@@ -570,6 +596,9 @@ This is for sentiment analysis, based on what you say, you can guide the AI to r
 > For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
 
 ## Troubleshooting
+
+<details>
+<summary>Click to expand</summary>
 
 ### Could not locate cudnn_ops64_9.dll or Unable to load any of libcudnn_ops.so.9.1.0
 
@@ -655,6 +684,8 @@ To fix this issue:
 3. Restart your Python session or application
 
 If you continue to have issues after these steps, creating a fresh virtual environment and reinstalling all dependencies is the most reliable solution.
+
+</details>
 
 ## Watch the Demos
 
