@@ -31,7 +31,7 @@ DEBUG_AUDIO_LEVELS = False  # Set to True to see audio level output in the conso
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"  # Control detailed debug output
 
 # Quit phrases that will stop the conversation when detected
-QUIT_PHRASES = ["quit", "exit", "leave", "end", "bye", "goodbye"]
+QUIT_PHRASES = ["quit", "exit"]
 
 def load_character_prompt(character_name):
     """
@@ -556,7 +556,8 @@ async def enhanced_conversation_loop():
                 await send_message_to_enhanced_clients({"action": "mic", "status": "processing"})
                 
                 # Check for quit commands
-                if user_input.lower() in QUIT_PHRASES:
+                words = user_input.lower().split()
+                if any(phrase.lower().rstrip('.') == word for phrase in QUIT_PHRASES for word in words):
                     await send_message_to_enhanced_clients({"message": "Conversation ended.", "type": "system-message"})
                     break
                 

@@ -413,7 +413,7 @@ DEBUG=false
 # It will describe what it sees, and you can ask questions about it:
 # "what's on my screen", "take a screenshot", "show me my screen", "analyze my screen", 
 # "what do you see on my screen", "screen capture", "screenshot"
-# To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also)
+# To stop the conversation, say "Quit" or "Exit". ( ctl+c always works also)
 ```
 
 ### Audio Commands
@@ -426,7 +426,7 @@ DEBUG=false
         "what do you see on my screen",
         "screen capture",
         "screenshot" to have the AI explain what it is seeing in detail.
-- To stop the conversation, say "Quit", "Exit", or "Leave". ( ctl+c always works also in terminal )
+- To stop the conversation, say "Quit" or "Exit". ( ctl+c always works also in terminal )
 
 ### ElevenLabs
 
@@ -489,7 +489,7 @@ For the CLI version, the voice ID in the .env file will be used.
 
 ### Web View - Visual and Audio input / output
 
-Press start to start talking. Take a break hit stop, when ready again hit start again. Press stop to change characters and voices in dropdown. You can also select the Model Provider and TTS Provider you want in the dropdown menu and it will update and use the selected provider moving forward. Saying Exit, Leave or Quit is like pressing stop.
+Press start to start talking. Take a break hit stop, when ready again hit start again. Press stop to change characters and voices in dropdown. You can also select the Model Provider and TTS Provider you want in the dropdown menu and it will update and use the selected provider moving forward. Saying Exit or Quit is like pressing stop.
 
 http://localhost:8000/
 
@@ -711,7 +711,7 @@ Model provider: openai
 Model: gpt-4o
 Character: Nerd
 Text-to-Speech provider: elevenlabs
-To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...
+To stop chatting say Quit or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...
 INFO:     Started server process [12752]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.

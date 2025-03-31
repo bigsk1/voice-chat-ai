@@ -168,7 +168,7 @@ print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MOD
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'local' if TTS_PROVIDER == 'xtts' else 'Unknown'}")
-print("To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...")
+print("To stop chatting say Quit or Exit. One moment please loading...")
 
 # Function to synthesize speech using XTTS
 def process_and_play(prompt, audio_file_pth):
@@ -1076,7 +1076,7 @@ def user_chatbot_conversation():
             conversation_history = []
     
     base_system_message = open_file(character_prompt_file)
-    quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave", "Leave."]
+    quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit"]
     screenshot_phrases = [
         "what's on my screen", 
         "take a screenshot", 

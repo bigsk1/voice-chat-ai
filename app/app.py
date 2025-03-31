@@ -239,7 +239,7 @@ print(f"Model provider: {MODEL_PROVIDER}")
 print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
-print("To stop chatting say Quit, Leave or Exit. Say, what's on my screen, to have AI view screen. One moment please loading...")
+print("To stop chatting say Quit or Exit. One moment please loading...")
 
 async def process_and_play(prompt, audio_file_pth):
     # Always get the current character name to ensure we have the right audio file
@@ -517,7 +517,7 @@ def analyze_mood(user_input):
         "yucky", "ugh", "eww", "blegh", "blech", "ew"
     ]
     happy_keywords = [
-        "happy", "pleased", "content", "satisfied", "good", "great",
+        "happy", "pleased", "content", "satisfied", "great",
         "positive", "upbeat", "bright", "cheery", "merry", "lighthearted",
         "gratified", "blessed", "fortunate", "lucky", "peaceful", "serene", 
         "comfortable", "at ease", "fulfilled", "optimistic", "hopeful", "sunny",
@@ -547,12 +547,12 @@ def analyze_mood(user_input):
     ]
 
     mood = "neutral"  # Default value
-    
+
     if any(keyword in user_input.lower() for keyword in flirty_keywords):
         mood = "flirty"
-    elif any(keyword in user_input.lower() for keyword in angry_keywords):
+    elif any(keyword in user_input.lower() for keyword in angry_keywords) or polarity < -0.7:
         mood = "angry"
-    elif any(keyword in user_input.lower() for keyword in sad_keywords):
+    elif any(keyword in user_input.lower() for keyword in sad_keywords) or polarity < -0.3:
         mood = "sad"
     elif any(keyword in user_input.lower() for keyword in fearful_keywords):
         mood = "fearful"
@@ -560,11 +560,11 @@ def analyze_mood(user_input):
         mood = "surprised"
     elif any(keyword in user_input.lower() for keyword in disgusted_keywords):
         mood = "disgusted"
-    elif any(keyword in user_input.lower() for keyword in happy_keywords):
+    elif any(keyword in user_input.lower() for keyword in happy_keywords) or polarity > 0.7:
         mood = "happy"
-    elif any(keyword in user_input.lower() for keyword in joyful_keywords) or polarity > 0.3:
+    elif any(keyword in user_input.lower() for keyword in joyful_keywords) or polarity > 0.4:
         mood = "joyful"
-    elif any(keyword in user_input.lower() for keyword in neutral_keywords):
+    elif any(keyword in user_input.lower() for keyword in neutral_keywords) or (-0.3 <= polarity <= 0.4):
         mood = "neutral"
     
     # Color mapping for different moods
@@ -585,6 +585,7 @@ def analyze_mood(user_input):
     
     # Print the detected mood with the corresponding color
     print(f"{color}Detected mood: {mood}\033[0m")
+    print()  # Add an empty line for spacing in CLI output
         
     return mood
 
@@ -1075,7 +1076,7 @@ async def user_chatbot_conversation():
     
     base_system_message = open_file(character_prompt_file)
     
-    quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave."]
+    quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit"]
     screenshot_phrases = [
         "what's on my screen", 
         "take a screenshot", 
@@ -1096,7 +1097,7 @@ async def user_chatbot_conversation():
             
             # Check for quit phrases with word boundary check
             words = user_input.lower().split()
-            if any(phrase.lower().rstrip('.') in words for phrase in quit_phrases):
+            if any(phrase.lower().rstrip('.') == word for phrase in quit_phrases for word in words):
                 print("Quitting the conversation...")
                 break
                 

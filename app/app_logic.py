@@ -116,7 +116,7 @@ async def process_text(user_input):
         
     return chatbot_response
 
-quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave."]
+quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit"]
 screenshot_phrases = [
     "what's on my screen", 
     "take a screenshot", 
@@ -252,7 +252,7 @@ async def conversation_loop():
 
         # Check for quit phrases with word boundary check
         words = user_input.lower().split()
-        if any(phrase.lower() in words for phrase in quit_phrases):
+        if any(phrase.lower().rstrip('.') == word for phrase in quit_phrases for word in words):
             print("Quitting the conversation...")
             await stop_conversation()
             break
