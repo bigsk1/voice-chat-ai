@@ -25,7 +25,7 @@ def get_current_character():
 
 def set_current_character(character):
     """Set the current character."""
-    global current_character
+    global current_character # noqa: F824
     current_character = character
 
 def is_conversation_active():
@@ -35,7 +35,7 @@ def is_conversation_active():
 
 def set_conversation_active(active):
     """Set the conversation active state."""
-    global conversation_active
+    global conversation_active # noqa: F824
     conversation_active = active
 
 def add_client(client):

@@ -110,7 +110,7 @@ async def record_enhanced_audio_and_transcribe():
         send_status_callback=send_message_to_enhanced_clients
     )
 
-async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None):
+async def enhanced_text_to_speech(text, detected_mood=None):
     """Convert text to speech using the enhanced TTS model with emotional voice instructions."""
     try:
         # Import required libraries
@@ -505,7 +505,7 @@ async def enhanced_conversation_loop():
         
         character_name = get_character()
         character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
-        character_audio_file = os.path.join(characters_folder, character_name, f"{character_name}.wav")
+        # character_audio_file = os.path.join(characters_folder, character_name, f"{character_name}.wav")
         
         base_system_message = open_file(character_prompt_file)
         
@@ -589,8 +589,7 @@ async def enhanced_conversation_loop():
                     user_input, 
                     base_system_message, 
                     mood_prompt,
-                    local_conversation_history[:-1] if len(local_conversation_history) > 1 else None,
-                    detected_mood
+                    local_conversation_history[:-1] if len(local_conversation_history) > 1 else None
                 )
                 
                 # Clean up the response
@@ -619,7 +618,7 @@ async def enhanced_conversation_loop():
                 await save_history()
                 
                 # Convert text to speech and play audio
-                await enhanced_text_to_speech(ai_response, character_audio_file, detected_mood)
+                await enhanced_text_to_speech(ai_response, detected_mood)
                 
                 # Now that audio is finished, display the message in the UI
                 await send_message_to_enhanced_clients({
@@ -652,7 +651,7 @@ async def enhanced_conversation_loop():
         # Set active flag to False
         enhanced_conversation_active = False
 
-async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversation_history=None, detected_mood=None):
+async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversation_history=None):
     """Get chat completion from OpenAI using the specified model."""
     try:
         # Import required libraries

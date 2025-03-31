@@ -21,9 +21,6 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Define available characters
-# CHARACTERS = ["assistant", "wizard", "pirate", "alien", "robot", "detective", "cowboy"]
-
 app = FastAPI()
 
 # Mount static files and templates
@@ -405,12 +402,6 @@ async def proxy_openai_realtime(request: Request):
         logger.error(f"Error proxying to OpenAI: {e}")
         return HTTPException(status_code=500, detail=f"Error proxying to OpenAI: {str(e)}")
 
-# Redirect old OpenAI Realtime endpoint to WebRTC implementation
-@app.get("/openai_realtime")
-async def openai_realtime(request: Request):
-    """Redirect to WebRTC implementation"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/webrtc_realtime")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -458,9 +449,6 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.websocket("/ws_enhanced")
 async def websocket_enhanced_endpoint(websocket: WebSocket):
     await websocket.accept()
-    
-    # Import with alias to avoid potential shadowing issues
-    from .shared import clients, add_client, remove_client
     
     # Add client to the list
     add_client(websocket)
