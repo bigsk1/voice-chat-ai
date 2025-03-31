@@ -8,6 +8,13 @@ import torch
 from faster_whisper import WhisperModel
 from dotenv import load_dotenv
 
+# ANSI escape codes for colors
+PINK = '\033[95m'
+CYAN = '\033[96m'
+YELLOW = '\033[93m'
+NEON_GREEN = '\033[92m'
+RESET_COLOR = '\033[0m'
+
 # Load environment variables
 load_dotenv()
 
@@ -197,7 +204,7 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     
     # Wait for user to start speaking
-    print("Waiting for speech...")
+    print(YELLOW + "Waiting for speech..." + RESET_COLOR)
     if send_status_callback:
         await send_status_callback({"action": "waiting_for_speech"})
     

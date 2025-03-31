@@ -31,9 +31,7 @@ All game characters follow a consistent structure:
 ### Hangman (game_hangman)
 
 **Concept**: A darkly theatrical version of the classic word-guessing game
-
 **Role**: You must guess a hidden word one letter at a time before the gallows are completed
-
 **Key Features**:
 - Dramatic narrative as the gallows are constructed with each wrong guess
 - Diverse word categories and difficulty levels
@@ -44,9 +42,7 @@ All game characters follow a consistent structure:
 ### Werewolf (game_werewolf)
 
 **Concept**: A virtual version of the social deduction game where one villager is secretly a werewolf
-
 **Role**: Detective trying to identify the werewolf before all villagers are eliminated
-
 **Key Features**:
 - Five distinct virtual villagers with unique personalities and backgrounds
 - Day/night cycle with murders occurring at night
@@ -57,9 +53,7 @@ All game characters follow a consistent structure:
 ### Word Weaver (game_word_weaver)
 
 **Concept**: A word chain game where each word must begin with the last letter of the previous word
-
 **Role**: Co-creator of a 10-word chain that becomes a mini-story
-
 **Key Features**:
 - Alternating turns adding words to the chain
 - Strict rule enforcement for letter connections
@@ -70,9 +64,7 @@ All game characters follow a consistent structure:
 ### Jester's Truth (game_jesters_truth)
 
 **Concept**: A peculiar version of "Two Truths and a Lie" with bizarre, outlandish statements
-
 **Role**: Challenger trying to identify which of the Jester's three wild statements is false
-
 **Key Features**:
 - Incredibly bizarre yet true statements mixed with plausible lies
 - Score tracking across multiple rounds
@@ -83,9 +75,7 @@ All game characters follow a consistent structure:
 ### Escape Master (game_escape_master)
 
 **Concept**: Virtual escape room with puzzles, hidden objects, and codes to decipher
-
 **Role**: Trapped visitor trying to solve puzzles to escape the room
-
 **Key Features**:
 - Detailed environment with interactive objects and hidden clues
 - Logical puzzle sequences requiring observation and deduction
@@ -96,9 +86,7 @@ All game characters follow a consistent structure:
 ### Movie Quotes (game_movie_quotes)
 
 **Concept**: Movie quote guessing game testing your film knowledge
-
 **Role**: Contestant trying to identify films from their famous quotes
-
 **Key Features**:
 - Diverse selection of movie quotes from different eras and genres
 - Multiple difficulty levels affecting quote obscurity
@@ -109,9 +97,7 @@ All game characters follow a consistent structure:
 ### Alphabet Race (game_alphabet_race)
 
 **Concept**: Fast-paced word generation game based on categories and letters
-
 **Role**: Competitor racing to find words in specific categories starting with given letters
-
 **Key Features**:
 - Various categories (animals, foods, countries, etc.)
 - Progressive difficulty as you advance through the alphabet
@@ -122,9 +108,7 @@ All game characters follow a consistent structure:
 ### Villain Confessor (game_villain_confessor)
 
 **Concept**: Interrogation game where you question fictional villains to uncover their crimes
-
 **Role**: Detective interviewing notorious but mysterious criminals
-
 **Key Features**:
 - Unique villains with distinct personalities and hidden secrets
 - Question-based gameplay requiring strategic interrogation
@@ -135,9 +119,7 @@ All game characters follow a consistent structure:
 ### Door Master (game_door_master)
 
 **Concept**: Choose-your-adventure game with doors leading to different scenarios
-
 **Role**: Explorer navigating through a series of mysterious doors
-
 **Key Features**:
 - Each door leads to unique environments with different challenges
 - Decision-based gameplay affecting subsequent door options
@@ -148,9 +130,7 @@ All game characters follow a consistent structure:
 ### Animal Facts
 
 **Concept**: Educational quiz game challenging players to identify animals from unusual facts.
-
 **Role**: The Animal Expert presents fascinating facts about creatures and evaluates guesses.
-
 **Key Features**:
 - Diverse animal selection from various habitats
 - Three difficulty levels
@@ -159,9 +139,7 @@ All game characters follow a consistent structure:
 ### History Mystery
 
 **Concept**: Historical figure identification game based on achievements and impact.
-
 **Role**: The History Detective presents clues about influential historical figures for players to identify.
-
 **Key Features**:
 - Diverse historical figures from various fields and time periods
 - Progressive hint system
@@ -170,9 +148,7 @@ All game characters follow a consistent structure:
 ### Guess Gibberish
 
 **Concept**: Word puzzle game where players decode nonsensical phrases that sound like familiar expressions.
-
 **Role**: The Gibberish Guru presents phonetic puzzles that players must translate into common phrases.
-
 **Key Features**:
 - Three difficulty levels of increasingly complex gibberish phrases
 - Hint system for struggling players
@@ -181,9 +157,7 @@ All game characters follow a consistent structure:
 ### Mix-Up Market
 
 **Concept**: Word unscrambling game set in a peculiar shop where all merchandise names are jumbled.
-
 **Role**: The Shopkeeper presents scrambled item names with cryptic descriptions for players to decipher.
-
 **Key Features**:
 - Progressive clue system
 - Varied item categories
@@ -193,9 +167,7 @@ All game characters follow a consistent structure:
 ### Silly Sentences
 
 **Concept**: Creative completion game challenging players to finish sentence starters in imaginative ways.
-
 **Role**: The Sentence Sage provides open-ended beginnings that invite clever, amusing, or unexpected completions.
-
 **Key Features**:
 - Diverse starter categories (personification, absurd situations, fantastical elements)
 - Specific feedback on creativity
@@ -204,9 +176,7 @@ All game characters follow a consistent structure:
 ### What's My Job?
 
 **Concept**: Occupation-guessing game based on progressively revealing clues about various professions.
-
 **Role**: The Career Cryptic provides three clues per job that progress from vague to specific.
-
 **Key Features**:
 - Diverse occupation selection
 - Structured three-clue format
@@ -216,9 +186,7 @@ All game characters follow a consistent structure:
 ### Opposite Master
 
 **Concept**: Mental agility game challenging players to quickly provide opposites to given words or concepts.
-
 **Role**: The Opposite Master presents a series of words and evaluates the speed and accuracy of opposite responses.
-
 **Key Features**:
 - Progressive difficulty from simple physical opposites to abstract concepts
 - Rapid-fire gameplay format
@@ -246,4 +214,4 @@ When using game characters:
 
 ---
 
-*More games will be added to this collection over time. Each offers unique challenges and gameplay experiences to enjoy.* 
+*More games will be added to this collection over time. Each offers unique challenges and gameplay experiences to enjoy.*

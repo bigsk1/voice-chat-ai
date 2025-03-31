@@ -27,6 +27,13 @@ import json
 import logging
 import requests
 
+# ANSI escape codes for colors
+PINK = '\033[95m'
+CYAN = '\033[96m'
+YELLOW = '\033[93m'
+NEON_GREEN = '\033[92m'
+RESET_COLOR = '\033[0m'
+
 # Define the CharacterModel
 class CharacterModel(BaseModel):
     character: str
@@ -248,7 +255,7 @@ async def conversation_loop():
             # print(f"Saved user input to global history for {current_character}")
             
         await send_message_to_clients(f"You: {user_input}")
-        print(f"You: {user_input}")
+        print(CYAN + f"You: {user_input}" + RESET_COLOR)
 
         # Check for quit phrases with word boundary check
         words = user_input.lower().split()

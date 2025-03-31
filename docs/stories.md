@@ -94,6 +94,16 @@ All story characters follow a consistent structure:
 - Technical puzzles and system repairs
 - Scientifically plausible space disaster scenarios
 
+### Mars Survival (story_mars_survival)
+
+**Setting**: 2055, the first permanent human settlement on Mars.
+**Role**: Commander of "StarBase Alpha" responsible for colony survival.
+**Key Features**: Resource management, life-or-death decisions, alien encounters, and technological development.
+
+**Gameplay Mechanics**: Track critical resources (oxygen, water, food, power), develop technologies for self-sustainability, manage a 20-person colony, and survive for 3 Martian years. Each turn represents one Earth month with resupply missions every 9 months. Expedition teams can explore for resources or investigate alien phenomena. Random events include dust storms, equipment failures, and potential alien encounters.
+
+**Victory Conditions**: Achieve self-sustainability through technology development while keeping your colonists alive for the full 3 Martian years (approximately 5.5 Earth years).
+
 ## Creating Your Adventure
 
 When using story characters:
