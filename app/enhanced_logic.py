@@ -118,7 +118,6 @@ async def enhanced_text_to_speech(text, character_audio_file, detected_mood=None
         import aiohttp
         import os
         import tempfile
-        from pathlib import Path
         import asyncio
         import wave
         import pyaudio
@@ -602,11 +601,15 @@ async def enhanced_conversation_loop():
                 # Add to conversation history
                 local_conversation_history.append({"role": "assistant", "content": ai_response})
                 
-                # Manage conversation history size - keep last 30 messages may need to increase for stories
-                if len(local_conversation_history) > 30:
-                    local_conversation_history = local_conversation_history[-30:]
+                # Manage conversation history size - keep last 30 messages for global history and 100 for stories and games
+                if character_name.startswith("story_") or character_name.startswith("game_"):
+                    if len(local_conversation_history) > 100:
+                        local_conversation_history = local_conversation_history[-100:]
+                else:
+                    if len(local_conversation_history) > 30:
+                        local_conversation_history = local_conversation_history[-30:]
                 
-                # Update global conversation history
+                # Update conversation history
                 conversation_history = local_conversation_history.copy()
                 
                 # Save history based on character type

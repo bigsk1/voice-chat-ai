@@ -253,6 +253,7 @@ async def process_and_play(prompt, audio_file_pth):
     current_audio_file = os.path.join(current_characters_folder, f"{current_character}.wav")
     
     # Fall back to the provided path if the current character file doesn't exist
+    # Could just point to one fallback .wav file for all characters but this works.
     if not os.path.exists(current_audio_file):
         current_audio_file = audio_file_pth
         print(f"Warning: Using fallback audio file as {current_audio_file} not found")
@@ -1115,8 +1116,12 @@ async def user_chatbot_conversation():
                 sanitized_response = sanitized_response[:400] + "..."
             prompt2 = sanitized_response
             await process_and_play(prompt2, character_audio_file)  # Note the 'await' here
-            if len(conversation_history) > 30:
-                conversation_history = conversation_history[-30:]
+            if current_character.startswith("story_") or current_character.startswith("game_"):
+                if len(conversation_history) > 100:
+                    conversation_history = conversation_history[-100:]
+            else:
+                if len(conversation_history) > 30:
+                    conversation_history = conversation_history[-30:]
 
             # Save conversation history after each message exchange
             save_conversation_history(conversation_history)

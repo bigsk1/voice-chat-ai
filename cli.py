@@ -43,6 +43,7 @@ ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
 ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
+MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
 os.environ["COQUI_TOS_AGREED"] = "1"
 
@@ -327,56 +328,172 @@ def analyze_mood(user_input):
     print(f"Sentiment polarity: {polarity}")
 
     flirty_keywords = [
-        "flirt", "love", "crush", "charming", "amazing", "attractive",
-        "cute", "sweet", "darling", "adorable", "alluring", "seductive"
+        "flirt", "love", "crush", "charming", "amazing", "attractive", "sexy",
+        "cute", "sweet", "darling", "adorable", "alluring", "seductive", "beautiful",
+        "handsome", "gorgeous", "hot", "pretty", "romantic", "sensual", "passionate",
+        "enchanting", "irresistible", "dreamy", "lovely", "captivating", "enticing",
+        "sex", "makeout", "kiss", "hug", "cuddle", "snuggle", "romance", "date",
+        "relationship", "flirtatious", "admire", "desire",
+        "affectionate", "tender", "intimate", "fond", "smitten", "infatuated",
+        "enamored", "yearning", "longing", "attracted", "tempting", "teasing",
+        "playful", "coy", "wink", "flatter", "compliment", "woo", "court",
+        "seduce", "charm", "beguile", "enthrall", "fascinate", "mesmerize",
+        "allure", "tantalize", "tease", "caress", "embrace", "nuzzle", "smooch",
+        "adore", "cherish", "treasure", "fancy", "chemistry", "spark", "connection",
+        "attraction", "magnetism", "charisma", "appeal", "desirable", "delicious",
+        "delightful", "divine", "heavenly", "angelic", "bewitching", "spellbinding",
+        "hypnotic", "magical", "enchanted", "soulmate", "sweetheart", "honey",
+        "dear", "beloved", "precious", "sugar", "babe", "baby",
+        "sweetie", "cutie", "stunning", "ravishing"
     ]
     angry_keywords = [
-        "angry", "furious", "mad", "annoyed", "pissed off", "irate",
-        "enraged", "livid", "outraged", "frustrated", "infuriated"
+        "angry", "furious", "mad", "annoyed", "pissed off", "irate", "rage",
+        "enraged", "livid", "outraged", "frustrated", "infuriated", "hostile",
+        "bitter", "seething", "fuming", "irritated", "agitated", "resentful",
+        "indignant", "exasperated", "heated", "antagonized", "provoked", "wrathful",
+        "fuckyou", "pissed", "fuckoff", "fuck", "die", "kill", "murder",
+        "violent", "hateful", "hate", "despise", "loathe", "detest", "abhor",
+        "incensed", "inflamed", "raging", "storming", "explosive", "fierce",
+        "vicious", "vindictive", "spiteful", "venomous", "cruel", "savage",
+        "ferocious", "threatening", "menacing", "intimidating", "aggressive",
+        "combative", "confrontational", "argumentative", "belligerent",
+        "antagonistic", "contentious", "quarrelsome", "rebellious", "defiant",
+        "obstinate", "stubborn", "uncooperative", "difficult", "impossible",
+        "unreasonable", "irrational", "foolish", "stupid", "idiotic", "moronic",
+        "dumb", "ignorant", "incompetent", "useless", "worthless", "pathetic"
     ]
     sad_keywords = [
-        "sad", "depressed", "down", "unhappy", "crying", "miserable",
-        "heartbroken", "sorrowful", "gloomy", "melancholy", "despondent"
+        "sad", "depressed", "down", "unhappy", "crying", "miserable", "grief",
+        "heartbroken", "sorrowful", "gloomy", "melancholy", "despondent", "blue",
+        "dejected", "hopeless", "desolate", "devastated", "lonely", "anguished",
+        "woeful", "forlorn", "tearful", "mourning", "hurt", "pained", "suffering",
+        "despair", "distressed", "troubled", "broken", "crushed", "defeated",
+        "discouraged", "disheartened", "dispirited", "downcast", "downtrodden",
+        "heavy-hearted", "inconsolable", "low", "mournful", "pessimistic",
+        "somber", "upset", "weeping", "wretched", "grieving", "lamenting",
+        "depressing", "dismal", "dreary", "glum", "joyless", "lost", "tragic",
+        "wounded", "yearning", "abandoned", "afflicted", "alone", "bereft",
+        "crestfallen", "dark", "destroyed", "empty", "hurting", "isolated"
     ]
     fearful_keywords = [
-        "scared", "afraid", "fear", "terrified", "nervous", "anxious",
-        "worried", "frightened", "alarmed", "panicked", "horrified"
+        "scared", "afraid", "fear", "terrified", "nervous", "anxious", "dread",
+        "worried", "frightened", "alarmed", "panicked", "horrified", "petrified",
+        "paranoid", "apprehensive", "uneasy", "spooked", "timid",
+        "phobic", "jittery", "trembling", "shaken", "intimidated",
+        "terror", "panic", "fright", "horror", "dreadful", "scary", "creepy",
+        "haunted", "traumatized", "unsettled", "unnerved", "aghast",
+        "startled", "jumpy", "skittish", "wary", "suspicious", "insecure", "unsafe",
+        "vulnerable", "helpless", "defenseless", "exposed", "trapped", "cornered",
+        "paralyzed", "frozen", "quaking", "quivering", "shivering", "shuddering",
+        "terrifying", "menacing", "ominous", "sinister", "foreboding", "eerie",
+        "spine-chilling", "blood-curdling", "hair-raising", "nightmarish",
+        "monstrous", "ghastly", "freaked out", "creeped out", "scared stiff",
+        "scared silly", "scared witless", "scared to death", "fear-stricken",
+        "panic-stricken", "terror-stricken", "horror-struck", "shell-shocked"
     ]
     surprised_keywords = [
-        "surprised", "amazed", "astonished", "shocked", "stunned",
-        "flabbergasted", "astounded", "speechless", "startled"
+        "surprised", "amazed", "astonished", "shocked", "stunned", "wow",
+        "flabbergasted", "astounded", "speechless", "dumbfounded",
+        "bewildered", "awestruck", "thunderstruck", "taken aback", "floored",
+        "mindblown", "unexpected", "unbelievable", "incredible", "remarkable",
+        "extraordinary", "staggering", "overwhelming", "breathtaking",
+        "gobsmacked", "dazed", "stupefied", "staggered", "agape", "wonderstruck",
+        "spellbound", "transfixed", "mystified", "perplexed",
+        "baffled", "confounded", "stumped", "puzzled", "disoriented",
+        "disbelieving", "incredulous", "amazement", "astonishment",
+        "wonder", "marvel", "miracle", "revelation", "bombshell", "bolt from the blue",
+        "eye-opening", "jaw-dropping", "mind-boggling", "out of the blue",
+        "shocker", "unpredictable", "unforeseen",
+        "unanticipated", "inconceivable", "unimaginable", "unthinkable",
+        "beyond belief", "hard to believe", "who would have thought",
+        "never saw that coming", "caught off guard", "blindsided"
     ]
     disgusted_keywords = [
-        "disgusted", "revolted", "sick", "nauseated", "repulsed",
-        "grossed out", "appalled", "offended", "detested"
+        "disgusted", "revolted", "sick", "nauseated", "repulsed", "yuck",
+        "grossed out", "appalled", "offended", "detested", "repugnant", "vile",
+        "loathsome", "repellent", "abhorrent", "hideous", "nasty", "foul",
+        "distasteful", "sickening", "unpleasant", "gross",
+        "repulsive", "stomach-turning", "queasy", "nauseous", "disgusting",
+        "putrid", "rancid", "fetid", "rank", "rotten", "decaying", "spoiled",
+        "contaminated", "tainted", "filthy", "dirty", "unsanitary", "unwholesome",
+        "objectionable", "repellant", "revolting", "sordid", "vulgar",
+        "crude", "obscene", "disagreeable", "unpalatable", "unsavory",
+        "squalid", "mucky", "grotesque", "grungy",
+        "icky", "nauseating", "odious", "obnoxious", "repelling", "sickly",
+        "stomach-churning", "unappealing", "unappetizing", "unbearable", "vomit-inducing",
+        "yucky", "ugh", "eww", "blegh", "blech", "ew"
+    ]
+    happy_keywords = [
+        "happy", "pleased", "content", "satisfied", "good", "great",
+        "positive", "upbeat", "bright", "cheery", "merry", "lighthearted",
+        "gratified", "blessed", "fortunate", "lucky", "peaceful", "serene", 
+        "comfortable", "at ease", "fulfilled", "optimistic", "hopeful", "sunny",
+        "cheerful", "pleasant", "contented", "glad", "jolly",
+        "carefree", "untroubled", "tranquil", "relaxed", "calm",
+        "heartwarming", "uplifting", "encouraging",
+        "promising", "favorable", "agreeable", "enjoyable", "satisfying",
+        "rewarding", "worthwhile", "meaningful", "enriching", "beneficial"
     ]
     joyful_keywords = [
-        "joyful", "happy", "elated", "glad", "delighted", "pleased",
-        "cheerful", "content", "satisfied", "thrilled", "ecstatic"
+        "joyful", "elated", "overjoyed", "ecstatic", "jubilant", "blissful",
+        "delighted", "radiant", "exuberant", "enthusiastic", "euphoric", "thrilled",
+        "gleeful", "giddy", "bouncing", "celebrating", "dancing", "singing",
+        "laughing", "beaming", "glowing", "soaring", "floating", "exhilarated",
+        "on cloud nine", "in seventh heaven", "over the moon", "walking on air",
+        "jumping for joy", "bursting with happiness", "on top of the world",
+        "tickled pink", "beside oneself", "in high spirits", "full of beans",
+        "bubbling over", "in raptures", "in paradise", "in heaven", "delirious",
+        "intoxicated", "flying high", "riding high", "whooping it up", "rejoicing",
+        "reveling", "jubilating", "triumphant", "victorious", "festive"
     ]
     neutral_keywords = [
         "okay", "alright", "fine", "neutral", "so-so", "indifferent",
-        "meh", "unremarkable", "average", "mediocre"
+        "meh", "unremarkable", "average", "mediocre", "moderate", "standard",
+        "typical", "ordinary", "regular", "common", "plain", "fair", "tolerable",
+        "acceptable", "passable", "adequate", "middle-ground", "balanced"
     ]
 
+    mood = "neutral"  # Default value
+    
     if any(keyword in user_input.lower() for keyword in flirty_keywords):
-        return "flirty"
+        mood = "flirty"
     elif any(keyword in user_input.lower() for keyword in angry_keywords):
-        return "angry"
+        mood = "angry"
     elif any(keyword in user_input.lower() for keyword in sad_keywords):
-        return "sad"
+        mood = "sad"
     elif any(keyword in user_input.lower() for keyword in fearful_keywords):
-        return "fearful"
+        mood = "fearful"
     elif any(keyword in user_input.lower() for keyword in surprised_keywords):
-        return "surprised"
+        mood = "surprised"
     elif any(keyword in user_input.lower() for keyword in disgusted_keywords):
-        return "disgusted"
+        mood = "disgusted"
+    elif any(keyword in user_input.lower() for keyword in happy_keywords):
+        mood = "happy"
     elif any(keyword in user_input.lower() for keyword in joyful_keywords) or polarity > 0.3:
-        return "joyful"
+        mood = "joyful"
     elif any(keyword in user_input.lower() for keyword in neutral_keywords):
-        return "neutral"
-    else:
-        return "neutral"
+        mood = "neutral"
+    
+    # Color mapping for different moods
+    mood_colors = {
+        "flirty": "\033[95m",    # Purple
+        "angry": "\033[91m",     # Red
+        "sad": "\033[94m",       # Blue
+        "fearful": "\033[93m",   # Yellow
+        "surprised": "\033[96m", # Cyan
+        "disgusted": "\033[90m", # Dark Gray
+        "happy": "\033[92m",     # Green
+        "joyful": "\033[38;5;208m", # Orange
+        "neutral": "\033[92m"    # Green (default)
+    }
+    
+    # Get the appropriate color for the detected mood
+    color = mood_colors.get(mood, "\033[92m")
+    
+    # Print the detected mood with the corresponding color
+    print(f"{color}Detected mood: {mood}\033[0m")
+        
+    return mood
 
 def adjust_prompt(mood):
     prompts_path = os.path.join(characters_folder, 'prompts.json')
@@ -400,7 +517,6 @@ def adjust_prompt(mood):
         print(f"Error loading prompts: {e}")
         mood_prompts = {}
 
-    print(f"Detected mood: {mood}")
     mood_prompt = mood_prompts.get(mood, "")
     return mood_prompt
 
@@ -566,7 +682,7 @@ def execute_once(question_prompt):
     response = analyze_image(image_path, question_prompt)
     text_response = response.get('choices', [{}])[0].get('message', {}).get('content', 'No response received.')
 
-    max_char_length = 350
+    max_char_length = MAX_CHAR_LENGTH
     if len(text_response) > max_char_length:
         text_response = text_response[:max_char_length] + "..."
 
@@ -763,8 +879,202 @@ def transcribe_audio(audio_file):
         print(f"Transcription (model: {OPENAI_TRANSCRIPTION_MODEL})")
         return transcribe_with_openai_api(audio_file, OPENAI_TRANSCRIPTION_MODEL)
 
+def load_character_specific_history(character_name):
+    """
+    Load conversation history from a character-specific file for story/game characters.
+    Only to be used for characters with names starting with story_ or game_
+    
+    Args:
+        character_name: The name of the character
+        
+    Returns:
+        list: The conversation history or an empty list if not found
+    """
+    try:
+        # Only process for story/game characters
+        if not character_name.startswith("story_") and not character_name.startswith("game_"):
+            print(f"Not a story/game character: {character_name}")
+            return []
+            
+        # Create character-specific history file path
+        character_dir = os.path.join('characters', character_name)
+        history_file = os.path.join(character_dir, "conversation_history.txt")
+        
+        # Check if file exists
+        if not os.path.exists(history_file) or os.path.getsize(history_file) == 0:
+            print(f"No character-specific history found for {character_name}")
+            return []
+            
+        print(f"Loading character-specific history for {character_name}")
+        
+        temp_history = []
+        with open(history_file, "r", encoding="utf-8") as file:
+            current_role = None
+            current_content = ""
+            
+            for line in file:
+                line = line.strip()
+                if not line:  # Skip empty lines
+                    continue
+                    
+                if line.startswith("User:"):
+                    # Save previous message if exists
+                    if current_role:
+                        temp_history.append({"role": current_role, "content": current_content.strip()})
+                    
+                    # Start new user message
+                    current_role = "user"
+                    current_content = line[5:].strip()
+                elif line.startswith("Assistant:"):
+                    # Save previous message if exists
+                    if current_role:
+                        temp_history.append({"role": current_role, "content": current_content.strip()})
+                    
+                    # Start new assistant message
+                    current_role = "assistant"
+                    current_content = line[10:].strip()
+                else:
+                    # Continue previous message
+                    current_content += "\n" + line
+            
+            # Add the last message
+            if current_role:
+                temp_history.append({"role": current_role, "content": current_content.strip()})
+                
+        print(f"Loaded {len(temp_history)} messages from character-specific history file")
+        return temp_history
+    except Exception as e:
+        print(f"Error loading character-specific history: {e}")
+        return []
+
+def save_character_specific_history(history, character_name):
+    """
+    Save conversation history to a character-specific file for story/game characters.
+    Only to be used for characters with names starting with story_ or game_
+    
+    Args:
+        history: The conversation history to save
+        character_name: The name of the character
+        
+    Returns:
+        dict: Status of the operation
+    """
+    try:
+        # Only process for story/game characters
+        if not character_name.startswith("story_") and not character_name.startswith("game_"):
+            print(f"Not a story/game character: {character_name}")
+            return {"status": "error", "message": "Not a story/game character"}
+            
+        # Create character-specific history file path
+        character_dir = os.path.join('characters', character_name)
+        os.makedirs(character_dir, exist_ok=True)
+        history_file = os.path.join(character_dir, "conversation_history.txt")
+        
+        print(f"Saving character-specific history for {character_name}")
+        
+        with open(history_file, "w", encoding="utf-8") as file:
+            for message in history:
+                role = message["role"].capitalize()
+                content = message["content"]
+                file.write(f"{role}: {content}\n\n")  # Extra newline for readability
+                
+        print(f"Saved {len(history)} messages to character-specific history file")
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Error saving character-specific history: {e}")
+        return {"status": "error", "message": str(e)}
+
+def save_global_conversation_history(history):
+    """
+    Save conversation history to the global history file.
+    To be used for regular characters (not story_/game_ prefixed).
+    
+    Args:
+        history: The conversation history to save
+        
+    Returns:
+        dict: Status of the operation
+    """
+    try:
+        # Save to global history file
+        history_file = "conversation_history.txt"
+        
+        print(f"Saving global conversation history")
+        
+        with open(history_file, "w", encoding="utf-8") as file:
+            for message in history:
+                role = message["role"].capitalize()
+                content = message["content"]
+                file.write(f"{role}: {content}\n\n")  # Extra newline for readability
+                
+        print(f"Saved {len(history)} messages to global history file")
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Error saving global conversation history: {e}")
+        return {"status": "error", "message": str(e)}
+
 def user_chatbot_conversation():
-    conversation_history = []
+    # Get current character
+    current_character = os.getenv('CHARACTER_NAME', 'wizard')
+    is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+    
+    # Initialize conversation history based on character type
+    if is_story_character:
+        # Try to load history from character-specific file
+        loaded_history = load_character_specific_history(current_character)
+        if loaded_history:
+            conversation_history = loaded_history
+            print(f"Loaded {len(conversation_history)} messages from character-specific history")
+        else:
+            print(f"No previous history found for {current_character}, starting fresh")
+            conversation_history = []
+    else:
+        # Use global history for standard characters
+        conversation_history = []
+        # Try to load from global file
+        try:
+            history_file = "conversation_history.txt"
+            if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
+                temp_history = []
+                with open(history_file, "r", encoding="utf-8") as file:
+                    current_role = None
+                    current_content = ""
+                    
+                    for line in file:
+                        line = line.strip()
+                        if not line:  # Skip empty lines
+                            continue
+                        
+                        if line.startswith("User:"):
+                            # Save previous message if exists
+                            if current_role:
+                                temp_history.append({"role": current_role, "content": current_content.strip()})
+                            
+                            # Start new user message
+                            current_role = "user"
+                            current_content = line[5:].strip()
+                        elif line.startswith("Assistant:"):
+                            # Save previous message if exists
+                            if current_role:
+                                temp_history.append({"role": current_role, "content": current_content.strip()})
+                            
+                            # Start new assistant message
+                            current_role = "assistant"
+                            current_content = line[10:].strip()
+                        else:
+                            # Continue previous message
+                            current_content += "\n" + line
+                    
+                    # Add the last message
+                    if current_role:
+                        temp_history.append({"role": current_role, "content": current_content.strip()})
+                
+                conversation_history = temp_history
+                print(f"Loaded {len(conversation_history)} messages from global history")
+        except Exception as e:
+            print(f"Error loading global history: {e}")
+            conversation_history = []
+    
     base_system_message = open_file(character_prompt_file)
     quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit", "leave", "Leave", "Leave."]
     screenshot_phrases = [
@@ -803,12 +1113,21 @@ def user_chatbot_conversation():
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
             conversation_history.append({"role": "assistant", "content": chatbot_response})
             sanitized_response = sanitize_response(chatbot_response)
-            if len(sanitized_response) > 400:  # Limit response length for audio generation
-                sanitized_response = sanitized_response[:400] + "..."
+            if len(sanitized_response) > MAX_CHAR_LENGTH:  # Limit response length for audio generation
+                sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
             prompt2 = sanitized_response
             process_and_play(prompt2, character_audio_file)
-            if len(conversation_history) > 30:
-                conversation_history = conversation_history[-30:]
+            current_character = os.getenv('CHARACTER_NAME', 'wizard')
+            if current_character.startswith("story_") or current_character.startswith("game_"):
+                if len(conversation_history) > 100:
+                    conversation_history = conversation_history[-100:]
+                # Save to character-specific history
+                save_character_specific_history(conversation_history, current_character)
+            else:
+                if len(conversation_history) > 30:
+                    conversation_history = conversation_history[-30:]
+                # Save to global history file
+                save_global_conversation_history(conversation_history)
     except KeyboardInterrupt:
         print("Quitting the conversation...")
 
