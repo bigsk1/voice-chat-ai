@@ -42,7 +42,7 @@ Get up and running fast with Voice Chat AI! 🔊
 - **Interactive Games & Stories**: Enjoy 15+ different game types (word puzzles, trivia, escape rooms) and interactive storytelling adventures.
 - **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
 
-https://github.com/user-attachments/assets/f4401acf-4422-458f-bcbc-06ff63de010e
+https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
 ## Installation
 
