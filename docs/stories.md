@@ -186,6 +186,22 @@ All story characters follow a consistent structure:
 - Success depends on completing missions while maintaining your cover, navigating changing allegiances, and managing your character's internal conflict between duty and personal moral code.
 - Multiple potential outcomes include rising to leadership within your clan, escaping the criminal life entirely, or meeting a violent end through betrayal or failure.
 
+### Serial Pursuit (story_serial_pursuit)
+
+**Setting**: A sprawling modern metropolis gripped by fear of a ritualistic serial killer.
+
+**Role**: Seasoned homicide detective hunting a methodical killer who leaves symbolic clues.
+
+**Key Features**: Graphic crime scenes, psychological profiling, forensic investigation, and personal stakes.
+
+- Investigate disturbing crime scenes containing ritualistic elements and cryptic clues while tracking progress through days elapsed, victim count, evidence collected, and suspect profile development.
+- Analyze forensic evidence, interrogate witnesses and suspects, conduct surveillance, and develop psychological profiles of the killer.
+- Navigate increasing pressure from the public, media, and department leadership as the killer continues to evade capture.
+- Make difficult moral choices balancing justice with revenge as the case takes an increasingly personal turn.
+- Experience the psychological toll of immersion in the darkness of serial murder investigation.
+- Confront a killer who actively manipulates the investigation while targeting someone personally connected to the detective.
+- Multiple possible outcomes depend on your investigative choices, psychological resilience, and ability to identify the killer before they strike again.
+
 ## Creating Your Adventure
 
 When using story characters:
