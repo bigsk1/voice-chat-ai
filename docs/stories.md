@@ -142,6 +142,35 @@ All story characters follow a consistent structure:
 - Achieve "City Formation" civilization level and survive, with a greater victory for reaching "Feline Empire" status.
 - Defeat occurs if clan size drops below 5 cats or critical resources are depleted.
 
+### Cannibal Isle
+
+**Setting**: Uncharted island in the South Pacific after a catastrophic plane crash.  
+
+**Role**: Survivor leader making increasingly brutal choices for personal survival.  
+
+**Key Features**: Resource scarcity, factional conflict, psychological deterioration, and moral degradation.
+
+- Track vital resources (food, water, shelter, weapons, health, mental stability) while navigating complex survivor factions: pragmatists, optimists, and predators. Develop survival skills, lead expeditions, and manage alliances.
+- Confront brutal choices including cannibalism, which provides substantial food resources but causes severe psychological damage.
+- Experience detailed psychological degradation as mental stability declines, manifesting in hallucinations, paranoia, and potential psychotic breaks.
+- Survive 90 days (30 turns) on the island or find rescue. Success depends on navigating physical threats, dwindling resources, factional conflicts, and your own deteriorating mental state.
+- Multiple potential endings range from rescue with intact humanity to becoming a feral predator who has fully embraced island savagery.
+
+### Prison Camp Escape
+
+**Setting**: Nazi-occupied Poland, 1943, in the high-security Stalag Luft III POW camp.  
+
+**Role**: Allied pilot and former reconnaissance officer plotting a dangerous escape.  
+
+**Key Features**: Stealth operations, resource gathering, guard psychology, and wartime survival.
+
+- Navigate daily prison camp life while secretly preparing for escape, tracking physical strength, rations, tools, suspicion level, and psychological resolve.
+- Develop critical skills including stealth, combat, lock-picking, forgery, and German language proficiency.
+- Choose between multiple escape methods (tunnel, fence, disguise) while managing detection risk from guards and informants. After escaping, traverse Nazi-occupied territory using different routes and disguises to reach Allied lines.
+- Successfully escape the camp and reach Allied territory without being recaptured or killed.
+- The journey involves navigating prison guards, civilian encounters, Nazi patrols, and the harsh Polish winter.
+- Success requires careful planning, resource management, and sometimes brutal moral choices about how to deal with threats and obstacles.
+
 ## Creating Your Adventure
 
 When using story characters:

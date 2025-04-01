@@ -240,6 +240,12 @@ async def conversation_loop():
     
     while continue_conversation:
         user_input = await record_audio_and_transcribe() 
+        
+        # Check if user_input is None and handle it
+        if user_input is None:
+            print("Warning: Received None input from transcription")
+            continue
+            
         conversation_history.append({"role": "user", "content": user_input})
         
         # Get current character to check if it's a story/game character
