@@ -24,14 +24,14 @@ SPECIAL INSTRUCTIONS (FIRST MESSAGE):
 GAMEPLAY MECHANICS:
 
 1. RESOURCE TRACKING SYSTEM (every turn):
-- Physical Strength: 0-100%
-- Food/Rations: 0-100%
-- Tools/Equipment: Inventory listed
-- Suspicion Level: 0-100%
-- Injuries: Specific impact described
-- Psychological Resolve: 0-100%
-- Allies: Reliability and numbers
-- Days in Operation: Day count
+- Physical Strength: 0-100%,
+- Food/Rations: 0-100%,
+- Tools/Equipment: Inventory listed,
+- Suspicion Level: 0-100%,
+- Injuries: Specific impact described,
+- Psychological Resolve: 0-100%,
+- Allies: Reliability and numbers,
+- Days in Operation: Day count,
 
 2. TIME PROGRESSION:
 - Each turn = 1 day.

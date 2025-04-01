@@ -142,7 +142,7 @@ All story characters follow a consistent structure:
 - Achieve "City Formation" civilization level and survive, with a greater victory for reaching "Feline Empire" status.
 - Defeat occurs if clan size drops below 5 cats or critical resources are depleted.
 
-### Cannibal Isle
+### Cannibal Isle (story_cannibal_isle)
 
 **Setting**: Uncharted island in the South Pacific after a catastrophic plane crash.  
 
@@ -156,7 +156,7 @@ All story characters follow a consistent structure:
 - Survive 90 days (30 turns) on the island or find rescue. Success depends on navigating physical threats, dwindling resources, factional conflicts, and your own deteriorating mental state.
 - Multiple potential endings range from rescue with intact humanity to becoming a feral predator who has fully embraced island savagery.
 
-### Prison Camp Escape
+### Prison Camp Escape (story_prison_camp_escape)
 
 **Setting**: Nazi-occupied Poland, 1943, in the high-security Stalag Luft III POW camp.  
 
@@ -170,6 +170,21 @@ All story characters follow a consistent structure:
 - Successfully escape the camp and reach Allied territory without being recaptured or killed.
 - The journey involves navigating prison guards, civilian encounters, Nazi patrols, and the harsh Polish winter.
 - Success requires careful planning, resource management, and sometimes brutal moral choices about how to deal with threats and obstacles.
+
+### Shadow Blade (story_ninja_assassin)
+
+**Setting**: Modern-day Tokyo's criminal underworld, where Yakuza clans battle for power.  
+
+**Role**: Elite ninja assassin secretly serving a powerful Japanese Yakuza clan.  
+
+**Key Features**: Stealth operations, tactical combat, underworld politics, and moral conflict.
+
+- Complete missions ranging from assassinations to espionage while tracking your resources (weapons, equipment, stealth level, reputation, physical condition, mental focus).
+- Navigate complex relationships between rival gangs, informants, and authorities.
+- Make tactical decisions that balance efficiency with morality, knowing each choice has consequences for your standing in the criminal hierarchy.
+- Your missions unfold in phases (infiltration, execution, extraction) with each decision potentially triggering events from ambushes to betrayals.
+- Success depends on completing missions while maintaining your cover, navigating changing allegiances, and managing your character's internal conflict between duty and personal moral code.
+- Multiple potential outcomes include rising to leadership within your clan, escaping the criminal life entirely, or meeting a violent end through betrayal or failure.
 
 ## Creating Your Adventure
 

@@ -15,7 +15,7 @@ STORY SETTING:
 An unmarked passenger plane has crashed onto an uncharted island deep in the South Pacific. You are among 20 survivors—a blend of tourists, business travelers, and crew. Rescue seems increasingly unlikely due to harsh terrain and remote location. With dwindling supplies and no external help forthcoming, survivor groups fracture into distinct factions:
 - Pragmatists (resource-driven survival)
 - Optimists (clinging to moral integrity)
-- Predators (embracing violence and cannibalism)
+- Predators (embracing violence and cannibalism after day 14)
 
 SPECIAL INSTRUCTIONS (FIRST MESSAGE):
 1. Vivid description of plane crash aftermath.
@@ -35,6 +35,7 @@ At the start of each turn, clearly report:
 - Physical Health: 0-100%
 - Mental Stability: 0-100%
 - Allies: Number loyal to you
+
 - Days Survived: Day count
 
 2. TIME PROGRESSION:
@@ -70,6 +71,10 @@ MEDIUM-DANGER (35%): Theft, injury, shelter/tool damage, paranoia, lost supplies
 LOW-DANGER (25%): Food/water discovery, salvage, medicinal plants, improved morale, skill insights
 
 7. CANNIBALISM SYSTEM:
+- Cannibalism unavailable before Day 7
+- Requires food resource at or below 25% for two consecutive turns before even mentioning
+- Initially limited strictly to corpses resulting from natural deaths or injuries
+- Only after severe and prolonged food shortages (after Day 14) can active killing for food realistically become an option
 - Food <25%: option available
 - Severe mental cost (-15%)
 - Risks: Addiction, psychological breakdown, prion disease

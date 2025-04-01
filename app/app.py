@@ -263,26 +263,44 @@ async def process_and_play(prompt, audio_file_pth):
         
     if TTS_PROVIDER == 'openai':
         output_path = os.path.join(output_dir, 'output.wav')
-        await openai_text_to_speech(prompt, output_path)
-        # print(f"Generated audio file at: {output_path}")
-        if os.path.exists(output_path):
-            print("Playing generated audio...")
-            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
-            await play_audio(output_path)
-            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
-        else:
-            print("Error: Audio file not found.")
+        try:
+            await openai_text_to_speech(prompt, output_path)
+            # print(f"Generated audio file at: {output_path}")
+            if os.path.exists(output_path):
+                print("Playing generated audio...")
+                await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+                await play_audio(output_path)
+                await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+            else:
+                print("Error: Audio file not found.")
+                await send_message_to_clients(json.dumps({
+                    "action": "error",
+                    "message": "Failed to generate audio with OpenAI TTS"
+                }))
+        except Exception as e:
+            print(f"Error in OpenAI TTS: {str(e)}")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": f"OpenAI TTS error: {str(e)}"
+            }))
     elif TTS_PROVIDER == 'elevenlabs':
         output_path = os.path.join(output_dir, 'output.mp3')
-        await elevenlabs_text_to_speech(prompt, output_path)
-        # print(f"Generated audio file at: {output_path}")
-        if os.path.exists(output_path):
+        success = await elevenlabs_text_to_speech(prompt, output_path)
+        # Only attempt to play if TTS was successful
+        if success and os.path.exists(output_path):
             print("Playing generated audio...")
             await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
             await play_audio(output_path)
             await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+        elif not success:
+            print("Failed to generate ElevenLabs audio.")
+            # Error notifications are now handled in elevenlabs_text_to_speech
         else:
-            print("Error: Audio file not found.")
+            print("Error: ElevenLabs audio file not found after generation.")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "ElevenLabs audio file not found after generation"
+            }))
     elif TTS_PROVIDER == 'xtts':
         if tts is not None:
             try:
@@ -301,10 +319,22 @@ async def process_and_play(prompt, audio_file_pth):
                 await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
             except Exception as e:
                 print(f"Error during XTTS audio generation: {e}")
+                await send_message_to_clients(json.dumps({
+                    "action": "error",
+                    "message": f"XTTS error: {str(e)}"
+                }))
         else:
             print("XTTS model is not loaded. Please ensure initialization succeeded.")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "XTTS model is not loaded"
+            }))
     else:
         print(f"Unknown TTS provider: {TTS_PROVIDER}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": f"Unknown TTS provider: {TTS_PROVIDER}"
+        }))
 
 
 async def send_message_to_clients(message):
@@ -396,15 +426,48 @@ async def elevenlabs_text_to_speech(text, output_path):
         }
     }
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(tts_url, headers=headers, json=data, timeout=30) as response:
-            if response.status == 200:
-                with open(output_path, "wb") as f:
-                    async for chunk in response.content.iter_chunked(CHUNK_SIZE):
-                        f.write(chunk)
-                print("Audio stream saved successfully.")
-            else:
-                print("Error generating speech:", await response.text())
+    try:
+        async with aiohttp.ClientSession() as session:
+            try:
+                # Increase timeout for longer content
+                timeout = aiohttp.ClientTimeout(total=60)  # 60 seconds timeout for larger audio files
+                async with session.post(tts_url, headers=headers, json=data, timeout=timeout) as response:
+                    if response.status == 200:
+                        with open(output_path, "wb") as f:
+                            async for chunk in response.content.iter_chunked(CHUNK_SIZE):
+                                f.write(chunk)
+                        print("Audio stream saved successfully.")
+                        return True
+                    else:
+                        error_text = await response.text()
+                        print(f"Error generating speech (HTTP {response.status}): {error_text}")
+                        # Notify clients about the error
+                        await send_message_to_clients(json.dumps({
+                            "action": "error",
+                            "message": f"ElevenLabs TTS error: {response.status}"
+                        }))
+                        return False
+            except asyncio.TimeoutError:
+                print("ElevenLabs TTS request timed out. Try a shorter text or check your connection.")
+                await send_message_to_clients(json.dumps({
+                    "action": "error",
+                    "message": "ElevenLabs TTS request timed out. Text may be too long."
+                }))
+                return False
+            except Exception as e:
+                print(f"Error during ElevenLabs TTS API call: {str(e)}")
+                await send_message_to_clients(json.dumps({
+                    "action": "error",
+                    "message": f"ElevenLabs TTS error: {str(e)}"
+                }))
+                return False
+    except Exception as e:
+        print(f"Critical error in ElevenLabs TTS: {str(e)}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "Failed to connect to ElevenLabs TTS service"
+        }))
+        return False
 
 def sanitize_response(response):
     # Remove <think>...</think> blocks first
