@@ -117,7 +117,6 @@ async def enhanced_text_to_speech(text, detected_mood=None):
         import json
         import aiohttp
         import os
-        import tempfile
         import asyncio
         import wave
         import pyaudio
@@ -125,10 +124,12 @@ async def enhanced_text_to_speech(text, detected_mood=None):
         # Import get_current_character at the top to avoid shadowing
         from .shared import get_current_character as get_character
         
-        # Create a temporary file to store the speech audio
-        temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-        temp_filename = temp_file.name
-        temp_file.close()
+        # Use a persistent file in the outputs directory instead of a temporary file
+        outputs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs")
+        os.makedirs(outputs_dir, exist_ok=True)  # Ensure the outputs directory exists
+        
+        # Create a persistent file path for enhanced audio
+        enhanced_audio_filename = os.path.join(outputs_dir, "output_enhanced.wav")
         
         # Get OpenAI API key
         openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -409,7 +410,7 @@ async def enhanced_text_to_speech(text, detected_mood=None):
             async with session.post(url, headers=headers, json=payload) as response:
                 if response.status == 200:
                     # Save the audio file
-                    with open(temp_filename, "wb") as f:
+                    with open(enhanced_audio_filename, "wb") as f:
                         f.write(await response.read())
                     
                     # Signal that audio is about to play (for animation synchronization)
@@ -417,7 +418,7 @@ async def enhanced_text_to_speech(text, detected_mood=None):
                     
                     # Play audio using PyAudio - similar to the main page implementation
                     try:
-                        wf = wave.open(temp_filename, 'rb')
+                        wf = wave.open(enhanced_audio_filename, 'rb')
                         p = pyaudio.PyAudio()
                         
                         # Set up a buffered stream for lower latency
@@ -454,16 +455,6 @@ async def enhanced_text_to_speech(text, detected_mood=None):
                     error_text = await response.text()
                     print(f"Error from OpenAI TTS API: {error_text}")
                     raise Exception(f"TTS API error: {response.status} - {error_text}")
-        
-        # Clean up the temporary file
-        try:
-            # Add a small delay to ensure file is released before deletion (Windows issue)
-            await asyncio.sleep(0.2)
-            if os.path.exists(temp_filename):
-                os.unlink(temp_filename)
-        except Exception as e:
-            print(f"Error removing temporary TTS file: {e}")
-            # Non-critical error, we can continue even if file cleanup fails
         
         # Signal that AI has stopped speaking
         await send_message_to_enhanced_clients({"action": "ai_stop_speaking"})
