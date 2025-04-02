@@ -750,7 +750,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         payload = {"model": OPENAI_MODEL, "messages": messages, "stream": True}
         try:
             print(f"Debug: Sending request to OpenAI: {OPENAI_BASE_URL}")
-            response = requests.post(OPENAI_BASE_URL, headers=headers, json=payload, stream=True, timeout=30)
+            response = requests.post(OPENAI_BASE_URL, headers=headers, json=payload, stream=True, timeout=45)
             response.raise_for_status()
 
             print("Starting OpenAI stream...")
@@ -781,7 +781,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             full_response = f"Error connecting to OpenAI model: {e}"
             print(f"Debug: OpenAI error - {e}")
 
-    print(f"Debug: chatgpt_streamed completed. Response length: {PINK}{len(full_response)}{RESET_COLOR}")
+    print(f"streaming complete. Response length: {PINK}{len(full_response)}{RESET_COLOR}")
     return full_response
 
 def save_conversation_history(conversation_history):

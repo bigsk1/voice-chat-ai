@@ -11,7 +11,10 @@ from .app_logic import (
     sanitize_response,
     characters_folder,
     load_character_specific_history,
-    save_character_specific_history
+    save_character_specific_history,
+    PINK,
+    RESET_COLOR,
+    NEON_GREEN
 )
 from .transcription import transcribe_audio
 
@@ -587,9 +590,6 @@ async def enhanced_conversation_loop():
                 # Clean up the response
                 ai_response = sanitize_response(ai_response)
                 
-                # Log the AI response in green text to CLI
-                print("\033[92m" + ai_response + "\033[0m")  # Green text
-                
                 # Don't display the AI response in the UI yet - will be displayed after audio finishes
                 
                 # Add to conversation history
@@ -649,6 +649,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         # Import required libraries
         import aiohttp
         import os
+        import json
         
         # Get API key
         openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -706,20 +707,60 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
             "model": model,
             "messages": messages,
             "temperature": 0.8,
-            "max_tokens": 2000
+            "max_tokens": 2000,
+            "stream": True
         }
         
-        # Make the API call
+        # Variable to store the full response
+        full_response = ""
+        
+        # Make the API call with streaming
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload) as response:
+            async with session.post(url, headers=headers, json=payload, timeout=45) as response:
                 if response.status == 200:
-                    data = await response.json()
-                    try:
-                        response_text = data['choices'][0]['message']['content']
-                        return response_text
-                    except (KeyError, IndexError) as e:
-                        print(f"Unexpected API response structure: {e}")
-                        return f"Error parsing API response: {str(e)}"
+                    print("Starting OpenAI stream...")
+                    line_buffer = ""
+                    
+                    # Process the streaming response
+                    async for line in response.content:
+                        if not line:
+                            continue
+                            
+                        # Decode the line
+                        line = line.decode('utf-8').strip()
+                        
+                        # OpenAI streaming format starts with "data: "
+                        if line.startswith("data:"):
+                            line = line[5:].strip()
+                            
+                        # Skip empty lines or "[DONE]" marker
+                        if not line or line == "[DONE]":
+                            continue
+                            
+                        try:
+                            # Parse the JSON chunk
+                            chunk = json.loads(line)
+                            delta_content = chunk['choices'][0]['delta'].get('content', '')
+                            
+                            if delta_content:
+                                line_buffer += delta_content
+                                if '\n' in line_buffer:
+                                    lines = line_buffer.split('\n')
+                                    for line in lines[:-1]:
+                                        print(NEON_GREEN + line + RESET_COLOR)
+                                        full_response += line + '\n'
+                                    line_buffer = lines[-1]
+                        except json.JSONDecodeError:
+                            continue
+                            
+                    # Print any remaining content in the buffer
+                    if line_buffer:
+                        print(NEON_GREEN + line_buffer + RESET_COLOR)
+                        full_response += line_buffer
+                        
+                    print("\nOpenAI stream complete.")
+                    print(f"enhanced_chat_completion completed. Response length: {PINK}{len(full_response)}{RESET_COLOR}")
+                    return full_response
                 else:
                     error_text = await response.text()
                     print(f"Error from OpenAI Chat API: {error_text}")
