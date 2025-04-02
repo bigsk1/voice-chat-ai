@@ -202,6 +202,38 @@ All story characters follow a consistent structure:
 - Confront a killer who actively manipulates the investigation while targeting someone personally connected to the detective.
 - Multiple possible outcomes depend on your investigative choices, psychological resilience, and ability to identify the killer before they strike again.
 
+### Mars Encounter (story_mars_encounter)
+
+**Setting**: America's first Mars colony in 2058, which has mysteriously gone dark.
+
+**Role**: Cain "Reaper" Drake, a battle-hardened mercenary leading an elite team to investigate the colony.
+
+**Key Features**: Military tactical combat, alien threats, survival horror, and conspiracy investigation.
+
+- Experience the story through the inner voice of Drake, a cynical, battle-scarred veteran mercenary with a dark sense of humor and PTSD symptoms.
+- Lead a specialized mercenary team with unique skills: Viper (sniper), Doc (medic), Razor (close combat), Ghost (stealth), and Wrench (tech).
+- Track mission progress through days since landing, ammunition status, team health, intel gathered, survivors found, and team morale.
+- Engage in brutal combat encounters against hostile alien creatures, competing Russian operatives, and mysterious mutated colonists.
+- Investigate the horrifying truth behind what happened at the colony through forensic analysis, survivor interrogations, and recovery of security footage.
+- Make critical tactical decisions that balance mission objectives, team safety, and the ever-increasing threats lurking in the colony.
+- Uncover a complex mystery involving alien technology, human experimentation, and government conspiracy, leading to multiple possible outcomes depending on your choices.
+
+### Mars Encounter Interactive (story_mars_encounter_interactive)
+
+**Setting**: America's first Mars colony in 2058, which has mysteriously gone dark.
+
+**Role**: Cain "Reaper" Drake, a battle-hardened mercenary leading an elite team to investigate the colony.
+
+**Key Features**: Free-form tactical decision making, military combat, alien threats, survival horror.
+
+- An enhanced version of Mars Encounter that allows for free-form player input rather than numbered options.
+- Experience the story through the inner voice of Drake as he considers tactical approaches, allowing you to make decisions in your own words.
+- Respond naturally with your intended actions and the AI will interpret and execute them within the story context.
+- The story will adapt to your tactical choices whether you decide to "split the team," "search for survivors," "secure the perimeter," or any other reasonable approach.
+- If your input is unclear or unrelated to the current situation, Drake will make a logical decision based on his character and the mission requirements.
+- Enjoy a more immersive experience where you can think and respond like an elite mercenary rather than selecting from pre-defined options.
+- All the brutal combat, horror elements, and complex mystery of the original, but with more flexible and natural interaction.
+
 ## Creating Your Adventure
 
 When using story characters:
