@@ -110,6 +110,10 @@ if TTS_PROVIDER == 'xtts':
         tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
         print("Model downloaded, loading into memory...")
         tts = tts.to(device)  # Move to device after download
+        
+        # Set the character limit to 500
+        tts.synthesizer.tts_model.args.num_chars = 1000  # default is 255 we are overriding it 
+        
         print("XTTS model loaded successfully.")
     except Exception as e:
         print(f"Failed to load XTTS model: {e}")
@@ -155,6 +159,7 @@ def init_set_tts(set_tts):
             tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
             print("Model downloaded, loading into memory...")
             tts = tts.to(device)
+            tts.synthesizer.tts_model.args.num_chars = 1000  # default is 255 we are overriding it warning on cpu will take much longer
             print("XTTS model loaded successfully.")
             TTS_PROVIDER = set_tts
         except Exception as e:
@@ -305,12 +310,12 @@ async def process_and_play(prompt, audio_file_pth):
         if tts is not None:
             try:
                 wav = await asyncio.to_thread(
-                    tts.tts,
-                    text=prompt,
-                    speaker_wav=current_audio_file,  # Use the updated current character audio
-                    language="en",
-                    speed=float(XTTS_SPEED)
-                )
+                tts.tts,
+                text=prompt,
+                speaker_wav=current_audio_file,  # Use the updated current character audio
+                language="en",
+                speed=float(XTTS_SPEED)
+            )
                 src_path = os.path.join(output_dir, 'output.wav')
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
@@ -890,7 +895,7 @@ async def execute_once(question_prompt):
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
     else:
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for XTTS
-        max_char_length = 250  # Set a lower limit for XTTS
+        max_char_length = 1000  # Set a lower limit for XTTS , default is 250 testing 1000+ 
 
     image_path = await take_screenshot(temp_image_path)
     response = await analyze_image(image_path, question_prompt)
