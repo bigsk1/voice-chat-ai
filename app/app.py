@@ -781,7 +781,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             full_response = f"Error connecting to OpenAI model: {e}"
             print(f"Debug: OpenAI error - {e}")
 
-    print(f"Debug: chatgpt_streamed completed. Response length: {len(full_response)}")
+    print(f"Debug: chatgpt_streamed completed. Response length: {PINK}{len(full_response)}{RESET_COLOR}")
     return full_response
 
 def save_conversation_history(conversation_history):
@@ -895,7 +895,7 @@ async def execute_once(question_prompt):
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
     else:
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for XTTS
-        max_char_length = 1000  # Set a lower limit for XTTS , default is 250 testing 1000+ 
+        max_char_length = 1000  # Set a lower limit for XTTS , default is 255 testing 1000+, on 4090 taking 90 secs for 2000 chars quality is bad
 
     image_path = await take_screenshot(temp_image_path)
     response = await analyze_image(image_path, question_prompt)
