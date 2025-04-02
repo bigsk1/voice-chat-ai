@@ -12,6 +12,7 @@ import base64
 from PIL import ImageGrab
 from dotenv import load_dotenv
 from openai import OpenAI, OpenAIError
+import anthropic
 from faster_whisper import WhisperModel
 from TTS.api import TTS
 import soundfile as sf
@@ -39,6 +40,8 @@ XAI_MODEL = os.getenv('XAI_MODEL', 'grok-2-1212')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-7-sonnet-20250219')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
@@ -47,8 +50,6 @@ MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
 os.environ["COQUI_TOS_AGREED"] = "1"
 
-# Initialize OpenAI API key
-OpenAI.api_key = OPENAI_API_KEY
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -56,6 +57,14 @@ CYAN = '\033[96m'
 YELLOW = '\033[93m'
 NEON_GREEN = '\033[92m'
 RESET_COLOR = '\033[0m'
+
+# Initialize OpenAI API key if available
+if OPENAI_API_KEY:
+    OpenAI.api_key = OPENAI_API_KEY
+else:
+    print(f"{YELLOW}OPENAI_API_KEY not set in .env file. OpenAI services disabled.{RESET_COLOR}")
+    # Set to None to ensure proper error handling when OpenAI services are attempted
+    OpenAI.api_key = None
 
 # Capitalize the first letter of the character name
 character_display_name = CHARACTER_NAME.capitalize()
@@ -164,7 +173,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 print(f"Using device: {device}")
 print(f"Model provider: {MODEL_PROVIDER}")
-print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else OLLAMA_MODEL}")
+print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'local' if TTS_PROVIDER == 'xtts' else 'Unknown'}")
@@ -524,6 +533,9 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
     """
     Function to send a query to either the Ollama model or OpenAI model
     """
+    # Calculate token limit based on character limit
+    token_limit = min(4000, MAX_CHAR_LENGTH * 4 // 3)
+    
     if MODEL_PROVIDER == 'ollama':
         headers = {
             'Content-Type': 'application/json',
@@ -573,7 +585,9 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         payload = {
             "model": XAI_MODEL,
             "messages": messages,
-            "stream": True
+            "stream": True,
+            "temperature": 0.8,
+            "max_tokens": token_limit  # Using our calculated token limit for xAI
         }
         response = requests.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, stream=True, timeout=30)
         response.raise_for_status()
@@ -595,6 +609,56 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         print("\nXAI stream complete.")
         return full_response
 
+    elif MODEL_PROVIDER == 'anthropic':
+        if anthropic is None:
+            print("Error: Anthropic library not installed. Please install using: pip install anthropic")
+            return "I apologize, but the Anthropic API is not available. Please install the required library or choose a different model provider."
+            
+        # Format the conversation history for Anthropic
+        anthropic_messages = []
+        for msg in conversation_history:
+            anthropic_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+            
+        try:
+            # Create the client with default settings
+            client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+            
+            print(f"Starting Anthropic stream...")
+            
+            # Format system and mood prompt for Anthropic
+            system_content = system_message + "\n" + mood_prompt
+            
+            # Variables to store the full response and line buffer
+            full_response = ""
+            line_buffer = ""
+            
+            # Start the streaming message request
+            with client.messages.stream(
+                max_tokens=token_limit,  # Using our calculated token limit for Anthropic
+                model=ANTHROPIC_MODEL,
+                system=system_content,
+                messages=anthropic_messages + [{"role": "user", "content": user_input}],
+                temperature=0.8
+            ) as stream:
+                # Process the stream events
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        delta_content = event.delta.text
+                        if delta_content:
+                            print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
+                            full_response += delta_content
+            
+            print("\nAnthropic stream complete.")
+            return full_response
+        
+        except Exception as e:
+            error_message = f"Error connecting to Anthropic model: {e}"
+            print(f"Error: {error_message}")
+            return error_message
+
     elif MODEL_PROVIDER == 'openai':
         messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
         headers = {
@@ -604,7 +668,8 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         payload = {
             "model": OPENAI_MODEL,
             "messages": messages,
-            "stream": True
+            "stream": True,
+            "max_completion_tokens": token_limit  # Using the new parameter name for OpenAI
         }
         response = requests.post(OPENAI_BASE_URL, headers=headers, json=payload, stream=True, timeout=30)
         response.raise_for_status()

@@ -6,7 +6,7 @@
 
 Story characters provide immersive, interactive narrative experiences that combine storytelling with gameplay elements. Each character guides you through a unique adventure where your choices matter, affecting the outcome of the story. These experiences are designed to be engaging, replayable, and responsive to your decisions.
 
-For the best experience, it's recommended to use **GPT-4o** or similar advanced models, as they can maintain context over longer conversations and better track the game state variables.
+For the best experience, it's recommended to use **GPT-4o** or **Claude 3.5 Sonnet** or similar advanced models, as they can maintain context over longer conversations and better track the game state variables.
 
 ## How Story Characters Work
 

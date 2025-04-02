@@ -15,11 +15,13 @@ from TTS.api import TTS
 import soundfile as sf
 from textblob import TextBlob
 from pathlib import Path
+import anthropic
 import re
 import io
 import torch
 from pydub import AudioSegment
 from .shared import clients, get_current_character
+
 
 import logging
 logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
@@ -41,16 +43,16 @@ XAI_MODEL = os.getenv('XAI_MODEL', 'grok-2-1212')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-7-sonnet-20250219')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
 ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
-XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
+XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1')
+XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
 os.environ["COQUI_TOS_AGREED"] = "1"
-
-# Initialize OpenAI API key
-OpenAI.api_key = OPENAI_API_KEY
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -58,6 +60,14 @@ CYAN = '\033[96m'
 YELLOW = '\033[93m'
 NEON_GREEN = '\033[92m'
 RESET_COLOR = '\033[0m'
+
+# Initialize OpenAI API key if available
+if OPENAI_API_KEY:
+    OpenAI.api_key = OPENAI_API_KEY
+else:
+    print(f"{YELLOW}OPENAI_API_KEY not set in .env file. OpenAI services disabled.{RESET_COLOR}")
+    # Set to None to ensure proper error handling when OpenAI services are attempted
+    OpenAI.api_key = None
 
 # Capitalize the first letter of the character name
 character_display_name = CHARACTER_NAME.capitalize()
@@ -111,8 +121,9 @@ if TTS_PROVIDER == 'xtts':
         print("Model downloaded, loading into memory...")
         tts = tts.to(device)  # Move to device after download
         
-        # Set the character limit to 500
-        tts.synthesizer.tts_model.args.num_chars = 1000  # default is 255 we are overriding it 
+        num_chars = XTTS_NUM_CHARS
+        # Set the character limit
+        tts.synthesizer.tts_model.args.num_chars = num_chars  # default is 255 we are overriding it 
         
         print("XTTS model loaded successfully.")
     except Exception as e:
@@ -134,6 +145,11 @@ def init_xai_model(model_name):
     global XAI_MODEL
     XAI_MODEL = model_name
     print(f"Switched to XAI model: {model_name}")
+
+def init_anthropic_model(model_name):
+    global ANTHROPIC_MODEL
+    ANTHROPIC_MODEL = model_name
+    print(f"Switched to Anthropic model: {model_name}")
 
 def init_openai_tts_voice(voice_name):
     global OPENAI_TTS_VOICE
@@ -159,7 +175,8 @@ def init_set_tts(set_tts):
             tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
             print("Model downloaded, loading into memory...")
             tts = tts.to(device)
-            tts.synthesizer.tts_model.args.num_chars = 1000  # default is 255 we are overriding it warning on cpu will take much longer
+            num_chars = XTTS_NUM_CHARS
+            tts.synthesizer.tts_model.args.num_chars = num_chars # default is 255 we are overriding it warning on cpu will take much longer
             print("XTTS model loaded successfully.")
             TTS_PROVIDER = set_tts
         except Exception as e:
@@ -241,7 +258,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 print(f"Using device: {device}")
 print(f"Model provider: {MODEL_PROVIDER}")
-print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else OLLAMA_MODEL}")
+print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print("To stop chatting say Quit or Exit. One moment please loading...")
@@ -659,7 +676,10 @@ def analyze_mood(user_input):
 
 def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_history):
     full_response = ""
-    print(f"Debug: chatgpt_streamed started. MODEL_PROVIDER: {MODEL_PROVIDER}")
+    print(f"Debug: streamed started. MODEL_PROVIDER: {MODEL_PROVIDER}")
+
+    # Calculate token limit based on character limit Approximate token conversion, So if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 tokens
+    token_limit = min(4000, MAX_CHAR_LENGTH * 4 // 3)
 
     if MODEL_PROVIDER == 'ollama':
         headers = {'Content-Type': 'application/json'}
@@ -709,7 +729,8 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         payload = {
             "model": XAI_MODEL,
             "messages": messages,
-            "stream": True
+            "stream": True,
+            "max_tokens": token_limit  # Approximate token conversion
         }
         try:
             print(f"Debug: Sending request to XAI: {XAI_BASE_URL}")
@@ -747,7 +768,12 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
     elif MODEL_PROVIDER == 'openai':
         messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
         headers = {'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}
-        payload = {"model": OPENAI_MODEL, "messages": messages, "stream": True}
+        payload = {
+            "model": OPENAI_MODEL,
+            "messages": messages,
+            "stream": True,
+            "max_completion_tokens": token_limit  # Approximate token conversion
+        }
         try:
             print(f"Debug: Sending request to OpenAI: {OPENAI_BASE_URL}")
             response = requests.post(OPENAI_BASE_URL, headers=headers, json=payload, stream=True, timeout=45)
@@ -780,6 +806,64 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         except requests.exceptions.RequestException as e:
             full_response = f"Error connecting to OpenAI model: {e}"
             print(f"Debug: OpenAI error - {e}")
+            
+    elif MODEL_PROVIDER == 'anthropic':
+        if anthropic is None:
+            full_response = "Error: Anthropic library not installed. Please install using: pip install anthropic"
+            print(f"Debug: {full_response}")
+            return full_response
+            
+        # Convert the conversation history to Anthropic format
+        anthropic_messages = []
+        for msg in conversation_history:
+            anthropic_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+            
+        try:
+            # Create the client with default settings
+            client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+            
+            print(f"Debug: Sending request to Anthropic with model {ANTHROPIC_MODEL}")
+            
+            # Format system and mood prompt for Anthropic
+            system_content = system_message + "\n" + mood_prompt
+            
+            # Start the streaming message request
+            with client.messages.stream(
+            max_tokens=token_limit,  # Approximate token conversion
+            model=ANTHROPIC_MODEL,
+            system=system_content,
+            messages=anthropic_messages + [{"role": "user", "content": user_input}],
+            temperature=0.8
+        ) as stream:
+                print("Starting Anthropic stream...")
+                line_buffer = ""
+                
+                # Process the stream events
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        delta_content = event.delta.text
+                        if delta_content:
+                            line_buffer += delta_content
+                            if '\n' in line_buffer:
+                                lines = line_buffer.split('\n')
+                                for line in lines[:-1]:
+                                    print(NEON_GREEN + line + RESET_COLOR)
+                                    full_response += line + '\n'
+                                line_buffer = lines[-1]
+                
+                # Print any remaining content in the buffer
+                if line_buffer:
+                    print(NEON_GREEN + line_buffer + RESET_COLOR)
+                    full_response += line_buffer
+                    
+                print("\nAnthropic stream complete.")
+        
+        except Exception as e:
+            full_response = f"Error connecting to Anthropic model: {e}"
+            print(f"Debug: Anthropic error - {e}")
 
     print(f"streaming complete. Response length: {PINK}{len(full_response)}{RESET_COLOR}")
     return full_response
@@ -895,7 +979,7 @@ async def execute_once(question_prompt):
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
     else:
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for XTTS
-        max_char_length = 1000  # Set a lower limit for XTTS , default is 255 testing 1000+, on 4090 taking 90 secs for 2000 chars quality is bad
+        max_char_length = XTTS_NUM_CHARS  # Set a lower limit for XTTS , default is 255 testing 1000+, on 4090 taking 90 secs for 2000 chars quality is bad
 
     image_path = await take_screenshot(temp_image_path)
     response = await analyze_image(image_path, question_prompt)

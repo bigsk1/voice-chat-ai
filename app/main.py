@@ -431,6 +431,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("OPENAI_MODEL", message["model"])
             elif message["action"] == "set_ollama_model":
                 set_env_variable("OLLAMA_MODEL", message["model"])
+            elif message["action"] == "set_xai_model":
+                set_env_variable("XAI_MODEL", message["model"])
+            elif message["action"] == "set_anthropic_model":
+                set_env_variable("ANTHROPIC_MODEL", message["model"])
             elif message["action"] == "set_xtts_speed":
                 set_env_variable("XTTS_SPEED", message["speed"])
             elif message["action"] == "set_elevenlabs_voice":

@@ -6,7 +6,7 @@
 
 Voice Chat AI is a project that allows you to interact with different AI characters using speech. You can choose between various characters, each with unique personalities and voices. Have a serious conversation with Albert Einstein or role play with the OS from the movie HER.
 
-You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Ask the AI to look at your screen and it will explain in detail what it's looking at.
+You can run all locally, you can use openai for chat and voice, you can mix between the two. You can use ElevenLabs voices with ollama models all controlled from a Web UI. Use different chat providers like Anthropic, xAI, Ollama, OpenAI.
 
 WebRTC Real Time API with OpenAI you can have a real time conversation, interrupt the AI and have instant responses. You can also use OpenAI's new TTS model gpt-4o-mini-tts to make the AI more human like with emotions and expressive voices.
 
@@ -31,7 +31,7 @@ Get up and running fast with Voice Chat AI! 🔊
 
 ## Features
 
-- **Supports OpenAI, xAI or Ollama language models**: Choose the model that best fits your needs.
+- **Supports OpenAI, xAI, Anthropic or Ollama language models**: Choose the model that best fits your needs.
 - **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
 - **Provides speech to speech using OpenAI Realtime API**: Have a real time conversation with AI characters, interrupt the AI and have instant responses.
 - **OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
@@ -50,7 +50,7 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
 - Python 3.10
 - ffmpeg
-- Ollama models or OpenAI or xAI for chat
+- Ollama models or OpenAI or xAI or Anthropic for chat
 - Local XTTS or Openai API or ElevenLabs API for speech
 - Microsoft C++ Build Tools on windows
 - Microphone
@@ -338,7 +338,7 @@ docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubunt
 # Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
 # You can mix and match, use Ollama with OpenAI speech or use OpenAI chat model with local XTTS or xAI chat etc.. 
 
-# Model Provider: openai or ollama or xai
+# Model Provider: openai or ollama or xai or anthropic
 MODEL_PROVIDER=ollama
 
 # Character to use - Options: alien_scientist, anarchist, bigfoot, chatgpt, clumsyhero, conandoyle, conspiracy, cyberpunk,
@@ -402,6 +402,10 @@ OLLAMA_MODEL=llama3.1
 XAI_MODEL=grok-beta
 XAI_API_KEY=your_api_key_here
 XAI_BASE_URL=https://api.x.ai/v1
+
+# Anthropic Configuration:
+ANTHROPIC_API_KEY=your_api_key_here
+ANTHROPIC_MODEL=claude-3-7-sonnet-20250219
 
 # Transcription settings
 # Set to false to skip loading Faster Whisper on startup and use OpenAI transcription

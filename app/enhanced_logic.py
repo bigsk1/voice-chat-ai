@@ -14,7 +14,8 @@ from .app_logic import (
     save_character_specific_history,
     PINK,
     RESET_COLOR,
-    NEON_GREEN
+    NEON_GREEN,
+    MAX_CHAR_LENGTH
 )
 from .transcription import transcribe_audio
 
@@ -656,6 +657,9 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         if not openai_api_key:
             return "API key missing. Please set OPENAI_API_KEY in your environment."
         
+        # Calculate token limit based on character limit Approximate token conversion, So if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 tokens
+        token_limit = min(4000, MAX_CHAR_LENGTH * 4 // 3)
+
         # Use the selected model
         model = enhanced_model
         
@@ -707,7 +711,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
             "model": model,
             "messages": messages,
             "temperature": 0.8,
-            "max_tokens": 2000,
+            "max_completion_tokens": token_limit,
             "stream": True
         }
         

@@ -408,6 +408,11 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_xai_model", model: selectedModel }));
     }
 
+    function setAnthropicModel() {
+        const selectedModel = document.getElementById('anthropic-model-select').value;
+        websocket.send(JSON.stringify({ action: "set_anthropic_model", model: selectedModel }));
+    }
+
     function setXTTSSpeed() {
         const selectedSpeed = document.getElementById('xtts-speed-select').value;
         websocket.send(JSON.stringify({ action: "set_xtts_speed", speed: selectedSpeed }));
@@ -513,6 +518,10 @@ document.addEventListener("DOMContentLoaded", function() {
     openaiModelSelect.addEventListener('change', setOpenAIModel);
     ollamaModelSelect.addEventListener('change', setOllamaModel);
     xaiModelSelect.addEventListener('change', setXAIModel);
+    const anthropicModelSelect = document.getElementById('anthropic-model-select');
+    if (anthropicModelSelect) {
+        anthropicModelSelect.addEventListener('change', setAnthropicModel);
+    }
     xttsSpeedSelect.addEventListener('change', setXTTSSpeed);
     elevenLabsVoiceSelect.addEventListener('change', setElevenLabsVoice);
 
