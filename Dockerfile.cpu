@@ -27,14 +27,18 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 # Configure dbus
 RUN dbus-uuidgen > /etc/machine-id
 
-# Configure ALSA to use PulseAudio
-RUN echo "pcm.!default pulse" > /root/.asoundrc && \
-    echo "ctl.!default pulse" >> /root/.asoundrc
+# Create a simple ALSA configuration - redirect to null device
+RUN mkdir -p /etc/alsa && \
+    echo "pcm.!default { type null }" > /etc/asound.conf && \
+    echo "ctl.!default { type null }" >> /etc/asound.conf
 
-# Ensure the directory exists before writing to the file
-RUN mkdir -p /usr/share/alsa/alsa.conf.d && \
-    echo "defaults.pcm.card 0" >> /usr/share/alsa/alsa.conf.d/99-pulseaudio-defaults.conf && \
-    echo "defaults.ctl.card 0" >> /usr/share/alsa/alsa.conf.d/99-pulseaudio-defaults.conf
+# Set environment variables to reduce audio errors
+ENV ALSA_CARD=none
+ENV AUDIODEV=null
+ENV SDL_AUDIODRIVER=dummy
+# Disable JACK to prevent those errors
+ENV JACK_NO_START_SERVER=1
+ENV JACK_NO_AUDIO_RESERVATION=1
 
 # Copy only necessary files (EXCLUDING large checkpoint and XTTS-v2)
 COPY requirements_cpu.txt /app/requirements.txt
@@ -54,5 +58,9 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r /app/requirements
 # Expose the port that the app runs on
 EXPOSE 8000
 
+# Add a wrapper script to redirect stderr when running the application
+RUN echo '#!/bin/bash\nexec uvicorn app.main:app --host 0.0.0.0 --port 8000 2> >(grep -v "ALSA\|snd_\|JACK\|jack\|JackShmReadWritePtr" >&2)' > /app/start.sh && \
+    chmod +x /app/start.sh
+
 # Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/start.sh"]

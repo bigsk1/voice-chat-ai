@@ -203,11 +203,11 @@ docker run -d
    --env-file .env
    --name voice-chat-ai
    -p 8000:8000
-   voice-chat-ai:latest
+   bigsk1/voice-chat-ai:latest
 ```
 
 ```bash
-docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubuntu\mnt\wslg:/mnt/wslg/ -v %cd%\elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 bigsk1/voice-chat-ai:latest
 ```
 
 In WSL2 Ubuntu
@@ -220,11 +220,11 @@ docker run -d \
     --env-file .env \
     --name voice-chat-ai \
     -p 8000:8000 \
-    voice-chat-ai:latest
+    bigsk1/voice-chat-ai:latest
 ```
 
 ```bash
-docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 voice-chat-ai:latest
+docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ -v ./elevenlabs_voices.json:/app/elevenlabs_voices.json --env-file .env --name voice-chat-ai -p 8000:8000 bigsk1/voice-chat-ai:latest
 ```
 
 ### Nvidia Cuda docker image
@@ -335,56 +335,82 @@ docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubunt
 
 ```env
 # Conditional API Usage:
-# Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
-# You can mix and match, use Ollama with OpenAI speech or use OpenAI chat model with local XTTS or xAI chat etc.. 
+# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc.
+# If not using certain providers just leave defaults as is and don't select it in the UI.
 
 # Model Provider: openai or ollama or xai or anthropic
-MODEL_PROVIDER=ollama
+MODEL_PROVIDER=openai
 
-# Character to use - Options: alien_scientist, anarchist, bigfoot, chatgpt, clumsyhero, conandoyle, conspiracy, cyberpunk,
-# detective, dog, dream_weaver, einstein, elon_musk, fight_club, fress_trainer, ghost, granny, haunted_teddybear, insult, joker, morpheus,
-# mouse, mumbler, nebula_barista, nerd, newscaster_1920s, paradox, pirate, revenge_deer, samantha, shakespeare, split, telemarketer,
-# terminator, valleygirl, vampire, vegetarian_vampire, wizard, zombie_therapist, grok_xai
-CHARACTER_NAME=pirate
+# Character to use - Options: alien_scientist, anarchist, ant_anarchist, bigfoot, bipolar_ai, capo_mio, chatgpt, clumsyhero, 
+# conandoyle, conspiracy, cyberpunk, detective, dog, dream_weaver, drill_sergeant, einstein, elon_musk, femme_fatale, fight_club, 
+# fitness_trainer, ghost, granny, grok_xai, hal9000, haunted_teddybear, insult, joker, method_actor, morpheus, mouse, mumbler, 
+# nebula_barista, nerd, newscaster_1920s, noir_detective, paradox, pirate, retired_wrestler, revenge_deer, samantha, shadow_whisperer, 
+# shakespeare, split, telemarketer, terminator, valleygirl, vampire, vato_loco, vegetarian_vampire, wizard, zombie_therapist, see character folder for more
+CHARACTER_NAME=bigfoot
 
 # Text-to-Speech (TTS) Configuration:
 # TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs
-TTS_PROVIDER=elevenlabs
+TTS_PROVIDER=openai
 
 # OpenAI TTS Voice - Used when TTS_PROVIDER is set to openai above
 # Voice options: alloy, echo, fable, onyx, nova, shimmer, ash, coral, sage
 OPENAI_TTS_VOICE=onyx
 
-# OpenAI TTS Model - New it uses emotions see https://www.openai.fm/ 
+# OpenAI TTS Model-  NEW it uses emotions see https://www.openai.fm/ 
 # Model options: gpt-4o-mini-tts, tts-1, tts-1-hd
 OPENAI_MODEL_TTS=gpt-4o-mini-tts
 
 # OpenAI Enhanced Mode Transcription Model
 # Model options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
-
-# OpenAI Realtime model for WebRTC implementation
+# OpenAI Realtime model for WebRTC implementation, when playing games don't use the mini as the long prompt will cause it to forget 
+# gpt-4o-realtime-preview , gpt-4o-mini-realtime-preview
 OPENAI_REALTIME_MODEL=gpt-4o-realtime-preview-2024-12-17
 
-# ElevenLabs Configuration:
+# ElevenLabs Configuration:  (replace with your actual API key)
 ELEVENLABS_API_KEY=your_api_key_here
 # Default voice ID - find voice id's in your elevenlabs account
 ELEVENLABS_TTS_VOICE=your_voice_id_here
+# ElevenLabs TTS Model eleven_multilingual_v2 , eleven_flash_v2_5 is faster but less quality
+ELEVENLABS_TTS_MODEL=eleven_multilingual_v2
+# ElevenLabs TTS Speed 0.7 to 1.2
+ELEVENLABS_TTS_SPEED=1
+
+# AUDIO GENERATION LENGTH
+# Maximum character length for audio generation - set to 2000+ for stories and games, 3000 for assassin story, 4000 for mars encounter interactive
+# MAX_CHAR_LENGTH is used for openai and elevenlabs, is also used for max tokens for chat response, if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 max tokens is sent to provider
+MAX_CHAR_LENGTH=1000
+# XTTS Max Number of characters to generate audio, default is 255 but we are overriding that
+XTTS_NUM_CHARS=1000
 
 # XTTS Configuration:
 # The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
 XTTS_SPEED=1.1
 COQUI_TOS_AGREED=1
 
-# Maximum character length for audio generation - set to 2000+ if using game characters or stories
-MAX_CHAR_LENGTH=500
-
 # OpenAI Configuration:
+# gpt-4, gpt-4o-mini- gpt-4o
+OPENAI_MODEL=gpt-4o
 # OpenAI API Key for models and speech (replace with your actual API key)
 OPENAI_API_KEY=your_api_key_here
+
+# Ollama Models Configuration:
 # Models to use - OPTIONAL: For screen analysis, if MODEL_PROVIDER is ollama, llava will be used by default.
-# Ensure you have llava downloaded with Ollama. If OpenAI is used, gpt-4o-mini works well. xai not supported yet falls back to openai if xai is selected and you ask for screen analysis.
-OPENAI_MODEL=gpt-4o-mini
+# Model to use - llama3.1 or 3.2 works well for local usage. In the UI it will get the list of models from /api/tags and display them. Not all models are supported.
+OLLAMA_MODEL=llama3.2
+
+# XAI Configuration:
+# grok-2-1212, grok-beta
+XAI_MODEL=grok-2-1212
+XAI_API_KEY=your_api_key_here
+
+# Anthropic Configuration:
+ANTHROPIC_MODEL=claude-3-7-sonnet-20250219
+ANTHROPIC_API_KEY=your_api_key_here
+
+# Local Transcription settings - true or false
+# Set to false to skip loading Faster Whisper on startup and use OpenAI transcription
+FASTER_WHISPER_LOCAL=false
 
 # Endpoints:
 # Set these below and no need to change often
@@ -393,25 +419,14 @@ OPENAI_TTS_URL=https://api.openai.com/v1/audio/speech
 OLLAMA_BASE_URL=http://localhost:11434
 # IF RUNNING IN DOCKER CHANGE OLLAMA BASE URL TO THE ONE BELOW
 # OLLAMA_BASE_URL=http://host.docker.internal:11434
-
-# Ollama Models Configuration:
-# Model to use - llama3.1 or 3.2 works well for local usage. In the UI it will get the list of models from /api/tags and display them. Not all models are supported.
-OLLAMA_MODEL=llama3.1
-
-# xAI Configuration
-XAI_MODEL=grok-beta
-XAI_API_KEY=your_api_key_here
 XAI_BASE_URL=https://api.x.ai/v1
 
-# Anthropic Configuration:
-ANTHROPIC_API_KEY=your_api_key_here
-ANTHROPIC_MODEL=claude-3-7-sonnet-20250219
+# Debug settings - true or false
+# Set to true to enable extensive debug output 
+DEBUG=false  
+# Set to true to see audio level readings during recording           
+DEBUG_AUDIO_LEVELS=false 
 
-# Transcription settings
-# Set to false to skip loading Faster Whisper on startup and use OpenAI transcription
-FASTER_WHISPER_LOCAL=false
-
-DEBUG=false
 # NOTES:
 # List of trigger phrases to have the model view your desktop (desktop, browser, images, etc.).
 # It will describe what it sees, and you can ask questions about it:
