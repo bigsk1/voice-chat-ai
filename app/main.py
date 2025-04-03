@@ -12,20 +12,48 @@ from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
+from .audio_bridge.audio_bridge_router import router as audio_bridge_router
 import logging
 from threading import Thread
 import uuid
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+from collections import defaultdict
+from .logger_config import logger  # Import our configured logger
 
 app = FastAPI()
+
+# Custom logging middleware
+class LoggingMiddleware:
+    def __init__(self):
+        self.debug = os.getenv("DEBUG", "false").lower() == "true"
+        
+    async def __call__(self, request: Request, call_next):
+        # For status check endpoints, explicitly disable ALL logging (including FastAPI's built-in logging)
+        if request.url.path == "/audio-bridge/status":
+            # This disables the FastAPI built-in access log
+            request.state.access_log = False
+            # This is for our custom middleware
+            request.state.skip_log = True
+            response = await call_next(request)
+            return response
+        
+        # Process all other requests normally
+        response = await call_next(request)
+        
+        # Log all other requests
+        client_ip = f"{request.client.host}:{request.client.port}"
+        logger.info(f"{client_ip} - \"{request.method} {request.url.path} HTTP/1.1\" {response.status_code}")
+        
+        return response
 
 # Mount static files and templates
 app.mount("/app/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
+# Include the audio bridge router
+app.include_router(audio_bridge_router)
+
+# Add the logging middleware first
+app.middleware("http")(LoggingMiddleware())
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,6 +74,7 @@ async def get_index(request: Request):
     xtts_speed = os.getenv("XTTS_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
+    audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
 
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -58,6 +87,7 @@ async def get_index(request: Request):
         "xtts_speed": xtts_speed,
         "elevenlabs_voice": elevenlabs_voice,
         "faster_whisper_local": faster_whisper_local,
+        "audio_bridge_enabled": audio_bridge_enabled,
     })
 
 @app.get("/characters")
@@ -570,6 +600,14 @@ async def get_character_history():
     except Exception as e:
         print(f"Error getting character history: {e}")
         return {"status": "error", "message": str(e)}
+
+@app.get("/audio-bridge-test", response_class=HTMLResponse)
+async def get_audio_bridge_test(request: Request):
+    audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+    return templates.TemplateResponse("audio_bridge.html", {
+        "request": request,
+        "audio_bridge_enabled": audio_bridge_enabled
+    })
 
 def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')

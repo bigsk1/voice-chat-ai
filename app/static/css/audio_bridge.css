@@ -1,0 +1,171 @@
+/* Audio Bridge CSS */
+.log-container {
+    margin: 50px 0;
+    max-height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    padding: 35px;
+    border-radius: 4px;
+    font-family: monospace;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.log-entry {
+    margin-bottom: 5px;
+    line-height: 1.4;
+    width: 100%;
+    overflow-wrap: break-word;
+}
+
+.time {
+    color: #7fb3d5;
+    margin-right: 10px;
+    display: inline-block;
+}
+
+.debug {
+    color: #7fb3d5;
+}
+
+.info {
+    color: #2ecc71;
+}
+
+.warn {
+    color: #f1c40f;
+}
+
+.error {
+    color: #e74c3c;
+}
+
+/* Alert styling */
+.alert {
+    padding: 12px 15px;
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+.alert-success {
+    background-color: rgba(46, 204, 113, 0.2);
+    border: 1px solid #2ecc71;
+    color: #27ae60;
+}
+
+.alert-info {
+    background-color: rgba(52, 152, 219, 0.2);
+    border: 1px solid #3498db;
+    color: #2980b9;
+}
+
+.alert-warning {
+    background-color: rgba(241, 196, 15, 0.2);
+    border: 1px solid #f1c40f;
+    color: #f39c12;
+}
+
+.record-button {
+    background-color: #e74c3c !important;
+}
+
+.record-button:hover {
+    background-color: #c0392b !important;
+}
+
+.primary-button {
+    background-color: #2980b9 !important;
+    font-weight: bold;
+}
+
+.alert a.alert-link {
+    color: inherit;
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+/* Dark mode adjustments */
+body.dark-mode .alert-success {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+
+body.dark-mode .alert-info {
+    background-color: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
+body.dark-mode .alert-warning {
+    background-color: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+}
+
+/* Debug mode button styling */
+#debug-mode-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#debug-mode-btn.active {
+    background-color: #9b59b6;
+    color: white;
+}
+
+#debug-mode-btn:hover {
+    background-color: var(--border-color);
+}
+
+#debug-mode-btn.active:hover {
+    background-color: #8e44ad;
+}
+
+/* Browser-specific Firefox styles */
+.audio-bridge-instructions {
+    color: var(--text-color);
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+    .audio-bridge-container {
+        padding: 15px;
+        max-width: 100%;
+        margin: 10px;
+    }
+    
+    .audio-bridge-status,
+    .audio-bridge-buttons,
+    .audio-bridge-instructions {
+        padding: 10px;
+    }
+    
+    .audio-bridge-buttons button {
+        padding: 8px 12px;
+        margin: 3px;
+    }
+    
+    .theme-toggle {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .audio-bridge-back-btn {
+        margin-bottom: 10px;
+    }
+    
+    .log-container {
+        padding: 10px;
+        font-size: 13px;
+    }
+} 

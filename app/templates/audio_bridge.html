@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Bridge</title>
+    <link rel="stylesheet" href="/app/static/css/styles.css">
+    <link rel="stylesheet" href="/app/static/css/audio_bridge.css">
+    <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
+</head>
+<body class="audio-bridge-page">
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+    
+    <div class="audio-bridge-container container">
+        <div class="audio-bridge-header">
+            <h1>Audio Bridge</h1>
+            <a href="/" class="audio-bridge-back-btn">Back to Dashboard</a>
+        </div>
+        
+        <div class="audio-bridge-status">
+            <div class="audio-bridge-status-row">
+                <span class="audio-bridge-status-label">Bridge Status:</span>
+                <span id="bridge-status" class="audio-bridge-status-value">Checking...</span>
+            </div>
+            <div class="audio-bridge-status-row">
+                <span class="audio-bridge-status-label">Connection Status:</span>
+                <span id="connection-status" class="audio-bridge-status-value">Disconnected</span>
+            </div>
+            <div class="audio-bridge-status-row">
+                <span class="audio-bridge-status-label">Client ID:</span>
+                <span id="client-id" class="audio-bridge-status-value">None</span>
+            </div>
+            <div class="audio-bridge-status-row">
+                <span class="audio-bridge-status-label">Microphone:</span>
+                <span id="mic-status" class="audio-bridge-status-value">Unknown</span>
+            </div>
+            <div class="audio-bridge-status-row">
+                <span class="audio-bridge-status-label">Mode:</span>
+                <span id="bridge-mode" class="audio-bridge-status-value">Standard (WebRTC)</span>
+            </div>
+        </div>
+        
+        <div class="audio-bridge-instructions">
+            <h2>Getting Started</h2>
+            <ol>
+                <li>Click "Request Microphone" to grant microphone permissions</li>
+                <li>Once permissions are granted, click "Initialize Bridge"</li>
+                <li>When connected, you can start recording audio</li>
+            </ol>
+            <div id="browser-support-message"></div>
+        </div>
+        
+        <div class="audio-bridge-buttons">
+            <button id="mic-permission-btn" class="btn primary-button">Request Microphone</button>
+            <button id="initialize-btn" class="btn">Initialize Bridge</button>
+            <button id="disconnect-btn" class="btn" disabled>Disconnect</button>
+            <button id="record-btn" class="btn record-button" disabled>Start Recording</button>
+            <button id="refresh-status-btn" class="btn">Refresh Status</button>
+        </div>
+        
+        <div class="log-container" id="log-container">
+            <div class="log-entry info">
+                <span class="time">[00:00:00]</span>
+                <span>Audio bridge interface loaded</span>
+            </div>
+        </div>
+    </div>
+    
+    <button id="debug-mode-btn">Debug Mode</button>
+    
+    <!-- Load JavaScript for Audio Bridge -->
+    <script src="/app/static/js/audio_bridge_client.js"></script>
+    <script>
+        // DOM elements
+        const initializeBtn = document.getElementById('initialize-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const recordBtn = document.getElementById('record-btn');
+        const refreshStatusBtn = document.getElementById('refresh-status-btn');
+        const micPermissionBtn = document.getElementById('mic-permission-btn');
+        const bridgeStatus = document.getElementById('bridge-status');
+        const connectionStatus = document.getElementById('connection-status');
+        const clientIdElement = document.getElementById('client-id');
+        const micStatus = document.getElementById('mic-status');
+        const browserSupportMessage = document.getElementById('browser-support-message');
+        const logContainer = document.getElementById('log-container');
+        
+        // Log function
+        function log(message, level = 'info') {
+            const now = new Date();
+            const time = now.toTimeString().substring(0, 8);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${level}`;
+            logEntry.innerHTML = `<span class="time">[${time}]</span><span>${message}</span>`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Check browser compatibility
+        function checkBrowserCompatibility() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            
+            // Detect browsers
+            const isWebRTCSupported = !!(navigator.mediaDevices && window.RTCPeerConnection) || 
+                                     !!(navigator.getUserMedia || navigator.webkitGetUserMedia || 
+                                     navigator.mozGetUserMedia || navigator.msGetUserMedia);
+            const isAudioSupported = !!(window.AudioContext || window.webkitAudioContext);
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isFirefox = userAgent.indexOf('firefox') > -1;
+            
+            // Firefox specific message
+            if (isFirefox) {
+                browserSupportMessage.innerHTML = 'You are using Firefox. Make sure:<br>' +
+                    '1. Media.navigator.enabled is set to true in about:config<br>' +
+                    '2. You\'ve granted permissions to use the microphone<br>' +
+                    '3. Privacy settings allow microphone access';
+                browserSupportMessage.style.color = '#f39c12';
+                
+                log('Firefox detected - checking WebRTC compatibility', 'info');
+                
+                // Force Firefox to show the permission dialog before we try to use it
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({audio: true, video: false})
+                        .then(stream => {
+                            log('Firefox microphone permission test successful', 'info');
+                            stream.getTracks().forEach(track => track.stop());
+                        })
+                        .catch(err => {
+                            log(`Firefox microphone test failed: ${err.name}`, 'warn');
+                        });
+                } else if (navigator.mozGetUserMedia) {
+                    navigator.mozGetUserMedia(
+                        {audio: true, video: false},
+                        stream => {
+                            log('Firefox legacy microphone permission test successful', 'info');
+                            stream.getTracks().forEach(track => track.stop());
+                        },
+                        err => {
+                            log(`Firefox legacy microphone test failed: ${err.name}`, 'warn');
+                        }
+                    );
+                }
+                
+                return true; // Let them try anyway
+            }
+            
+            if (isSafari) {
+                browserSupportMessage.innerHTML = 'You are using Safari. Note that Safari has limited WebRTC support.<br>' +
+                    '1. Ensure you\'re using HTTPS (required for microphone access)<br>' +
+                    '2. Accept the microphone permission prompt<br>' +
+                    '3. If using iOS, ensure your device is not on mute';
+                browserSupportMessage.style.color = '#f39c12';
+                
+                if (isIOS) {
+                    log('iOS Safari detected - additional permissions may be required', 'warn');
+                } else {
+                    log('Desktop Safari detected - WebRTC support may be limited', 'warn');
+                }
+                
+                return true; // Let them try anyway
+            }
+            
+            if (!isWebRTCSupported) {
+                browserSupportMessage.textContent = 'Warning: Your browser does not support WebRTC, which is required for the audio bridge.';
+                browserSupportMessage.style.color = '#e74c3c';
+                return false;
+            }
+            
+            if (!isAudioSupported) {
+                browserSupportMessage.textContent = 'Warning: Your browser does not support the Web Audio API, which is required for audio playback.';
+                browserSupportMessage.style.color = '#e74c3c';
+                return false;
+            }
+            
+            browserSupportMessage.textContent = 'Your browser supports all required features.';
+            browserSupportMessage.style.color = '#2ecc71';
+            return true;
+        }
+        
+        // Check status function
+        async function checkStatus() {
+            try {
+                // Clear any existing status messages
+                const existingNotifications = document.querySelectorAll('.alert-success');
+                existingNotifications.forEach(notification => notification.remove());
+                
+                // Get the status directly from the response
+                const response = await fetch('/audio-bridge/status');
+                const statusData = await response.json();
+                
+                log(`Status check: ${JSON.stringify(statusData)}`, 'info');
+                
+                // Update UI based on the full status data
+                if (statusData.status === 'active') {
+                    bridgeStatus.textContent = 'Enabled';
+                    // Enable initialize button if server is active
+                    initializeBtn.disabled = false;
+                    
+                    // Check if we already have active clients
+                    if (statusData.active_clients > 0) {
+                        const notification = document.createElement('div');
+                        notification.className = 'alert alert-success';
+                        notification.style.marginTop = '20px';
+                        notification.innerHTML = `
+                            <strong>Connected!</strong> The audio bridge has ${statusData.active_clients} active client(s).
+                            <a href="/" class="alert-link">Return to the dashboard</a> to see the updated status.
+                        `;
+                        document.querySelector('.audio-bridge-buttons').after(notification);
+                    }
+                } else {
+                    bridgeStatus.textContent = 'Disabled';
+                    log('Audio bridge is disabled on the server', 'warn');
+                    initializeBtn.disabled = true;
+                }
+            } catch (error) {
+                log(`Error checking status: ${error.message}`, 'error');
+                bridgeStatus.textContent = 'Error';
+            }
+        }
+        
+        // Initialize audio bridge
+        async function initializeAudioBridge() {
+            try {
+                log('Initializing audio bridge...');
+                initializeBtn.disabled = true;
+                
+                const success = await window.audioBridge.initialize();
+                
+                if (success) {
+                    log('Audio bridge initialized successfully', 'info');
+                    clientIdElement.textContent = window.audioBridge.clientId;
+                    connectionStatus.textContent = 'Connected';
+                    disconnectBtn.disabled = false;
+                    recordBtn.disabled = false;
+                    
+                    // Add notification about checking dashboard
+                    const notification = document.createElement('div');
+                    notification.className = 'alert alert-success';
+                    notification.style.marginTop = '20px';
+                    notification.innerHTML = `
+                        <strong>Success!</strong> The audio bridge is now active. 
+                        <a href="/" class="alert-link">Return to the dashboard</a> to see the updated status.
+                    `;
+                    document.querySelector('.audio-bridge-buttons').after(notification);
+                    
+                    // Auto-check status again
+                    checkStatus();
+                } else {
+                    log('Failed to initialize audio bridge', 'error');
+                    initializeBtn.disabled = false;
+                }
+            } catch (error) {
+                log(`Error initializing audio bridge: ${error.message}`, 'error');
+                initializeBtn.disabled = false;
+            }
+        }
+        
+        // Disconnect from audio bridge
+        async function disconnectAudioBridge() {
+            try {
+                log('Disconnecting from audio bridge...');
+                
+                const success = await window.audioBridge.disconnect();
+                
+                if (success) {
+                    log('Disconnected from audio bridge', 'info');
+                    clientIdElement.textContent = 'None';
+                    connectionStatus.textContent = 'Disconnected';
+                    disconnectBtn.disabled = true;
+                    recordBtn.disabled = true;
+                    recordBtn.textContent = 'Start Recording';
+                    initializeBtn.disabled = false;
+                } else {
+                    log('Failed to disconnect from audio bridge', 'error');
+                }
+            } catch (error) {
+                log(`Error disconnecting from audio bridge: ${error.message}`, 'error');
+            }
+        }
+        
+        // Toggle recording
+        function toggleRecording() {
+            if (recordBtn.textContent === 'Start Recording') {
+                if (window.audioBridge.startRecording()) {
+                    recordBtn.textContent = 'Stop Recording';
+                    log('Started recording', 'info');
+                } else {
+                    log('Failed to start recording', 'error');
+                }
+            } else {
+                if (window.audioBridge.stopRecording()) {
+                    recordBtn.textContent = 'Start Recording';
+                    log('Stopped recording', 'info');
+                } else {
+                    log('Failed to stop recording', 'error');
+                }
+            }
+        }
+        
+        // Request microphone permission
+        async function requestMicrophonePermission() {
+            try {
+                log('Requesting microphone permission...');
+                micPermissionBtn.disabled = true;
+                
+                const permissionGranted = await window.audioBridge.requestMicrophonePermission();
+                
+                if (permissionGranted) {
+                    log('Microphone permission granted', 'info');
+                    micStatus.textContent = 'Permission Granted';
+                    micPermissionBtn.textContent = 'Permission Granted';
+                    micPermissionBtn.style.backgroundColor = '#2ecc71';
+                    initializeBtn.focus();
+                } else {
+                    log('Microphone permission denied', 'error');
+                    micStatus.textContent = 'Permission Denied';
+                    micPermissionBtn.textContent = 'Request Microphone';
+                }
+            } catch (error) {
+                log(`Error requesting microphone permission: ${error.message}`, 'error');
+                micStatus.textContent = 'Error';
+            } finally {
+                micPermissionBtn.disabled = false;
+            }
+        }
+        
+        // Setup event listeners
+        initializeBtn.addEventListener('click', initializeAudioBridge);
+        disconnectBtn.addEventListener('click', disconnectAudioBridge);
+        recordBtn.addEventListener('click', toggleRecording);
+        refreshStatusBtn.addEventListener('click', checkStatus);
+        micPermissionBtn.addEventListener('click', requestMicrophonePermission);
+        
+        // Set up audio bridge callbacks
+        window.audioBridge.onStatusChange = (status) => {
+            bridgeStatus.textContent = status.enabled ? 'Enabled' : 'Disabled';
+            connectionStatus.textContent = status.connected ? 'Connected' : 'Disconnected';
+            
+            if (status.fallback) {
+                document.getElementById('bridge-mode').textContent = 'Fallback (File Upload)';
+            } else {
+                document.getElementById('bridge-mode').textContent = 'Standard (WebRTC)';
+            }
+            
+            if (status.connected) {
+                disconnectBtn.disabled = false;
+                recordBtn.disabled = false;
+            } else {
+                disconnectBtn.disabled = true;
+                recordBtn.disabled = true;
+                recordBtn.textContent = 'Start Recording';
+            }
+        };
+        
+        window.audioBridge.onError = (message) => {
+            log(message, 'error');
+        };
+        
+        window.audioBridge.onAudioReceived = (data) => {
+            log('Received audio data from server', 'info');
+        };
+        
+        // Check browser compatibility
+        checkBrowserCompatibility();
+        
+        // Check status on load
+        checkStatus();
+        
+        // Log initialization
+        log('Audio bridge interface initialized', 'info');
+        
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        function setDarkModeDefault() {
+            const isDarkMode = localStorage.getItem('darkMode');
+            if (isDarkMode === null) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.toggle('dark-mode', isDarkMode === 'true');
+            }
+            updateThemeIcon();
+        }
+        
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            updateThemeIcon();
+            saveThemePreference();
+        });
+        
+        function updateThemeIcon() {
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            themeToggle.innerHTML = isDarkMode 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>'
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+        }
+        
+        function saveThemePreference() {
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode);
+        }
+        
+        function loadThemePreference() {
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            updateThemeIcon();
+        }
+        
+        // Initialize theme
+        loadThemePreference();
+        setDarkModeDefault();
+        
+        // Debug mode functionality
+        let debugMode = false;
+        const debugBtn = document.getElementById('debug-mode-btn');
+        debugBtn.addEventListener('click', function() {
+            debugMode = !debugMode;
+            debugBtn.textContent = debugMode ? 'Exit Debug' : 'Debug Mode';
+            debugBtn.classList.toggle('active', debugMode);
+            
+            if (debugMode) {
+                // Add more detailed status information
+                logAudioBridgeDetails();
+                // Log browser information
+                logBrowserInfo();
+                // Show console logging explanation
+                log('Debug mode enabled. Check browser console (F12) for detailed logs', 'info');
+                // Force a status refresh
+                checkStatus();
+            } else {
+                // Clear debug logs when exiting debug mode
+                log('Debug mode disabled', 'info');
+                
+                // Remove debug-specific log entries
+                const debugEntries = document.querySelectorAll('.log-entry.debug');
+                debugEntries.forEach(entry => entry.remove());
+            }
+        });
+        
+        function logAudioBridgeDetails() {
+            log('--- AUDIO BRIDGE DEBUG INFO ---', 'debug');
+            log(`isEnabled: ${window.audioBridge.isEnabled}`, 'debug');
+            log(`isInitialized: ${window.audioBridge.isInitialized}`, 'debug');
+            log(`isConnected: ${window.audioBridge.isConnected}`, 'debug');
+            log(`clientId: ${window.audioBridge.clientId}`, 'debug');
+            log(`useFallbackMode: ${window.audioBridge.useFallbackMode}`, 'debug');
+            log(`isSecureContext: ${window.isSecureContext}`, 'debug');
+            log(`isSafari: ${window.audioBridge.isSafari}`, 'debug');
+            log(`isFirefox: ${window.audioBridge.isFirefox}`, 'debug');
+        }
+        
+        function logBrowserInfo() {
+            log('--- BROWSER INFO ---', 'debug');
+            log(`User Agent: ${navigator.userAgent}`, 'debug');
+            log(`Platform: ${navigator.platform}`, 'debug');
+            log(`WebRTC Support: ${!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)}`, 'debug');
+            log(`Secure Context: ${window.isSecureContext}`, 'debug');
+            log(`Protocol: ${window.location.protocol}`, 'debug');
+        }
+    </script>
+</body>
+</html> 

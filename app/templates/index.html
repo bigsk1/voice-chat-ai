@@ -214,11 +214,47 @@
                     {% endif %}
                 </select>
             </div>
+            
+            <div class="setting-group">
+                <label>Audio Bridge:</label>
+                <div class="audio-bridge-mini">
+                    <span class="status-badge">
+                        <span id="audio-bridge-status-mini" class="status-checking">Checking...</span>
+                    </span>
+                    <button id="init-bridge-btn-mini" class="btn-mini">Connect</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Compact Audio Bridge Status Section (Hidden by default, shown in settings panel) -->
+        <div id="audio-bridge-section" class="audio-bridge-panel">
+            <div class="audio-bridge-header">
+                <h3>Audio Bridge Status</h3>
+                <button id="close-bridge-panel" class="close-btn">&times;</button>
+            </div>
+            <div class="audio-bridge-info">
+                <div class="status-row">
+                    <span class="status-label">Status:</span>
+                    <span id="audio-bridge-status" class="status-checking">Checking...</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Clients:</span>
+                    <span id="audio-bridge-clients">0</span>
+                </div>
+                <div id="audio-bridge-details" class="status-details">
+                    <div class="alert alert-info">Checking audio bridge status...</div>
+                </div>
+                <div class="audio-bridge-actions">
+                    <button id="init-bridge-btn" class="btn btn-primary">Initialize Bridge</button>
+                </div>
+            </div>
         </div>
     </main>
     <footer>
         <p><a href="https://github.com/bigsk1/voice-chat-ai" target="_blank">GitHub Repository</a></p>
     </footer>
+    <!-- Load Audio Bridge client -->
+    <script src="/app/static/js/audio_bridge_client.js"></script>
     <script src="/app/static/js/scripts.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -252,6 +288,51 @@
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
             document.getElementById('ollama-model-select').value = "{{ ollama_model }}";
             document.getElementById('xtts-speed-select').value = "{{ xtts_speed }}";
+            
+            // Auto-initialize audio bridge if status is active
+            const autoInitBridge = function() {
+                fetch('/audio-bridge/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'active' && data.active_clients === 0) {
+                            // Ask for microphone permission directly
+                            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                                navigator.mediaDevices.getUserMedia({audio: true})
+                                    .then(stream => {
+                                        console.log('Microphone permission granted, initializing bridge...');
+                                        // Stop the stream we just used for permission
+                                        stream.getTracks().forEach(track => track.stop());
+                                        
+                                        // Initialize the bridge
+                                        window.audioBridge.initialize()
+                                            .then(success => {
+                                                if (success) {
+                                                    console.log('Audio bridge initialized from dashboard!');
+                                                    // Update status display
+                                                    const miniStatus = document.getElementById('audio-bridge-status-mini');
+                                                    if (miniStatus) {
+                                                        miniStatus.textContent = 'Connected';
+                                                        miniStatus.className = 'status-enabled';
+                                                    }
+                                                    
+                                                    // Update mini button
+                                                    const miniButton = document.getElementById('init-bridge-btn-mini');
+                                                    if (miniButton) {
+                                                        miniButton.textContent = 'View';
+                                                    }
+                                                }
+                                            });
+                                    })
+                                    .catch(err => {
+                                        console.warn('Microphone permission denied:', err);
+                                    });
+                            }
+                        }
+                    });
+            };
+            
+            // Call after a short delay to let the page finish loading
+            setTimeout(autoInitBridge, 2000);
         });
     </script>
 </body>

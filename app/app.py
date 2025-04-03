@@ -282,7 +282,11 @@ async def process_and_play(prompt, audio_file_pth):
     else:
         # Using current character audio without printing to CLI
         pass
-        
+    
+    # Check if audio bridge is enabled
+    audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+    
+    # Generate audio file based on TTS provider
     if TTS_PROVIDER == 'openai':
         output_path = os.path.join(output_dir, 'output.wav')
         try:
@@ -291,6 +295,23 @@ async def process_and_play(prompt, audio_file_pth):
             if os.path.exists(output_path):
                 print("Playing generated audio...")
                 await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+                
+                # If audio bridge is enabled, send audio to connected clients
+                if audio_bridge_enabled:
+                    try:
+                        from .audio_bridge.audio_bridge_server import audio_bridge
+                        if audio_bridge.is_enabled() and audio_bridge.clients:
+                            print(f"Sending audio to {len(audio_bridge.clients)} audio bridge clients")
+                            # Read the audio file
+                            with open(output_path, "rb") as f:
+                                audio_data = f.read()
+                            # Send to each connected client
+                            for client_id in list(audio_bridge.clients):
+                                await audio_bridge.send_audio(client_id, audio_data)
+                    except Exception as e:
+                        print(f"Error sending audio via bridge: {e}")
+                
+                # Always play locally regardless of bridge status
                 await play_audio(output_path)
                 await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
             else:
@@ -312,6 +333,27 @@ async def process_and_play(prompt, audio_file_pth):
         if success and os.path.exists(output_path):
             print("Playing generated audio...")
             await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            
+            # If audio bridge is enabled, send audio to connected clients
+            if audio_bridge_enabled:
+                try:
+                    from .audio_bridge.audio_bridge_server import audio_bridge
+                    if audio_bridge.is_enabled() and audio_bridge.clients:
+                        print(f"Sending audio to {len(audio_bridge.clients)} audio bridge clients")
+                        # Convert MP3 to WAV for consistency
+                        temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
+                        audio = AudioSegment.from_mp3(output_path)
+                        audio.export(temp_wav_path, format="wav")
+                        # Read the audio file
+                        with open(temp_wav_path, "rb") as f:
+                            audio_data = f.read()
+                        # Send to each connected client
+                        for client_id in list(audio_bridge.clients):
+                            await audio_bridge.send_audio(client_id, audio_data)
+                except Exception as e:
+                    print(f"Error sending audio via bridge: {e}")
+            
+            # Always play locally regardless of bridge status
             await play_audio(output_path)
             await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
         elif not success:
@@ -337,6 +379,23 @@ async def process_and_play(prompt, audio_file_pth):
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
                 await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+                
+                # If audio bridge is enabled, send audio to connected clients
+                if audio_bridge_enabled:
+                    try:
+                        from .audio_bridge.audio_bridge_server import audio_bridge
+                        if audio_bridge.is_enabled() and audio_bridge.clients:
+                            print(f"Sending audio to {len(audio_bridge.clients)} audio bridge clients")
+                            # Read the audio file
+                            with open(src_path, "rb") as f:
+                                audio_data = f.read()
+                            # Send to each connected client
+                            for client_id in list(audio_bridge.clients):
+                                await audio_bridge.send_audio(client_id, audio_data)
+                    except Exception as e:
+                        print(f"Error sending audio via bridge: {e}")
+                
+                # Always play locally regardless of bridge status
                 await play_audio(src_path)
                 await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
             except Exception as e:
@@ -936,6 +995,54 @@ def detect_silence(data, threshold=1000, chunk_size=1024):   # threshold is More
     return np.mean(np.abs(audio_data)) < threshold
 
 async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, chunk_size=1024):  # 2.0 seconds of silence adjust as needed, if not picking up your voice increase to 4.0
+    # Check if audio bridge is enabled
+    audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+    
+    # Try to get audio from bridge first if enabled
+    if audio_bridge_enabled:
+        try:
+            from .audio_bridge.audio_bridge_server import audio_bridge
+            
+            if audio_bridge.is_enabled() and audio_bridge.clients:
+                print("Attempting to record audio via bridge...")
+                await send_message_to_clients(json.dumps({"action": "recording_started"}))  # Notify frontend
+                
+                # Wait for audio from any client
+                client_audio = None
+                client_ids = list(audio_bridge.clients)
+                timeout = 10  # 10 seconds timeout
+                start_time = asyncio.get_event_loop().time()
+                
+                while (asyncio.get_event_loop().time() - start_time) < timeout:
+                    for client_id in client_ids:
+                        client_audio = await audio_bridge.receive_audio(client_id)
+                        if client_audio:
+                            print(f"Received audio from client {client_id}")
+                            break
+                    
+                    if client_audio:
+                        break
+                    
+                    await asyncio.sleep(0.5)  # Check every half second
+                
+                if client_audio:
+                    # Process the received audio
+                    from .audio_bridge.audio_processor import audio_processor
+                    wav_audio = audio_processor.convert_webrtc_audio_to_wav(client_audio)
+                    
+                    # Save to the requested file path
+                    with open(file_path, 'wb') as f:
+                        f.write(wav_audio)
+                    
+                    print("Successfully recorded audio via bridge")
+                    await send_message_to_clients(json.dumps({"action": "recording_stopped"}))  # Notify frontend
+                    return
+                else:
+                    print("No audio received from bridge clients, falling back to local recording")
+        except Exception as e:
+            print(f"Error recording from bridge, falling back to local: {e}")
+    
+    # Fall back to local recording if bridge is disabled or failed
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=chunk_size)
     frames = []
