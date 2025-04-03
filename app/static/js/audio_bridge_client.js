@@ -803,6 +803,20 @@ class AudioBridgeClient {
         try {
             console.log('Requesting microphone permission...');
             
+            // Check for secure context first - WebRTC requires HTTPS
+            if (!window.isSecureContext) {
+                // Not a secure context - this will fail on most browsers
+                console.error('WebRTC requires HTTPS. Current protocol:', window.location.protocol);
+                
+                // Check if we're not on localhost - localhost is allowed as a secure context
+                if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    if (this.onError) {
+                        this.onError(`WebRTC requires HTTPS. Please access this site using HTTPS instead of HTTP. If this is a development environment, you can generate a self-signed certificate.`);
+                    }
+                    return false;
+                }
+            }
+            
             // For Firefox - try to detect and handle permission issues better
             const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
             
@@ -820,6 +834,16 @@ class AudioBridgeClient {
             if (isFirefox) {
                 console.log('Using Firefox-specific microphone request');
                 audioConstraints.audio = true; // Simpler constraints for Firefox
+            }
+            
+            // Check if mediaDevices API is available
+            if (!navigator.mediaDevices) {
+                const errorMsg = 'navigator.mediaDevices is not available in this browser. This may be because you are using HTTP instead of HTTPS, or your browser does not support WebRTC.';
+                console.error(errorMsg);
+                if (this.onError) {
+                    this.onError(errorMsg);
+                }
+                return false;
             }
             
             // Request microphone access
@@ -842,7 +866,7 @@ class AudioBridgeClient {
         } catch (error) {
             console.error('Failed to get microphone permission:', error);
             
-            let errorMessage = 'Error accessing microphone';
+            let errorMessage = `Error accessing microphone (${error.name}): ${error.message}`;
             
             // Provide more specific error messages based on the error
             if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -855,10 +879,13 @@ class AudioBridgeClient {
                 errorMessage = 'Microphone access is blocked due to security restrictions.';
             } else if (error.name === 'AbortError') {
                 errorMessage = 'Microphone permission request was aborted.';
+            } else if (error.name === 'TypeError' && !navigator.mediaDevices) {
+                errorMessage = 'Your browser does not support WebRTC or you are using HTTP instead of HTTPS. Please use a compatible browser or switch to HTTPS.';
             }
             
+            console.error(errorMessage);
             if (this.onError) {
-                this.onError(`${errorMessage} (${error.name}): ${error.message}`);
+                this.onError(errorMessage);
             }
             
             return false;

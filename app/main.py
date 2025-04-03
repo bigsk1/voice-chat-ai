@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPExcept
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, JSONResponse
 from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
@@ -91,21 +91,30 @@ async def get_index(request: Request):
     })
 
 @app.get("/characters")
-async def get_characters():
+async def get_characters(request: Request):
+    # Add CORS headers for cross-origin requests
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+    
     if not os.path.exists(characters_folder):
         logger.warning(f"Characters folder not found: {characters_folder}")
-        return {"characters": ["Assistant"]}  # fallback
+        return JSONResponse(content={"characters": ["Assistant"]}, headers=headers)  # fallback
     
     try:
         character_dirs = [d for d in os.listdir(characters_folder) 
                         if os.path.isdir(os.path.join(characters_folder, d))]
         if not character_dirs:
             logger.warning("No character folders found")
-            return {"characters": ["Assistant"]}  # fallback
-        return {"characters": character_dirs}
+            return JSONResponse(content={"characters": ["Assistant"]}, headers=headers)  # fallback
+        
+        logger.info(f"Found {len(character_dirs)} characters")
+        return JSONResponse(content={"characters": character_dirs}, headers=headers)
     except Exception as e:
         logger.error(f"Error listing characters: {e}")
-        return {"characters": ["Assistant"]}  # fallback in case of error
+        return JSONResponse(content={"characters": ["Assistant"]}, headers=headers)  # fallback in case of error
 
 @app.get("/elevenlabs_voices")
 async def get_elevenlabs_voices():
@@ -653,8 +662,30 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
     
     try:
-        print("Starting server. Press Ctrl+C to exit.")
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        port = int(os.environ.get("PORT", 8080))
+        host = os.environ.get("HOST", "0.0.0.0")
+        
+        # Check if SSL certificates exist in the certs directory
+        cert_dir = "certs"
+        cert_file = os.path.join(cert_dir, "cert.pem")
+        key_file = os.path.join(cert_dir, "key.pem")
+        
+        # Use SSL if certificates exist
+        if os.path.exists(cert_file) and os.path.exists(key_file):
+            print(f"Running with HTTPS on {host}:{port}")
+            uvicorn.run(
+                "app.main:app", 
+                host=host, 
+                port=port, 
+                reload=True,
+                ssl_certfile=cert_file,
+                ssl_keyfile=key_file
+            )
+        else:
+            print(f"Running with HTTP on {host}:{port}")
+            print("For WebRTC to work across devices, HTTPS is recommended.")
+            print("Generate self-signed certificates with: python generate_certs.py")
+            uvicorn.run("app.main:app", host=host, port=port, reload=True)
     except KeyboardInterrupt:
         print("\nServer stopped by keyboard interrupt.")
     finally:

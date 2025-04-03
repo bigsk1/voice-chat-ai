@@ -1,5 +1,8 @@
 document.addEventListener("DOMContentLoaded", function() {
-    const websocket = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
+    // Use secure WebSocket (wss://) if the page is loaded over HTTPS
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsPort = window.location.protocol === 'https:' ? '8080' : '8000';
+    const websocket = new WebSocket(`${wsProtocol}//${window.location.hostname}:${wsPort}/ws`);
     const themeToggle = document.getElementById('theme-toggle');
     const downloadButton = document.getElementById('download-button');
     const body = document.body;
@@ -33,16 +36,51 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Function to fetch available characters
     async function fetchCharacters() {
+        console.log("Fetching characters...");
         try {
             const response = await fetch('/characters');
             if (response.ok) {
                 const data = await response.json();
-                populateCharacterSelect(data.characters);
+                console.log(`Successfully fetched ${data.characters.length} characters:`, data.characters);
+                
+                if (data.characters && data.characters.length > 0) {
+                    populateCharacterSelect(data.characters);
+                } else {
+                    console.error('No characters found in response');
+                    // Create a fallback option if no characters were returned
+                    characterSelect.innerHTML = '';
+                    const option = document.createElement('option');
+                    option.value = 'default';
+                    option.textContent = 'Default Character';
+                    characterSelect.appendChild(option);
+                }
             } else {
-                console.error('Failed to fetch characters:', response.statusText);
+                console.error('Failed to fetch characters:', response.status, response.statusText);
+                
+                // Try to get more detailed error information
+                try {
+                    const errorData = await response.text();
+                    console.error('Error response:', errorData);
+                } catch (parseError) {
+                    console.error('Could not parse error response');
+                }
+                
+                // Create a fallback option if fetch failed
+                characterSelect.innerHTML = '';
+                const option = document.createElement('option');
+                option.value = 'default';
+                option.textContent = 'Default Character';
+                characterSelect.appendChild(option);
             }
         } catch (error) {
             console.error('Error fetching characters:', error);
+            
+            // Create a fallback option if fetch failed
+            characterSelect.innerHTML = '';
+            const option = document.createElement('option');
+            option.value = 'default';
+            option.textContent = 'Default Character';
+            characterSelect.appendChild(option);
         }
     }
     
@@ -111,15 +149,31 @@ document.addEventListener("DOMContentLoaded", function() {
         characters.forEach(character => {
             const option = document.createElement('option');
             option.value = character;
-            option.textContent = character.replace(/_/g, ' '); // Replace all underscores with spaces
+            
+            // Fix the display name to handle potential encoding issues
+            let displayName = character;
+            try {
+                // Replace underscores with spaces and capitalize first letter of each word
+                displayName = character.replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            } catch (e) {
+                console.warn(`Error formatting character name: ${character}`, e);
+            }
+            
+            option.textContent = displayName;
             characterSelect.appendChild(option);
         });
         
         // Try to set the default character
         const defaultCharacter = document.querySelector('meta[name="default-character"]')?.getAttribute('content');
-        if (defaultCharacter) {
+        if (defaultCharacter && characters.includes(defaultCharacter)) {
             characterSelect.value = defaultCharacter;
+        } else if (characters.length > 0) {
+            // Set the first character as default if the specified default isn't available
+            characterSelect.value = characters[0];
         }
+        
+        console.log(`Populated ${characters.length} characters in dropdown`);
     }
 
     websocket.onopen = function(event) {

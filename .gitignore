@@ -223,3 +223,6 @@ conversation_history.json
 freeze_requirements.txt
 freeze_requiremenets.txt.bak
 elevenlabs_voices.json
+
+certs/
+certs/*
