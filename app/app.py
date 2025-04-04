@@ -52,6 +52,7 @@ ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1')
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
+SILENCE_DURATION_SECONDS = float(os.getenv("SILENCE_DURATION_SECONDS", "2.0"))
 os.environ["COQUI_TOS_AGREED"] = "1"
 
 # ANSI escape codes for colors
@@ -997,7 +998,7 @@ def detect_silence(data, threshold=1000, chunk_size=1024):   # threshold is More
     audio_data = np.frombuffer(data, dtype=np.int16)
     return np.mean(np.abs(audio_data)) < threshold
 
-async def record_audio(file_path, silence_threshold=25, silence_duration=1.0, chunk_size=1024, no_fallback=False):
+async def record_audio(file_path, silence_threshold=25, silence_duration=SILENCE_DURATION_SECONDS, chunk_size=1024, no_fallback=False):
     """Record audio from microphone or WebRTC audio bridge"""
     
     # Check if audio bridge is enabled

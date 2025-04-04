@@ -3,7 +3,6 @@ import pyaudio
 import wave
 import numpy as np
 import aiohttp
-import tempfile
 import torch
 from faster_whisper import WhisperModel
 from dotenv import load_dotenv
@@ -24,6 +23,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Debug flag for audio levels
 DEBUG_AUDIO_LEVELS = os.getenv("DEBUG_AUDIO_LEVELS", "false").lower() == "true"
+
+# Silence duration
+SILENCE_DURATION_SECONDS = float(os.getenv("SILENCE_DURATION_SECONDS", "2.0"))
 
 # Check for local Faster Whisper setting
 FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
@@ -143,7 +145,7 @@ def detect_silence(data, threshold=300, chunk_size=1024):
         return True
     
 
-async def record_audio(file_path, silence_threshold=512, silence_duration=0.5, chunk_size=1024, send_status_callback=None, no_fallback=False):
+async def record_audio(file_path, silence_threshold=512, silence_duration=SILENCE_DURATION_SECONDS, chunk_size=1024, send_status_callback=None, no_fallback=False):
     """Record audio to a file path
     
     Args:
@@ -211,13 +213,13 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=0.5, c
     wf.writeframes(b''.join(frames))
     wf.close()
 
-async def record_audio_enhanced(send_status_callback=None, silence_threshold=200, silence_duration=1.5):
+async def record_audio_enhanced(send_status_callback=None, silence_threshold=200, silence_duration=SILENCE_DURATION_SECONDS):
     """Enhanced audio recording with waiting for speech detection
     
     Args:
         send_status_callback: Callback to send status messages
         silence_threshold: Threshold for silence detection (lower is more sensitive)
-        silence_duration: Duration of silence to stop recording (reduced to 1.5 seconds)
+        silence_duration: Duration of silence to stop recording (reduced to SILENCE_DURATION_SECONDS seconds)
     
     Returns:
         Path to the recorded audio file
@@ -376,7 +378,7 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
         if level < silence_threshold:
             silent_chunks += 1
             if silent_chunks >= silence_chunks_threshold:
-                print(f"Silence detected for {silence_duration} seconds, stopping recording")
+                print(f"Silence detected for {SILENCE_DURATION_SECONDS} seconds, stopping recording")
                 break
         else:
             # Reset silent chunks counter completely when sound is detected
@@ -460,7 +462,7 @@ async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_loc
         temp_filename = await record_audio_enhanced(
             send_status_callback=callback_wrapper,
             silence_threshold=silence_threshold,
-            silence_duration=1.5  # Use shorter silence duration for faster response
+            silence_duration=SILENCE_DURATION_SECONDS  # Use shorter silence duration for faster response
         )
         
         if not temp_filename:
