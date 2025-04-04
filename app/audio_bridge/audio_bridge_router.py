@@ -6,9 +6,10 @@ Provides FastAPI routes for WebRTC signaling and audio exchange
 import json
 import uuid
 import logging
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Response
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Response, File, UploadFile, Form, HTTPException
 from typing import Dict
-import time
+import os
+import aiofiles
 
 from .audio_bridge_server import audio_bridge
 from .audio_processor import audio_processor
@@ -253,4 +254,47 @@ async def test_audio_bridge(request: Request):
             "status": "error",
             "message": f"Error testing audio bridge: {str(e)}",
             "bridge_enabled": audio_bridge.enabled
-        } 
+        }
+
+@router.post("/upload-audio")
+async def upload_audio(request: Request, audio: UploadFile = File(...), client_id: str = Form(...)):
+    """Handle direct audio uploads from clients"""
+    
+    logger.info(f"Received audio upload from client {client_id}, size: {request.headers.get('content-length', 'unknown')} bytes")
+    
+    if not audio.filename.endswith(('.webm', '.wav', '.mp3')):
+        raise HTTPException(status_code=400, detail="Unsupported file format")
+    
+    # Create a temporary file to store the uploaded audio
+    temp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'outputs')
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    temp_file_path = os.path.join(temp_dir, f"direct_upload_{client_id}_{uuid.uuid4()}.webm")
+    
+    try:
+        # Save the uploaded file
+        async with aiofiles.open(temp_file_path, 'wb') as out_file:
+            content = await audio.read()
+            await out_file.write(content)
+        
+        logger.info(f"Saved uploaded audio to {temp_file_path}")
+        
+        # Process the audio file
+        result = await audio_bridge.process_fallback_audio(client_id, temp_file_path)
+        
+        return {"status": "success", "message": "Audio uploaded and processed successfully", "result": result}
+    except Exception as e:
+        logger.error(f"Error processing uploaded audio: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        # Still return a 200 to avoid client-side errors, but indicate failure
+        return {"status": "error", "message": f"Error processing audio: {str(e)}"}
+
+@router.get("/status")
+async def get_status():
+    """Get the status of the audio bridge server"""
+    return {
+        "enabled": audio_bridge.is_enabled(),
+        "num_clients": len(audio_bridge.clients_set) if audio_bridge.is_enabled() else 0,
+    } 

@@ -92,6 +92,7 @@ class LoggingMiddleware:
 
 # Mount static files and templates
 app.mount("/app/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static/outputs", StaticFiles(directory="app/static/outputs"), name="static_outputs")
 templates = Jinja2Templates(directory="app/templates")
 
 # Add the logging middleware first

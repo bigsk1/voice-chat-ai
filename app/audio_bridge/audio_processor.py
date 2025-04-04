@@ -14,6 +14,8 @@ import struct
 import math
 from typing import Optional
 import time
+from pydub import AudioSegment
+import numpy as np
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -361,6 +363,162 @@ class AudioProcessor:
         except Exception as e:
             logger.error(f"Error converting WAV to WebRTC audio: {e}")
             return bytes()
+
+    async def process_audio_file(self, file_path, client_id=None, silence_threshold=200, silence_duration=1.5):
+        """
+        Process an audio file directly for transcription
+        
+        Args:
+            file_path: Path to the audio file
+            client_id: Optional client ID for tracking
+            silence_threshold: Threshold for silence detection
+            silence_duration: Duration of silence to stop recording
+            
+        Returns:
+            Path to the processed file or None if processing failed
+        """
+        try:
+            import os
+            from pydub import AudioSegment
+            
+            logger.info(f"Processing audio file: {file_path}")
+            
+            # Check if file exists
+            if not os.path.exists(file_path):
+                logger.error(f"Audio file not found: {file_path}")
+                return None
+                
+            # Check file size
+            file_size = os.path.getsize(file_path)
+            logger.info(f"Audio file size: {file_size} bytes")
+            
+            if file_size < 100:  # Arbitrary small size to catch empty files
+                logger.warning(f"Audio file too small: {file_size} bytes")
+                return None
+                
+            # Create a base filename for output
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'outputs')
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Just use the input file if it's already a wav file in the right format
+            # Otherwise convert it to wav
+            file_ext = os.path.splitext(file_path)[1].lower()
+            
+            if file_ext == '.wav':
+                # Already a WAV file, use it directly
+                output_path = file_path
+            else:
+                # Convert to WAV
+                timestamp = int(time.time())
+                output_path = os.path.join(output_dir, f"recording_{timestamp}.wav")
+                
+                try:
+                    if file_ext == '.webm':
+                        # Use ffmpeg for WebM conversion
+                        import subprocess
+                        cmd = f'ffmpeg -i "{file_path}" -ar 16000 -ac 1 -c:a pcm_s16le "{output_path}"'
+                        subprocess.run(cmd, shell=True, check=True)
+                    else:
+                        # Use pydub for other formats
+                        audio = AudioSegment.from_file(file_path)
+                        audio = audio.set_frame_rate(16000).set_channels(1)
+                        audio.export(output_path, format="wav")
+                    
+                    logger.info(f"Converted audio to WAV: {output_path}")
+                except Exception as e:
+                    logger.error(f"Error converting audio file: {e}")
+                    return None
+            
+            # Log success and return the path
+            logger.info(f"Audio file ready for transcription: {output_path}")
+            return output_path
+            
+        except Exception as e:
+            logger.error(f"Error processing audio file: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
+
+    async def process_audio(self, audio_data, client_id=None, silence_threshold=500, silence_duration=2.0, debug_mode=False):
+        """
+        Process audio data and save as WAV file if valid speech is detected
+        
+        Args:
+            audio_data (bytes): Raw audio data to process
+            client_id (str): Client ID for tracking audio files
+            silence_threshold (int): Threshold for silence detection (lower means more sensitive)
+            silence_duration (float): Duration of silence in seconds to consider end of speech
+            debug_mode (bool): If True, process audio regardless of levels for debugging
+
+        Returns:
+            bool: True if audio was processed and contains speech, False otherwise
+        """
+        try:
+            # Ensure minimum silence threshold to avoid false triggers
+            if silence_threshold < 100:
+                logger.warning(f"Silence threshold {silence_threshold} is too low, using minimum of 100")
+                silence_threshold = 100
+            
+            # Parse data into numpy array
+            if not audio_data or len(audio_data) == 0:
+                logger.debug("No audio data to process")
+                return False
+            
+            # Convert audio data to numpy array
+            audio_array = np.frombuffer(audio_data, dtype=np.int16)
+            
+            # Check if we have enough data to process
+            if len(audio_array) < 100:
+                if debug_mode:
+                    logger.info(f"Short audio data ({len(audio_array)} samples), but processing in debug mode")
+                else:
+                    logger.debug(f"Audio data too short ({len(audio_array)} samples), skipping")
+                    return False
+            
+            # Calculate audio levels
+            max_level = np.max(np.abs(audio_array))
+            rms_level = np.sqrt(np.mean(np.square(audio_array.astype(np.float32))))
+            
+            # Log audio level every 5th call to avoid flooding logs
+            self.call_count += 1
+            if debug_mode or self.call_count % 5 == 0 or max_level > silence_threshold:
+                logger.info(f"Audio levels - Max: {max_level}, RMS: {rms_level:.2f}, Length: {len(audio_array)} samples")
+            
+            # Detect if this contains speech (or we're in debug mode)
+            speech_detected = max_level > silence_threshold
+            force_processing = debug_mode or len(audio_array) > 32000  # Also process if chunk is large enough
+            
+            if speech_detected or force_processing:
+                # Create temporary WAV file
+                client_suffix = f"_{client_id}" if client_id else ""
+                output_filename = f"recording_{int(time.time())}{client_suffix}.wav"
+                output_path = os.path.join(self.output_dir, output_filename)
+                
+                # Save WAV file with audio data
+                self._save_audio_as_wav(audio_data, output_path)
+                
+                # Store file reference for this client
+                if client_id:
+                    self.client_audio_files[client_id] = output_path
+                
+                if speech_detected:
+                    logger.info(f"Speech detected in audio data, saved to {output_path}")
+                elif debug_mode:
+                    logger.info(f"Processing in debug mode, saved to {output_path}")
+                else:
+                    logger.info(f"Forced processing of non-speech audio, saved to {output_path}")
+                
+                # Return True to indicate audio was processed
+                return True
+            else:
+                logger.debug(f"No speech detected in audio data, max level {max_level} < threshold {silence_threshold}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error processing audio data: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return False
 
 # Create a singleton instance
 audio_processor = AudioProcessor() 

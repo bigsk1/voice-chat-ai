@@ -20,11 +20,23 @@ import re
 import io
 import torch
 from pydub import AudioSegment
+import shutil
 from .shared import clients, get_current_character
+from .stream_helpers import stream_openai_response
+import time
 
 
 import logging
 logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
+
+# Setup logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 # Load environment variables
 load_dotenv()
@@ -50,7 +62,7 @@ ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
 ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
-XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1')
+XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
 SILENCE_DURATION_SECONDS = float(os.getenv("SILENCE_DURATION_SECONDS", "2.0"))
 os.environ["COQUI_TOS_AGREED"] = "1"
@@ -257,8 +269,13 @@ def sync_play_audio(file_path):
 
     pass
 
-output_dir = os.path.join(project_dir, 'outputs')
+# Update output paths
+output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'outputs')
+static_output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'outputs')
+
+# Create directories if they don't exist
 os.makedirs(output_dir, exist_ok=True)
+os.makedirs(static_output_dir, exist_ok=True)
 
 print(f"Using device: {device}")
 print(f"Model provider: {MODEL_PROVIDER}")
@@ -267,7 +284,7 @@ print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print("To stop chatting say Quit or Exit. One moment please loading...")
 
-async def process_and_play(prompt, audio_file_pth):
+async def process_and_play(prompt, audio_file_pth, remote_playback=False):
     # Always get the current character name to ensure we have the right audio file
     current_character = get_current_character()
     
@@ -306,17 +323,29 @@ async def process_and_play(prompt, audio_file_pth):
                         from .audio_bridge.audio_bridge_server import audio_bridge
                         if audio_bridge.is_enabled() and audio_bridge.clients_set:
                             print(f"Sending audio to {len(audio_bridge.clients_set)} audio bridge clients")
-                            # Read the audio file
-                            with open(output_path, "rb") as f:
-                                audio_data = f.read()
-                            # Send to each connected client
-                            for client_id in list(audio_bridge.clients_set):
-                                await audio_bridge.send_audio(client_id, audio_data)
+                            
+                            if remote_playback:
+                                # Send audio URL for client-side playback
+                                audio_url = copy_to_static_output(output_path)
+                                print(f"Sending audio URL for client-side playback: {audio_url}")
+                                # Send to each connected client
+                                for client_id in list(audio_bridge.clients_set):
+                                    await audio_bridge.send_audio(client_id, audio_url, is_url=True)
+                            else:
+                                # Send binary audio data (traditional method)
+                                # Read the audio file
+                                with open(output_path, "rb") as f:
+                                    audio_data = f.read()
+                                # Send to each connected client
+                                for client_id in list(audio_bridge.clients_set):
+                                    await audio_bridge.send_audio(client_id, audio_data)
                     except Exception as e:
                         print(f"Error sending audio via bridge: {e}")
                 
-                # Always play locally regardless of bridge status
-                await play_audio(output_path)
+                # Play locally only if not remote playback
+                if not remote_playback:
+                    await play_audio(output_path)
+                
                 await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
             else:
                 print("Error: Audio file not found.")
@@ -344,21 +373,33 @@ async def process_and_play(prompt, audio_file_pth):
                     from .audio_bridge.audio_bridge_server import audio_bridge
                     if audio_bridge.is_enabled() and audio_bridge.clients_set:
                         print(f"Sending audio to {len(audio_bridge.clients_set)} audio bridge clients")
-                        # Convert MP3 to WAV for consistency
-                        temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
-                        audio = AudioSegment.from_mp3(output_path)
-                        audio.export(temp_wav_path, format="wav")
-                        # Read the audio file
-                        with open(temp_wav_path, "rb") as f:
-                            audio_data = f.read()
-                        # Send to each connected client
-                        for client_id in list(audio_bridge.clients_set):
-                            await audio_bridge.send_audio(client_id, audio_data)
+                        
+                        if remote_playback:
+                            # Send audio URL for client-side playback
+                            audio_url = copy_to_static_output(output_path)
+                            print(f"Sending audio URL for client-side playback: {audio_url}")
+                            # Send to each connected client
+                            for client_id in list(audio_bridge.clients_set):
+                                await audio_bridge.send_audio(client_id, audio_url, is_url=True)
+                        else:
+                            # Send binary audio data (traditional method)
+                            # Convert MP3 to WAV for consistency
+                            temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
+                            audio = AudioSegment.from_mp3(output_path)
+                            audio.export(temp_wav_path, format="wav")
+                            # Read the audio file
+                            with open(temp_wav_path, "rb") as f:
+                                audio_data = f.read()
+                            # Send to each connected client
+                            for client_id in list(audio_bridge.clients_set):
+                                await audio_bridge.send_audio(client_id, audio_data)
                 except Exception as e:
                     print(f"Error sending audio via bridge: {e}")
             
-            # Always play locally regardless of bridge status
-            await play_audio(output_path)
+            # Play locally only if not remote playback
+            if not remote_playback:
+                await play_audio(output_path)
+                
             await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
         elif not success:
             print("Failed to generate ElevenLabs audio.")
@@ -390,17 +431,29 @@ async def process_and_play(prompt, audio_file_pth):
                         from .audio_bridge.audio_bridge_server import audio_bridge
                         if audio_bridge.is_enabled() and audio_bridge.clients_set:
                             print(f"Sending audio to {len(audio_bridge.clients_set)} audio bridge clients")
-                            # Read the audio file
-                            with open(src_path, "rb") as f:
-                                audio_data = f.read()
-                            # Send to each connected client
-                            for client_id in list(audio_bridge.clients_set):
-                                await audio_bridge.send_audio(client_id, audio_data)
+                            
+                            if remote_playback:
+                                # Send audio URL for client-side playback
+                                audio_url = copy_to_static_output(src_path)
+                                print(f"Sending audio URL for client-side playback: {audio_url}")
+                                # Send to each connected client
+                                for client_id in list(audio_bridge.clients_set):
+                                    await audio_bridge.send_audio(client_id, audio_url, is_url=True)
+                            else:
+                                # Send binary audio data (traditional method)
+                                # Read the audio file
+                                with open(src_path, "rb") as f:
+                                    audio_data = f.read()
+                                # Send to each connected client
+                                for client_id in list(audio_bridge.clients_set):
+                                    await audio_bridge.send_audio(client_id, audio_data)
                     except Exception as e:
                         print(f"Error sending audio via bridge: {e}")
                 
-                # Always play locally regardless of bridge status
-                await play_audio(src_path)
+                # Play locally only if not remote playback
+                if not remote_playback:
+                    await play_audio(src_path)
+                    
                 await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
             except Exception as e:
                 print(f"Error during XTTS audio generation: {e}")
@@ -1559,9 +1612,9 @@ async def user_chatbot_conversation():
             print(f"Loaded {len(conversation_history)} messages from character-specific history")
         else:
             print(f"No previous history found for {current_character}, starting fresh")
-            conversation_history = []
+        conversation_history = []
     else:
-        # Use global history for standard characters
+            # Use global history for standard characters
         conversation_history = []
         # Try to load from global file
         try:
@@ -1732,6 +1785,161 @@ def load_character_specific_history(character_name):
     except Exception as e:
         print(f"Error loading character-specific history: {e}")
         return []
+
+async def process_message(self, message, client_id=None, remote_playback=False):
+    """Process a message from the user and return the response"""
+    # Always use remote playback regardless of the parameter value
+    remote_playback = True
+    
+    if not message or message.strip() == "":
+        return "I didn't catch that. Could you please repeat?"
+
+    try:
+        # Get character context
+        character = get_current_character()
+            
+        # Log the message
+        logger.info(f"Processing message from user to character {character}: {message}")
+        
+        # Add sentiment analysis
+        sentiment = TextBlob(message).sentiment
+        if sentiment:
+            logger.info(f"Sentiment polarity: {sentiment.polarity}")
+            mood = "positive" if sentiment.polarity > 0.1 else "negative" if sentiment.polarity < -0.1 else "neutral"
+            logger.info(f"Detected mood: {mood}")
+        
+        # Get response streaming
+        model_provider = MODEL_PROVIDER
+        response = ""
+        
+        # Debug info
+        logger.info(f"Debug: streamed started. MODEL_PROVIDER: {model_provider}")
+                        
+        # Common parameters for all streaming
+        kwargs = {
+            "character": character,
+            "prompt": message,
+        }
+        
+        if model_provider == "openai":
+            logger.info(f"Debug: Sending request to OpenAI: {OPENAI_BASE_URL}")
+            logger.info("Starting OpenAI stream...")
+            
+            # Get the model from the session or use the default
+            model = OPENAI_MODEL
+                
+            # Stream the response
+            try:
+                async for chunk in stream_openai_response(character=character, prompt=message, model=model):
+                    print(chunk, end="")
+                    response += chunk
+                
+                print("\n") 
+                logger.info("OpenAI stream complete.")
+            except Exception as e:
+                logger.error(f"Error streaming OpenAI response: {e}")
+                response = f"I'm sorry, I encountered an error while generating a response: {str(e)}"
+        
+        # Add other model providers here as needed
+        
+        logger.info(f"streaming complete. Response length: {len(response)}")
+        
+        # Generate audio for the response
+        logger.info("Playing generated audio...")
+        
+        # ALWAYS use remote playback to ensure audio plays on the client side
+        logger.info("Forcing client-side audio playback for all responses")
+        
+        # If we're using audio bridge and have a client_id, ensure client gets both message types
+        if client_id:
+            try:
+                # First send a message to the client with play_on_client set to true
+                from app.audio_bridge.audio_bridge_server import audio_bridge_server
+                await audio_bridge_server.send_message_to_client(client_id, {
+                    "type": "transcription",
+                    "text": message,
+                    "response": response,
+                    "play_on_client": True  # Force client-side playback
+                })
+                
+                # Also generate audio URL if possible and send that too
+                try:
+                    # Create a temporary WAV file path in the outputs directory
+                    outputs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs")
+                    output_path = os.path.join(outputs_dir, f"response_{int(time.time())}.wav")
+                    
+                    # Generate audio file using the chosen TTS provider
+                    if TTS_PROVIDER == "openai":
+                        from app.app import openai_text_to_speech
+                        await openai_text_to_speech(response, output_path)
+                    elif TTS_PROVIDER == "elevenlabs":
+                        from app.app import elevenlabs_text_to_speech
+                        await elevenlabs_text_to_speech(response, output_path)
+                        
+                    # Check if file was generated
+                    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                        # Copy the file to the static directory for URL access
+                        from app.app import copy_to_static_output
+                        audio_url = copy_to_static_output(output_path)
+                        
+                        # Send the response with audio URL for client-side playback
+                        await audio_bridge_server.send_message_to_client(client_id, {
+                            "type": "transcription",
+                            "text": message,
+                            "response": response,
+                            "play_on_client": True,
+                            "audio_url": audio_url
+                        })
+                except Exception as e:
+                    logger.error(f"Error generating audio URL: {e}")
+                    
+            except Exception as e:
+                logger.error(f"Error sending client message: {e}")
+        
+        return response
+
+    except Exception as e:
+        logger.error(f"Error processing message: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return f"Sorry, there was an error processing your message: {str(e)}"
+
+def copy_to_static_output(source_file):
+    """
+    Copy a file from the outputs directory to the static/outputs directory
+    so it can be accessed via HTTP.
+    
+    Args:
+        source_file: Path to the source file in the outputs directory
+        
+    Returns:
+        The URL path to access the file via HTTP
+    """
+    try:
+        # Get the filename
+        filename = os.path.basename(source_file)
+        
+        # Create the destination path
+        dest_path = os.path.join(static_output_dir, filename)
+        
+        # Copy the file
+        shutil.copy2(source_file, dest_path)
+        
+        # Return the absolute URL path (always start with /)
+        url_path = f"/static/outputs/{filename}"
+        
+        # Debug output
+        print(f"Copied audio file from {source_file} to {dest_path}")
+        print(f"Generated URL path: {url_path}")
+        print(f"File exists at destination: {os.path.exists(dest_path)}")
+        print(f"File size at destination: {os.path.getsize(dest_path)}")
+        
+        return url_path
+    except Exception as e:
+        print(f"Error copying file to static outputs: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 if __name__ == "__main__":
     asyncio.run(user_chatbot_conversation())

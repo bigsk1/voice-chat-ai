@@ -681,22 +681,33 @@ class AudioBridgeClient {
      * Record audio from the microphone and send it to the server using WebRTC
      */
     startRecording() {
+        console.log('Starting recording with AudioBridge');
         // Check if audio bridge is enabled
         if (!this.isEnabled) {
             console.log('Audio bridge is disabled, skipping recording');
             return false;
         }
         
+        // If not connected, try to establish connection first
         if (!this.isConnected || !this.peerConnection) {
-            console.error('Cannot start recording - not connected to audio bridge');
+            console.warn('Not connected to audio bridge - attempting to initialize');
+            this.initialize().then(success => {
+                if (success) {
+                    // Retry starting recording after successful initialization
+                    setTimeout(() => this.startRecording(), 1000);
+                } else {
+                    console.error('Failed to initialize audio bridge for recording');
+                }
+            });
             return false;
         }
         
         console.log('Starting to record audio via WebRTC');
+        this.isRecording = true;
         
         // Check if we have a local stream
         if (!this.localStream) {
-            console.warn('No microphone stream available - requesting again');
+            console.warn('No microphone stream available - requesting access');
             this.requestMicrophonePermission().then(granted => {
                 if (granted) {
                     // Try to start recording again with the new stream
@@ -709,6 +720,16 @@ class AudioBridgeClient {
         } else {
             this._continueStartRecording();
         }
+        
+        // Start a timer to periodically send audio data
+        if (this.recordingInterval) {
+            clearInterval(this.recordingInterval);
+        }
+        
+        this.recordingInterval = setInterval(() => {
+            // Force sending audio packets even without detecting speech
+            this._simulateAudioInput();
+        }, 3000); // Every 3 seconds
         
         return true;
     }
@@ -724,52 +745,281 @@ class AudioBridgeClient {
             return;
         }
         
-        // Add the local audio track to the peer connection
         try {
-            const audioTracks = this.localStream.getAudioTracks();
-            if (audioTracks.length > 0) {
-                // Remove any existing senders
-                const senders = this.peerConnection.getSenders();
-                senders.forEach(sender => {
-                    if (sender.track && sender.track.kind === 'audio') {
-                        this.peerConnection.removeTrack(sender);
+            // If we have a MediaRecorder, use it to capture audio
+            if (this.mediaRecorder) {
+                // Reset audio chunks array
+                this.audioChunks = [];
+                
+                // Set up data available handler for immediate sending
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        this.audioChunks.push(event.data);
+                        console.log(`Captured audio chunk: ${event.data.size} bytes`);
+                        
+                        // Send audio chunks immediately
+                        this.sendAudioToServer(event.data);
                     }
-                });
+                };
                 
-                // Add the audio track to the peer connection
-                this.peerConnection.addTrack(audioTracks[0], this.localStream);
-                console.log('Added audio track to peer connection');
-                
-                // Start monitoring for no-audio situation
-                this._startNoAudioDetection();
+                // Start recording with shorter timeslices (500ms)
+                this.mediaRecorder.start(500);
+                console.log('MediaRecorder started with 500ms timeslices');
             } else {
-                console.error('No audio tracks available in stream');
-                this._simulateAudioInput(); // Simulate audio if no tracks found
+                // No MediaRecorder, fall back to track-based approach
+                console.warn('MediaRecorder not available, using track-based approach');
+                
+                // Add the local audio track to the peer connection
+                const audioTracks = this.localStream.getAudioTracks();
+                if (audioTracks.length > 0) {
+                    // Check if we need to add or replace the track
+                    const senders = this.peerConnection.getSenders();
+                    const audioSender = senders.find(sender => 
+                        sender.track && sender.track.kind === 'audio'
+                    );
+                    
+                    if (audioSender) {
+                        // Replace the existing track
+                        audioSender.replaceTrack(audioTracks[0]);
+                    } else {
+                        // Add a new track
+                        this.peerConnection.addTrack(audioTracks[0], this.localStream);
+                    }
+                    
+                    console.log('Added/replaced audio track in peer connection');
+                } else {
+                    console.error('No audio tracks in local stream');
+                    this._simulateAudioInput();
+                }
             }
+            
+            // Start debug mode with forced audio simulation
+            this._simulateAudioInput();
+            
+            // Inform server that we're in recording mode
+            if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                this.dataChannel.send(JSON.stringify({
+                    type: 'recording_started',
+                    client_id: this.clientId,
+                    debug_mode: true
+                }));
+            }
+            
         } catch (error) {
-            console.error('Error adding audio track to peer connection:', error);
-            this._simulateAudioInput(); // Simulate audio on error
+            console.error('Error in continue recording:', error);
+            // Try simulation as fallback
+            this._simulateAudioInput();
         }
     }
     
     /**
-     * Start detection of no-audio situations and simulate input if needed
-     * @private
+     * Stop recording audio
      */
-    _startNoAudioDetection() {
-        // Clear any existing timer
-        if (this.noAudioTimer) {
-            clearTimeout(this.noAudioTimer);
+    stopRecording() {
+        console.log('Stopping recording with AudioBridge');
+        
+        // Set recording state to false
+        this.isRecording = false;
+        
+        // Clear recording interval if it exists
+        if (this.recordingInterval) {
+            clearInterval(this.recordingInterval);
+            this.recordingInterval = null;
         }
         
-        // Detect if audio is not flowing after 10 seconds
-        this.noAudioTimer = setTimeout(() => {
-            // Check if audio levels have been very low
-            if (this.lastAudioLevel < 5) {
-                console.warn('No significant audio detected for 10 seconds - simulating audio input');
-                this._simulateAudioInput();
+        // Check if audio bridge is enabled
+        if (!this.isEnabled) {
+            console.log('Audio bridge is disabled, skipping stop recording');
+            return false;
+        }
+        
+        try {
+            // If we have a media recorder and it's recording, stop it
+            if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                this.mediaRecorder.stop();
+                console.log('Stopped MediaRecorder');
             }
-        }, 10000); // 10 second timeout
+            
+            // Inform server that recording stopped
+            if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                this.dataChannel.send(JSON.stringify({
+                    type: 'recording_stopped',
+                    client_id: this.clientId
+                }));
+            }
+            
+            console.log('Recording stopped');
+            return true;
+        } catch (error) {
+            console.error('Error stopping recording:', error);
+            
+            if (this.onError) {
+                this.onError(`Error stopping recording: ${error.message}`);
+            }
+            
+            return false;
+        }
+    }
+    
+    /**
+     * Setup MediaRecorder
+     */
+    setupMediaRecorder() {
+        if (!this.localStream) {
+            console.warn('Cannot setup media recorder - no microphone stream');
+            return false;
+        }
+        
+        try {
+            // Check for MediaRecorder support
+            if (!window.MediaRecorder) {
+                throw new Error('MediaRecorder is not supported in this browser');
+            }
+            
+            // Try different MIME types for better compatibility
+            let options;
+            const mimeTypes = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/ogg;codecs=opus',
+                'audio/wav',
+                'audio/mp3'
+            ];
+            
+            // Find the first supported MIME type
+            for (const mimeType of mimeTypes) {
+                if (MediaRecorder.isTypeSupported(mimeType)) {
+                    options = {
+                        mimeType: mimeType,
+                        audioBitsPerSecond: 16000
+                    };
+                    console.log(`Using supported MIME type: ${mimeType}`);
+                    break;
+                }
+            }
+            
+            // Create the MediaRecorder with options if available
+            if (options) {
+                this.mediaRecorder = new MediaRecorder(this.localStream, options);
+            } else {
+                console.warn('No supported MIME types found, using default');
+                this.mediaRecorder = new MediaRecorder(this.localStream);
+            }
+            
+            // Initialize audio chunks array
+            this.audioChunks = [];
+            
+            // Handle dataavailable event - we'll set the specific handler in startRecording
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                }
+            };
+            
+            console.log('MediaRecorder successfully set up');
+            return true;
+        } catch (error) {
+            console.error('Error setting up media recorder:', error);
+            
+            if (this.onError) {
+                this.onError(`Error setting up media recorder: ${error.message}`);
+            }
+            
+            return false;
+        }
+    }
+    
+    /**
+     * Send recorded audio to server
+     */
+    async sendAudioToServer(audioBlob) {
+        if (!this.isConnected || !this.clientId) {
+            console.warn('Cannot send audio - not connected');
+            return false;
+        }
+        
+        try {
+            console.log(`Sending audio blob: ${audioBlob.size} bytes, type: ${audioBlob.type}`);
+            
+            // Use WebRTC data channel if available
+            if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                console.log('Sending audio via WebRTC data channel');
+                
+                // Convert blob to ArrayBuffer and send over data channel
+                const arrayBuffer = await audioBlob.arrayBuffer();
+                
+                // Add debugging information
+                console.log(`Audio data ArrayBuffer size: ${arrayBuffer.byteLength} bytes`);
+                
+                try {
+                    // Send the data with debug mode flag
+                    this.dataChannel.send(arrayBuffer);
+                    
+                    // Also send a JSON message indicating debug mode
+                    setTimeout(() => {
+                        try {
+                            this.dataChannel.send(JSON.stringify({
+                                type: 'debug_info',
+                                client_id: this.clientId,
+                                debug_mode: true,
+                                timestamp: Date.now()
+                            }));
+                        } catch (err) {
+                            console.warn('Error sending debug info:', err);
+                        }
+                    }, 100);
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Error sending audio via data channel:', error);
+                    // Try HTTP fallback
+                    return this._sendAudioViaHttp(audioBlob);
+                }
+            } else {
+                console.warn('Data channel not available for sending audio, using HTTP fallback');
+                return this._sendAudioViaHttp(audioBlob);
+            }
+        } catch (error) {
+            console.error('Error sending audio to server:', error);
+            if (this.onError) {
+                this.onError(`Error sending audio to server: ${error.message}`);
+            }
+            return false;
+        }
+    }
+    
+    /**
+     * Fallback method to send audio via HTTP
+     * @private
+     */
+    async _sendAudioViaHttp(audioBlob) {
+        try {
+            console.log('Using HTTP fallback to send audio');
+            
+            // Create FormData object
+            const formData = new FormData();
+            formData.append('audio', audioBlob);
+            formData.append('client_id', this.clientId);
+            formData.append('debug_mode', 'true');
+            
+            // Send to server
+            const response = await fetch('/audio-bridge/upload-audio', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Audio upload response:', data);
+            
+            return data.success === true;
+        } catch (error) {
+            console.error('Error with HTTP audio upload:', error);
+            return false;
+        }
     }
     
     /**
@@ -778,7 +1028,7 @@ class AudioBridgeClient {
      * @private
      */
     _simulateAudioInput() {
-        console.log('Simulating audio input to keep the system responsive');
+        console.log('Simulating audio input for debug mode');
         
         if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
             console.error('Cannot simulate audio - data channel not open');
@@ -790,11 +1040,12 @@ class AudioBridgeClient {
             const message = JSON.stringify({
                 type: 'simulate_audio',
                 client_id: this.clientId,
+                debug_mode: true,
                 timestamp: Date.now()
             });
             
             this.dataChannel.send(message);
-            console.log('Sent simulate_audio command to server');
+            console.log('Sent simulate_audio command to server with debug_mode=true');
             
             // Also try to create and send a small audio sample directly
             this._sendSyntheticAudioSample();
@@ -860,202 +1111,6 @@ class AudioBridgeClient {
             
         } catch (error) {
             console.error('Error creating synthetic audio sample:', error);
-        }
-    }
-    
-    /**
-     * Stop recording audio
-     */
-    stopRecording() {
-        // Check if audio bridge is enabled
-        if (!this.isEnabled) {
-            console.log('Audio bridge is disabled, skipping stop recording');
-            return false;
-        }
-        
-        if (!this.isInitialized || !this.mediaRecorder) {
-            console.warn('Cannot stop recording - not initialized or no media recorder');
-            return false;
-        }
-        
-        if (this.mediaRecorder.state !== 'recording') {
-            console.warn('Not recording');
-            return false;
-        }
-        
-        try {
-            this.mediaRecorder.stop();
-            console.log('Stopped recording');
-            return true;
-        } catch (error) {
-            console.error('Error stopping recording:', error);
-            
-            if (this.onError) {
-                this.onError(`Error stopping recording: ${error.message}`);
-            }
-            
-            return false;
-        }
-    }
-    
-    /**
-     * Setup MediaRecorder
-     */
-    setupMediaRecorder() {
-        if (!this.localStream) {
-            console.warn('Cannot setup media recorder - no microphone stream');
-            return false;
-        }
-        
-        try {
-            // Check for MediaRecorder support
-            if (!window.MediaRecorder) {
-                throw new Error('MediaRecorder is not supported in this browser');
-            }
-            
-            // Set up MediaRecorder with options for smaller chunks and higher frequency
-            const options = {
-                mimeType: 'audio/webm;codecs=opus',
-                audioBitsPerSecond: 16000
-            };
-            
-            try {
-                this.mediaRecorder = new MediaRecorder(this.localStream, options);
-            } catch (e) {
-                console.warn('MediaRecorder with options failed, using default settings:', e);
-                // Fallback to default settings
-                this.mediaRecorder = new MediaRecorder(this.localStream);
-            }
-            
-            // Handle dataavailable event
-            this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    this.audioChunks.push(event.data);
-                    
-                    // Send audio chunks immediately when recording (don't wait for stop)
-                    if (this.mediaRecorder.state === 'recording' && event.data.size > 0) {
-                        this.sendAudioToServer(event.data);
-                    }
-                }
-            };
-            
-            // Handle stop event
-            this.mediaRecorder.onstop = async () => {
-                if (this.audioChunks.length === 0) {
-                    console.warn('No audio data recorded');
-                    return;
-                }
-                
-                // Create blob from chunks
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                
-                // Send audio to server
-                await this.sendAudioToServer(audioBlob);
-                
-                // Clear chunks
-                this.audioChunks = [];
-            };
-            
-            return true;
-        } catch (error) {
-            console.error('Error setting up media recorder:', error);
-            
-            if (this.onError) {
-                this.onError(`Error setting up media recorder: ${error.message}`);
-            }
-            
-            return false;
-        }
-    }
-    
-    /**
-     * Send recorded audio to server
-     */
-    async sendAudioToServer(audioBlob) {
-        if (!this.isConnected || !this.clientId) {
-            console.warn('Cannot send audio - not connected');
-            return false;
-        }
-        
-        try {
-            // Use WebRTC data channel if available
-            if (this.dataChannel && this.dataChannel.readyState === 'open') {
-                console.log('Sending audio via WebRTC data channel');
-                // Convert blob to ArrayBuffer and send over data channel
-                const reader = new FileReader();
-                reader.onload = () => {
-                    if (reader.result) {
-                        try {
-                            this.dataChannel.send(reader.result);
-                            return true;
-                        } catch (error) {
-                            console.error('Error sending audio via data channel:', error);
-                            if (this.onError) {
-                                this.onError(`Error sending audio via data channel: ${error.message}`);
-                            }
-                        }
-                    }
-                };
-                reader.readAsArrayBuffer(audioBlob);
-                return true;
-            } else {
-                console.warn('Data channel not available for sending audio');
-                if (this.onError) {
-                    this.onError('WebRTC data channel not available for sending audio');
-                }
-                return false;
-            }
-        } catch (error) {
-            console.error('Error sending audio to server:', error);
-            if (this.onError) {
-                this.onError(`Error sending audio to server: ${error.message}`);
-            }
-            return false;
-        }
-    }
-    
-    /**
-     * Handle audio data received from server
-     */
-    handleAudioData(data) {
-        if (this.onAudioReceived) {
-            this.onAudioReceived(data);
-        } else {
-            // Queue for playback if no handler is set
-            this.audioQueue.push(data);
-            this.playNextAudio();
-        }
-    }
-    
-    /**
-     * Play next audio in queue
-     */
-    async playNextAudio() {
-        if (this.isPlaying || this.audioQueue.length === 0) {
-            return;
-        }
-        
-        this.isPlaying = true;
-        const audioData = this.audioQueue.shift();
-        
-        try {
-            const arrayBuffer = await audioData.arrayBuffer();
-            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            
-            const source = this.audioContext.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(this.audioContext.destination);
-            
-            source.onended = () => {
-                this.isPlaying = false;
-                this.playNextAudio();
-            };
-            
-            source.start(0);
-        } catch (error) {
-            console.error('Error playing audio:', error);
-            this.isPlaying = false;
-            this.playNextAudio();
         }
     }
     
@@ -1134,8 +1189,7 @@ class AudioBridgeClient {
                     autoGainControl: true,    // Enable auto gain to boost quiet audio
                     channelCount: 1,          // Mono audio
                     sampleRate: 44100,        // Higher sample rate for better quality
-                    sampleSize: 16,           // 16-bit audio
-                    volume: 1.0               // Maximum volume
+                    sampleSize: 16            // 16-bit audio
                 },
                 video: false
             };
@@ -1174,6 +1228,9 @@ class AudioBridgeClient {
             // Set up audio monitoring for diagnostics
             this._setupAudioMonitoring();
             
+            // Set up MediaRecorder for this stream
+            this.setupMediaRecorder();
+            
             return true;
         } catch (error) {
             console.error('Error accessing microphone:', error);
@@ -1196,12 +1253,14 @@ class AudioBridgeClient {
         try {
             // Create AudioContext for monitoring
             const AudioContext = window.AudioContext || window.webkitAudioContext;
-            this.audioContext = new AudioContext();
+            if (!this.audioContext || this.audioContext.state === 'closed') {
+                this.audioContext = new AudioContext();
+            }
             
             // Create analyzer node
             this.analyser = this.audioContext.createAnalyser();
-            this.analyser.fftSize = 1024;
-            this.analyser.smoothingTimeConstant = 0.8;
+            this.analyser.fftSize = 256; // Smaller for faster processing
+            this.analyser.smoothingTimeConstant = 0.3; // Faster response
             
             // Connect the stream to the analyzer
             this.source = this.audioContext.createMediaStreamSource(this.localStream);
@@ -1209,15 +1268,19 @@ class AudioBridgeClient {
             
             // Create a gain node to boost the signal for monitoring
             this.gainNode = this.audioContext.createGain();
-            this.gainNode.gain.value = 5.0; // Boost the signal
+            this.gainNode.gain.value = 10.0; // Higher boost for better detection
             this.analyser.connect(this.gainNode);
             
             // Start monitoring
+            if (this.monitorInterval) {
+                clearInterval(this.monitorInterval);
+            }
+            
             this.monitorInterval = setInterval(() => {
                 this._checkAudioLevels();
-            }, 500);
+            }, 300); // Check more frequently
             
-            console.log('Audio monitoring started');
+            console.log('Audio monitoring started with enhanced settings');
         } catch (error) {
             console.error('Error setting up audio monitoring:', error);
         }
@@ -1237,38 +1300,31 @@ class AudioBridgeClient {
             
             // Calculate average level
             let sum = 0;
+            let maxValue = 0;
             for (let i = 0; i < bufferLength; i++) {
                 sum += dataArray[i];
+                maxValue = Math.max(maxValue, dataArray[i]);
             }
             const average = sum / bufferLength;
             this.lastAudioLevel = average;
             
-            // Show a warning if audio level is too low
-            if (average < 5) {
-                if (!this.lowAudioWarningShown && this.isConnected) {
-                    console.warn('Very low audio levels detected from microphone:', average);
-                    this.lowAudioWarningShown = true;
+            // Log audio level with more details for debugging
+            if (this.isConnected) {
+                if (Date.now() - (this.lastAudioLogTime || 0) > 2000) {
+                    console.log(`Microphone audio level: avg=${average.toFixed(2)}, max=${maxValue}, bufferLength=${bufferLength}`);
+                    this.lastAudioLogTime = Date.now();
                     
-                    if (this.onStatusChange) {
-                        this.onStatusChange({
-                            enabled: this.isEnabled,
-                            connected: this.isConnected,
-                            status: 'low-audio',
-                            level: average
-                        });
+                    // Force recording if we detect audio
+                    if (maxValue > 30 && this.isRecording && this.dataChannel && 
+                        this.dataChannel.readyState === 'open' && !this.forcedRecordingActive) {
+                        console.log('Detected audio peak, forcing audio packet sending');
+                        this._simulateAudioInput();
+                        this.forcedRecordingActive = true;
+                        setTimeout(() => {
+                            this.forcedRecordingActive = false;
+                        }, 1000);
                     }
-                    
-                    // Start a timer to refresh the microphone after a delay
-                    setTimeout(() => this._refreshMicrophone(), 3000);
                 }
-            } else {
-                this.lowAudioWarningShown = false;
-            }
-            
-            // Log audio level every few seconds
-            if (this.isConnected && Date.now() - (this.lastAudioLogTime || 0) > 5000) {
-                console.log(`Current microphone audio level: ${average.toFixed(2)}`);
-                this.lastAudioLogTime = Date.now();
             }
         } catch (error) {
             console.error('Error monitoring audio levels:', error);
@@ -1364,7 +1420,39 @@ class AudioBridgeClient {
             };
             
             this.dataChannel.onmessage = (event) => {
-                console.log('Received data channel message:', event.data);
+                console.log(`Received data channel message: ${event.data.length} bytes`);
+                try {
+                    // Try to parse as JSON first
+                    if (typeof event.data === 'string') {
+                        const jsonData = JSON.parse(event.data);
+                        console.log('Received JSON message:', jsonData);
+                        if (jsonData.type === 'audio' && jsonData.audio_url) {
+                            // Handle audio URL messages
+                            console.log('Playing audio from URL:', jsonData.audio_url);
+                            this._attemptPlayWithFallbacks(jsonData.audio_url, jsonData.text || '');
+                        } else if (jsonData.type === 'transcription') {
+                            // Handle transcription messages
+                            console.log('Received transcription:', jsonData.text);
+                            if (jsonData.play_on_client && jsonData.response) {
+                                if (jsonData.audio_url) {
+                                    console.log('Playing audio from URL:', jsonData.audio_url);
+                                    this._attemptPlayWithFallbacks(jsonData.audio_url, jsonData.response);
+                                } else {
+                                    console.log('Using browser TTS for response');
+                                    window.playTextAudio(jsonData.response);
+                                }
+                            }
+                        }
+                    } else {
+                        // It's binary audio data, handle it directly
+                        console.log('Received binary audio data');
+                        this.handleAudioData(event.data);
+                    }
+                } catch (error) {
+                    // Not a JSON object, treat as binary audio data
+                    console.log('Error parsing data channel message, treating as binary data:', error);
+                    this.handleAudioData(event.data);
+                }
             };
             
             // Create offer and set local description
