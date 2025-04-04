@@ -7,6 +7,7 @@ import tempfile
 import torch
 from faster_whisper import WhisperModel
 from dotenv import load_dotenv
+import time
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -116,6 +117,9 @@ def detect_silence(data, threshold=300, chunk_size=1024):
         if level > 0 and level < 50:
             print(f"Very low audio level detected: {level:.2f}")
         
+        # Only print audio levels if debug is enabled
+        if DEBUG_AUDIO_LEVELS:
+            print(f"Audio level: {level}")
         return level < threshold
     except Exception as e:
         print(f"Error in detect_silence: {e}")
@@ -192,10 +196,15 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
     # Check if audio bridge is enabled
     audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
     
-    # Create temp file
-    temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    temp_filename = temp_file.name
-    temp_file.close()
+    # Create outputs directory if it doesn't exist
+    outputs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs")
+    if not os.path.exists(outputs_dir):
+        os.makedirs(outputs_dir)
+        print(f"Created outputs directory at {outputs_dir}")
+    
+    # Generate a unique filename with timestamp
+    timestamp = int(time.time())
+    output_filename = os.path.join(outputs_dir, f"recording_{timestamp}.wav")
     
     # If audio bridge is enabled, check if we have any clients
     if audio_bridge_enabled:
@@ -206,7 +215,7 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
                 
                 # Call record_audio with the correct parameters
                 await record_audio(
-                    file_path=temp_filename,
+                    file_path=output_filename,
                     silence_threshold=25,
                     silence_duration=silence_duration,
                     send_status_callback=send_status_callback,
@@ -214,8 +223,8 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
                 )
                 
                 # Print a success message
-                print(f"Audio bridge created file: {temp_filename}")
-                return temp_filename
+                print(f"Audio bridge created file: {output_filename}")
+                return output_filename
         except Exception as e:
             print(f"Error using audio bridge in enhanced mode: {e}")
             import traceback
@@ -276,7 +285,7 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
             stream.close()
             p.terminate()
             try:
-                os.unlink(temp_filename)
+                os.unlink(output_filename)
             except:
                 pass
             if send_status_callback:
@@ -332,7 +341,7 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
     # If no substantial recording was made, return None
     if len(frames) < 10:
         try:
-            os.unlink(temp_filename)
+            os.unlink(output_filename)
         except:
             pass
         if send_status_callback:
@@ -343,14 +352,14 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
         return None
     
     # Save the recorded audio
-    wf = wave.open(temp_filename, 'wb')
+    wf = wave.open(output_filename, 'wb')
     wf.setnchannels(CHANNELS)
     wf.setsampwidth(p.get_sample_size(FORMAT))
     wf.setframerate(RATE)
     wf.writeframes(b''.join(frames))
     wf.close()
     
-    return temp_filename
+    return output_filename
 
 async def send_status_message(callback, message):
     """Helper function to send status messages through the callback

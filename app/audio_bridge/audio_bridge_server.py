@@ -18,6 +18,7 @@ from aiohttp import web
 import time
 import uuid
 from queue import Queue
+import pathlib
 
 # Try to import WebRTC components
 AIORTC_AVAILABLE = False
@@ -35,6 +36,20 @@ logger = logging.getLogger(__name__)
 
 # Debug mode - set to True for more verbose logging
 DEBUG_MODE = os.getenv("DEBUG_AUDIO_BRIDGE", "false").lower() == "true"
+
+# Setup outputs directory for temporary files
+def get_outputs_dir():
+    """Get the path to the outputs directory"""
+    # Get the root directory of the application
+    root_dir = pathlib.Path(__file__).parent.parent.parent
+    outputs_dir = root_dir / "outputs"
+    
+    # Create the outputs directory if it doesn't exist
+    if not outputs_dir.exists():
+        outputs_dir.mkdir(exist_ok=True)
+        logger.info(f"Created outputs directory at {outputs_dir}")
+    
+    return outputs_dir
 
 # WebRTC connections store
 class AudioBridgeServer:
@@ -58,6 +73,10 @@ class AudioBridgeServer:
         self.enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
         self.port = int(os.getenv("AUDIO_BRIDGE_PORT", "8081"))  # Use 8081 as default
         self.ssl_context = None
+        
+        # Setup outputs directory for temporary files
+        self.outputs_dir = get_outputs_dir()
+        logger.info(f"Using outputs directory for audio bridge temporary files: {self.outputs_dir}")
         
         # Create certificate if using HTTPS
         if os.getenv("ENABLE_HTTPS", "false").lower() == "true":
@@ -372,10 +391,38 @@ class AudioBridgeServer:
                 # Update last audio time
                 self.last_audio_time[client_id] = now
                 
+                # Save synthetic audio to a .wav file in the outputs directory
+                self._save_debug_audio(synthetic_audio, f"synthetic_silence_{client_id}")
+                
                 return synthetic_audio
         
         # No audio data available
         return None
+        
+    def _save_debug_audio(self, audio_data: bytes, prefix: str):
+        """Save audio data to a .wav file in the outputs directory for debugging"""
+        if not audio_data:
+            return None
+            
+        try:
+            # Generate filename
+            timestamp = int(time.time())
+            filename = f"{prefix}_{timestamp}.wav"
+            filepath = self.outputs_dir / filename
+            
+            # Convert raw PCM to WAV
+            import wave
+            with wave.open(str(filepath), 'wb') as wf:
+                wf.setnchannels(1)  # Mono
+                wf.setsampwidth(2)  # 16-bit
+                wf.setframerate(16000)  # 16kHz
+                wf.writeframes(audio_data)
+                
+            logger.info(f"Saved debug audio to {filepath}")
+            return filepath
+        except Exception as e:
+            logger.error(f"Error saving debug audio: {e}")
+            return None
         
     async def process_fallback_audio(self, client_id: str, audio_data: bytes) -> bool:
         """
@@ -403,6 +450,9 @@ class AudioBridgeServer:
                 self.last_audio_time[client_id] = asyncio.get_event_loop().time()
                 self.is_client_streaming[client_id] = True
                 logger.info(f"Stored audio from client {client_id}")
+                
+                # Save a copy to the outputs directory for debugging
+                self._save_debug_audio(audio_data, f"audio_from_client_{client_id}")
             
             return True
         except Exception as e:
@@ -773,6 +823,7 @@ class AudioBridgeServer:
             return
             
         logger.info(f"Starting audio frame processing for client {client_id}")
+        last_save_time = time.time()
         
         try:
             # Process frames until stopped
@@ -804,6 +855,16 @@ class AudioBridgeServer:
                     if pcm_data and len(pcm_data) > 0:
                         self.audio_pcm[client_id].append(pcm_data)
                         self.client_audio[client_id].append(pcm_data)
+                        
+                        # Save audio frames to file periodically
+                        now = time.time()
+                        if now - last_save_time >= 5.0:  # Save every 5 seconds
+                            try:
+                                # Save the audio to a WAV file in the outputs directory
+                                self._save_debug_audio(pcm_data, f"processed_audio_{client_id}")
+                                last_save_time = now
+                            except Exception as e:
+                                logger.error(f"Error saving processed audio: {e}")
                         
                         # Update tracking
                         processor.frame_count += 1
@@ -854,6 +915,7 @@ class AudioTrackProcessor(MediaStreamTrack):
         self.chunk_count = 0
         self.running = True
         self.last_log_time = time.time()
+        self.last_save_time = time.time()
         
         # Create deques for this client if they don't exist
         if client_id not in server.audio_pcm:
@@ -911,6 +973,15 @@ class AudioTrackProcessor(MediaStreamTrack):
             if len(chunk) > 0:
                 self.server.audio_pcm[self.client_id].append(chunk)
                 self.server.client_audio[self.client_id].append(chunk)
+                
+                # Save debug audio to file every few seconds to avoid too many files
+                if now - self.last_save_time >= 5.0:  # Save every 5 seconds
+                    try:
+                        # Save the audio to a WAV file in the outputs directory
+                        self.server._save_debug_audio(chunk, f"audio_frame_{self.client_id}")
+                        self.last_save_time = now
+                    except Exception as e:
+                        logger.error(f"Error saving audio frame: {e}")
                 
                 # Reset buffer
                 self.pcm_buffer = bytearray()
