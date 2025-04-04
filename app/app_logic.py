@@ -72,7 +72,7 @@ async def record_audio_and_transcribe():
     
     # Check if audio bridge is enabled - use a very low threshold for WebRTC
     audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
-    silence_threshold = 2 if audio_bridge_enabled else 2
+    silence_threshold = 0 if audio_bridge_enabled else 0
     
     print(f"Using silence_threshold: {silence_threshold} for {'WebRTC audio' if audio_bridge_enabled else 'local microphone'}")
     

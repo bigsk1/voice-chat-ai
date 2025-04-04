@@ -69,6 +69,9 @@ else:
     # Set to None to ensure proper error handling when OpenAI services are attempted
     OpenAI.api_key = None
 
+# Debug flag for audio levels
+DEBUG_AUDIO_LEVELS = os.getenv("DEBUG_AUDIO_LEVELS", "false").lower() == "true"
+
 # Capitalize the first letter of the character name
 character_display_name = CHARACTER_NAME.capitalize()
 
@@ -994,7 +997,7 @@ def detect_silence(data, threshold=1000, chunk_size=1024):   # threshold is More
     audio_data = np.frombuffer(data, dtype=np.int16)
     return np.mean(np.abs(audio_data)) < threshold
 
-async def record_audio(file_path, silence_threshold=25, silence_duration=0.5, chunk_size=1024, no_fallback=False):
+async def record_audio(file_path, silence_threshold=25, silence_duration=1.0, chunk_size=1024, no_fallback=False):
     """Record audio from microphone or WebRTC audio bridge"""
     
     # Check if audio bridge is enabled
@@ -1268,18 +1271,39 @@ async def record_audio(file_path, silence_threshold=25, silence_duration=0.5, ch
     max_chunks = int(max_duration * 16000 / chunk_size)  # Calculate max chunks
     chunk_count = 0
     
+    # Calculate the number of silent chunks needed before stopping
+    silence_chunks_threshold = int(silence_duration * (16000 / chunk_size))
+    
+    # Enforce a minimum silence threshold
+    minimum_threshold = 100
+    if silence_threshold < minimum_threshold:
+        print(f"Warning: Silence threshold {silence_threshold} is too low, using minimum of {minimum_threshold}")
+        silence_threshold = minimum_threshold
+        
+    # Print silence threshold information
+    print(f"Using silence_threshold: {silence_threshold}, silence_duration: {silence_duration}s ({silence_chunks_threshold} chunks)")
+    
     try:
         while chunk_count < max_chunks:  # Add a maximum duration cap
             data = stream.read(chunk_size, exception_on_overflow=False)
             frames.append(data)
             chunk_count += 1
             
-            # Detect silence
-            if detect_silence(data, threshold=silence_threshold, chunk_size=chunk_size):
+            # Calculate audio level directly
+            audio_data = np.frombuffer(data, dtype=np.int16)
+            level = np.sqrt(np.mean(np.square(audio_data.astype(np.float32))))
+            
+            # Get audio level for debugging
+            if DEBUG_AUDIO_LEVELS:
+                if chunk_count % 10 == 0:  # Print every 10th chunk to reduce spam
+                    print(f"Audio level: {level:.2f}, threshold: {silence_threshold}, silent chunks: {silent_chunks}/{silence_chunks_threshold}")
+            
+            # Detect silence using direct level comparison
+            if level < silence_threshold:
                 silent_chunks += 1
-                if silent_chunks > silence_duration * (16000 / chunk_size) and speaking_chunks > 0:
+                if silent_chunks > silence_chunks_threshold and speaking_chunks > 0:
                     # End recording if we've detected sufficient silence after speech
-                    print(f"Silence detected after speech, stopping recording after {chunk_count} chunks")
+                    print(f"Silence detected for {silence_duration}s after speech, stopping recording")
                     break
             else:
                 silent_chunks = 0
