@@ -282,7 +282,7 @@ async def process_and_play(prompt, audio_file_pth):
     else:
         # Using current character audio without printing to CLI
         pass
-    
+        
     # Check if audio bridge is enabled
     audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
     
@@ -300,13 +300,13 @@ async def process_and_play(prompt, audio_file_pth):
                 if audio_bridge_enabled:
                     try:
                         from .audio_bridge.audio_bridge_server import audio_bridge
-                        if audio_bridge.is_enabled() and audio_bridge.clients:
-                            print(f"Sending audio to {len(audio_bridge.clients)} audio bridge clients")
+                        if audio_bridge.is_enabled() and audio_bridge.clients_set:
+                            print(f"Sending audio to {len(audio_bridge.clients_set)} audio bridge clients")
                             # Read the audio file
                             with open(output_path, "rb") as f:
                                 audio_data = f.read()
                             # Send to each connected client
-                            for client_id in list(audio_bridge.clients):
+                            for client_id in list(audio_bridge.clients_set):
                                 await audio_bridge.send_audio(client_id, audio_data)
                     except Exception as e:
                         print(f"Error sending audio via bridge: {e}")
@@ -338,8 +338,8 @@ async def process_and_play(prompt, audio_file_pth):
             if audio_bridge_enabled:
                 try:
                     from .audio_bridge.audio_bridge_server import audio_bridge
-                    if audio_bridge.is_enabled() and audio_bridge.clients:
-                        print(f"Sending audio to {len(audio_bridge.clients)} audio bridge clients")
+                    if audio_bridge.is_enabled() and audio_bridge.clients_set:
+                        print(f"Sending audio to {len(audio_bridge.clients_set)} audio bridge clients")
                         # Convert MP3 to WAV for consistency
                         temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
                         audio = AudioSegment.from_mp3(output_path)
@@ -348,7 +348,7 @@ async def process_and_play(prompt, audio_file_pth):
                         with open(temp_wav_path, "rb") as f:
                             audio_data = f.read()
                         # Send to each connected client
-                        for client_id in list(audio_bridge.clients):
+                        for client_id in list(audio_bridge.clients_set):
                             await audio_bridge.send_audio(client_id, audio_data)
                 except Exception as e:
                     print(f"Error sending audio via bridge: {e}")
@@ -369,12 +369,12 @@ async def process_and_play(prompt, audio_file_pth):
         if tts is not None:
             try:
                 wav = await asyncio.to_thread(
-                tts.tts,
-                text=prompt,
-                speaker_wav=current_audio_file,  # Use the updated current character audio
-                language="en",
-                speed=float(XTTS_SPEED)
-            )
+                    tts.tts,
+                    text=prompt,
+                    speaker_wav=current_audio_file,  # Use the updated current character audio
+                    language="en",
+                    speed=float(XTTS_SPEED)
+                )
                 src_path = os.path.join(output_dir, 'output.wav')
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
@@ -384,13 +384,13 @@ async def process_and_play(prompt, audio_file_pth):
                 if audio_bridge_enabled:
                     try:
                         from .audio_bridge.audio_bridge_server import audio_bridge
-                        if audio_bridge.is_enabled() and audio_bridge.clients:
-                            print(f"Sending audio to {len(audio_bridge.clients)} audio bridge clients")
+                        if audio_bridge.is_enabled() and audio_bridge.clients_set:
+                            print(f"Sending audio to {len(audio_bridge.clients_set)} audio bridge clients")
                             # Read the audio file
                             with open(src_path, "rb") as f:
                                 audio_data = f.read()
                             # Send to each connected client
-                            for client_id in list(audio_bridge.clients):
+                            for client_id in list(audio_bridge.clients_set):
                                 await audio_bridge.send_audio(client_id, audio_data)
                     except Exception as e:
                         print(f"Error sending audio via bridge: {e}")
@@ -865,7 +865,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         except requests.exceptions.RequestException as e:
             full_response = f"Error connecting to OpenAI model: {e}"
             print(f"Debug: OpenAI error - {e}")
-            
+
     elif MODEL_PROVIDER == 'anthropic':
         if anthropic is None:
             full_response = "Error: Anthropic library not installed. Please install using: pip install anthropic"
@@ -994,7 +994,7 @@ def detect_silence(data, threshold=1000, chunk_size=1024):   # threshold is More
     audio_data = np.frombuffer(data, dtype=np.int16)
     return np.mean(np.abs(audio_data)) < threshold
 
-async def record_audio(file_path, silence_threshold=25, silence_duration=2.5, chunk_size=1024):
+async def record_audio(file_path, silence_threshold=25, silence_duration=0.5, chunk_size=1024, no_fallback=False):
     """Record audio from microphone or WebRTC audio bridge"""
     
     # Check if audio bridge is enabled
@@ -1012,7 +1012,19 @@ async def record_audio(file_path, silence_threshold=25, silence_duration=2.5, ch
             # Get client IDs from clients_set
             client_ids = list(audio_bridge.clients_set)
             if not client_ids:
-                print("No audio bridge clients connected, falling back to local audio")
+                print("No audio bridge clients connected")
+                if no_fallback:
+                    print("Fallback to local microphone disabled, returning empty audio")
+                    # Create an empty WAV file
+                    wf = wave.open(file_path, 'wb')
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)  # 16-bit
+                    wf.setframerate(16000)
+                    # Write a short silence (0.5 seconds)
+                    wf.writeframes(b'\x00\x00' * 8000)
+                    wf.close()
+                    return
+                print("Falling back to local microphone")
             else:
                 try:
                     print(f"Found {len(client_ids)} audio bridge clients: {client_ids}")
@@ -1020,9 +1032,9 @@ async def record_audio(file_path, silence_threshold=25, silence_duration=2.5, ch
                     # Create a collection for client audio chunks
                     client_audio_chunks = []
                     
-                    # Set a timeout (20 seconds)
+                    # Set a timeout (15 seconds - reduced from 20)
                     start_time = asyncio.get_event_loop().time()
-                    timeout = 20.0  # seconds
+                    timeout = 15.0  # seconds
                     
                     # Wait for audio data to arrive - show progress indicators
                     print("Waiting for WebRTC audio data...")
@@ -1093,26 +1105,37 @@ async def record_audio(file_path, silence_threshold=25, silence_duration=2.5, ch
                                     
                                     # Detailed diagnostics
                                     if elapsed > 10:
-                                        # If we're waiting too long, just break out and use local microphone
-                                        print("Waited too long for WebRTC audio, falling back to local microphone")
+                                        # If we're waiting too long, just break out
+                                        print("Waited too long for WebRTC audio")
+                                        if no_fallback:
+                                            print("Fallback to local microphone disabled, returning empty audio")
+                                            # Process whatever data we have, even if it's empty
+                                            break
+                                        print("Falling back to local microphone")
                                         break
                             
                             # Brief pause to avoid tight loop
                             await asyncio.sleep(0.1)
                             
                         except KeyboardInterrupt:
-                            print("\nWaiting for WebRTC audio cancelled by user, using local microphone")
+                            print("\nWaiting for WebRTC audio cancelled by user")
+                            if no_fallback:
+                                raise Exception("Audio recording cancelled")
+                            print("Using local microphone")
                             break
                         except asyncio.CancelledError:
-                            print("\nOperation cancelled, falling back to local microphone")
+                            print("\nOperation cancelled")
+                            if no_fallback:
+                                raise Exception("Audio recording cancelled")
+                            print("Falling back to local microphone")
                             break
                         except Exception as e:
                             print(f"Error in WebRTC audio polling: {e}")
                             await asyncio.sleep(0.1)
                     
                     # Process any audio we collected - even small amounts
-                    # For WebRTC, we consider 4000 bytes a viable minimum (about 0.125s of audio)
-                    if client_audio_chunks and sum(len(chunk) for chunk in client_audio_chunks) > 4000:
+                    # For WebRTC, we consider 2000 bytes a viable minimum (lowered from 4000)
+                    if client_audio_chunks and sum(len(chunk) for chunk in client_audio_chunks) > 2000:
                         try:
                             total_size = sum(len(chunk) for chunk in client_audio_chunks)
                             print(f"Processing {len(client_audio_chunks)} audio chunks ({total_size} bytes)")
@@ -1139,28 +1162,98 @@ async def record_audio(file_path, silence_threshold=25, silence_duration=2.5, ch
                                 return  # Exit the function, we're done
                             else:
                                 print(f"Failed to save valid WAV file (file empty or missing)")
+                                if no_fallback:
+                                    # Create an empty WAV file
+                                    wf = wave.open(file_path, 'wb')
+                                    wf.setnchannels(1)
+                                    wf.setsampwidth(2)  # 16-bit
+                                    wf.setframerate(16000)
+                                    # Write a short silence (0.5 seconds)
+                                    wf.writeframes(b'\x00\x00' * 8000)
+                                    wf.close()
+                                    return
                         except Exception as e:
                             print(f"Error processing WebRTC audio: {e}")
                             print(traceback.format_exc())
+                            if no_fallback:
+                                # Create an empty WAV file
+                                wf = wave.open(file_path, 'wb')
+                                wf.setnchannels(1)
+                                wf.setsampwidth(2)  # 16-bit
+                                wf.setframerate(16000)
+                                # Write a short silence (0.5 seconds)
+                                wf.writeframes(b'\x00\x00' * 8000)
+                                wf.close()
+                                return
                     else:
                         if client_audio_chunks:
                             total_size = sum(len(chunk) for chunk in client_audio_chunks)
                             print(f"Insufficient audio collected: {len(client_audio_chunks)} chunks ({total_size} bytes)")
                         else:
                             print("No audio chunks collected from WebRTC clients")
-                    
-                    print("No usable audio from bridge, falling back to local microphone")
+                        
+                        if no_fallback:
+                            print("Fallback to local microphone disabled, returning empty audio")
+                            # Create an empty WAV file
+                            wf = wave.open(file_path, 'wb')
+                            wf.setnchannels(1)
+                            wf.setsampwidth(2)  # 16-bit
+                            wf.setframerate(16000)
+                            # Write a short silence (0.5 seconds)
+                            wf.writeframes(b'\x00\x00' * 8000)
+                            wf.close()
+                            return
+                        print("No usable audio from bridge, falling back to local microphone")
                 except KeyboardInterrupt:
-                    print("\nOperation cancelled by user, using local microphone")
+                    print("\nOperation cancelled by user")
+                    if no_fallback:
+                        raise Exception("Audio recording cancelled")
+                    print("Using local microphone")
                 except asyncio.CancelledError:
-                    print("\nOperation cancelled, falling back to local microphone")
+                    print("\nOperation cancelled")
+                    if no_fallback:
+                        raise Exception("Audio recording cancelled")
+                    print("Falling back to local microphone")
                 except Exception as e:
                     print(f"Error in WebRTC audio bridge: {e}")
                     print(traceback.format_exc())
+                    if no_fallback:
+                        # Create an empty WAV file
+                        wf = wave.open(file_path, 'wb')
+                        wf.setnchannels(1)
+                        wf.setsampwidth(2)  # 16-bit
+                        wf.setframerate(16000)
+                        # Write a short silence (0.5 seconds)
+                        wf.writeframes(b'\x00\x00' * 8000)
+                        wf.close()
+                        return
         except Exception as e:
             print(f"Error using audio bridge: {e}")
             print(traceback.format_exc())
+            if no_fallback:
+                # Create an empty WAV file
+                wf = wave.open(file_path, 'wb')
+                wf.setnchannels(1)
+                wf.setsampwidth(2)  # 16-bit
+                wf.setframerate(16000)
+                # Write a short silence (0.5 seconds)
+                wf.writeframes(b'\x00\x00' * 8000)
+                wf.close()
+                return
             print("Falling back to local microphone")
+    
+    # If no_fallback is enabled and we've reached this point with an enabled audio bridge, we should not continue
+    if audio_bridge_enabled and no_fallback:
+        print("Error: Audio bridge enabled but failed, and fallback is disabled. This should not happen.")
+        # Create an empty WAV file
+        wf = wave.open(file_path, 'wb')
+        wf.setnchannels(1)
+        wf.setsampwidth(2)  # 16-bit
+        wf.setframerate(16000)
+        # Write a short silence (0.5 seconds)
+        wf.writeframes(b'\x00\x00' * 8000)
+        wf.close()
+        return
     
     # If we reach here, use local microphone
     print("Recording from local microphone...")

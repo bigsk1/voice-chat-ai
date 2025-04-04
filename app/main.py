@@ -16,25 +16,53 @@ from .audio_bridge.audio_bridge_router import router as audio_bridge_router
 import logging
 from threading import Thread
 import uuid
-from collections import defaultdict
 from .logger_config import logger  # Import our configured logger
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+# Set up audio bridge
+audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    if audio_bridge_enabled:
+        print("Starting WebRTC Audio Bridge server on port 8081...")
+        try:
+            from .audio_bridge.audio_bridge_server import audio_bridge
+            # Start in a background task
+            asyncio.create_task(audio_bridge.run_server())
+        except Exception as e:
+            print(f"Error initializing audio bridge: {e}")
+    
+    yield  # This yields control back to FastAPI
+    
+    # Shutdown logic
+    if audio_bridge_enabled:
+        try:
+            from .audio_bridge.audio_bridge_server import audio_bridge
+            await audio_bridge.stop_server()
+            print("WebRTC Audio Bridge server stopped")
+        except Exception as e:
+            print(f"Error stopping audio bridge: {e}")
+
+# Initialize FastAPI with the lifespan context manager
+app = FastAPI(lifespan=lifespan)
 
 # Custom logging middleware
 class LoggingMiddleware:
     def __init__(self):
         self.debug = os.getenv("DEBUG", "false").lower() == "true"
+        self.status_endpoints = [
+            "/status", 
+            "/audio-bridge/status", 
+            "/audio-bridge-status"
+        ]
         
     async def __call__(self, request: Request, call_next):
         # For status check endpoints, explicitly disable ALL logging (including FastAPI's built-in logging)
-        if request.url.path == "/audio-bridge/status":
-            # This disables the FastAPI built-in access log
-            request.state.access_log = False
-            # This is for our custom middleware
-            request.state.skip_log = True
-            response = await call_next(request)
-            return response
+        path = request.url.path
+        if any(path.endswith(endpoint) for endpoint in self.status_endpoints):
+            return await call_next(request)
         
         # Process all other requests normally
         response = await call_next(request)
@@ -49,9 +77,6 @@ class LoggingMiddleware:
 app.mount("/app/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-# Include the audio bridge router
-app.include_router(audio_bridge_router)
-
 # Add the logging middleware first
 app.middleware("http")(LoggingMiddleware())
 
@@ -63,25 +88,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the audio bridge router if enabled
-if os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true":
+# Set up WebRTC audio bridge if enabled
+if audio_bridge_enabled:
     try:
-        # Import and check availability
         from .audio_bridge.audio_bridge_router import router as audio_bridge_router
         from .audio_bridge.audio_bridge_server import audio_bridge
         
         # Register the router with the app
         app.include_router(audio_bridge_router)
         
-        print("WebRTC Audio Bridge enabled and registered on port 8080")
-        
-        # Start the audio bridge server
-        @app.on_event("startup")
-        async def startup_audio_bridge():
-            print("Starting WebRTC Audio Bridge server on port 8080...")
-            import asyncio
-            # Start in a background task
-            asyncio.create_task(audio_bridge.run_server())
+        print("WebRTC Audio Bridge enabled and registered on port 8081")
         
         # Add status endpoint
         @app.get("/audio-bridge-status")

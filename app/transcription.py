@@ -123,7 +123,7 @@ def detect_silence(data, threshold=300, chunk_size=1024):
         return True
     
 
-async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, chunk_size=1024, send_status_callback=None):
+async def record_audio(file_path, silence_threshold=512, silence_duration=0.5, chunk_size=1024, send_status_callback=None):
     """Record audio to a file path
     
     Args:
@@ -203,20 +203,13 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
             if audio_bridge.clients_set:
                 print(f"Audio bridge enabled with {len(audio_bridge.clients_set)} clients")
                 
-                # Create a direct file for audio bridge to write to
-                bridge_file = temp_filename
+                # Use no_fallback=True to prevent fallback to local microphone
+                await record_audio(temp_filename, silence_threshold=25, silence_duration=silence_duration, 
+                send_status_callback=send_status_callback, no_fallback=True)
                 
-                # Use app.record_audio to capture from audio bridge
-                # Import here to avoid circular imports
-                from .app import record_audio
-                await record_audio(bridge_file, silence_threshold=silence_threshold)
-                
-                # Check if file was created successfully
-                if os.path.exists(bridge_file) and os.path.getsize(bridge_file) > 0:
-                    print(f"Audio bridge created file: {bridge_file} ({os.path.getsize(bridge_file)} bytes)")
-                    return bridge_file
-                else:
-                    print("Audio bridge failed to create audio file, falling back to local microphone")
+                # Print a success message
+                print(f"Audio bridge created file: {temp_filename}")
+                return temp_filename
         except Exception as e:
             print(f"Error using audio bridge in enhanced mode: {e}")
             import traceback

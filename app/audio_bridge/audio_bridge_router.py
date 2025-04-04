@@ -40,22 +40,19 @@ async def get_status(request: Request, response: Response):
 
 @router.post("/register")
 async def register_client(request: Request):
-    """Register a new client with the audio bridge"""
-    if not audio_bridge.is_enabled():
-        return {"status": "error", "message": "Audio bridge is disabled"}
-    
+    """Register a client with the audio bridge"""
     try:
-        body = await request.json()
-        client_id = body.get("client_id")
+        data = await request.json()
+        client_id = data.get("client_id")
         
-        # Generate client ID if not provided
         if not client_id:
-            client_id = str(uuid.uuid4())
+            return {"status": "error", "message": "Client ID is required"}
         
-        success = await audio_bridge.register_client(client_id)
+        # Register the client
+        result = await audio_bridge.register_client(client_id)
         
-        if success:
-            return {"status": "success", "client_id": client_id}
+        if result:
+            return {"status": "success", "message": f"Client {client_id} registered"}
         else:
             return {"status": "error", "message": "Failed to register client"}
     except Exception as e:
@@ -143,37 +140,36 @@ async def receive_audio(request: Request, response: Response):
 @router.post("/offer")
 async def handle_offer(request: Request):
     """Handle WebRTC offer from client"""
-    if not audio_bridge.is_enabled():
+    if not audio_bridge.enabled:
         return {"type": "error", "message": "Audio bridge is disabled"}
     
     try:
-        # Get the request data
+        # Get request data
         data = await request.json()
+        
+        # Extract the required fields
         sdp = data.get("sdp")
         client_id = data.get("client_id")
         
-        # Check if required fields are present
+        # Validate required fields
         if not sdp or not client_id:
-            logger.warning("Missing SDP or client ID in offer request")
-            return {"type": "error", "message": "Client ID and SDP are required"}
+            return {"type": "error", "message": "SDP and client ID are required"}
         
-        # Register client if not already registered
-        if client_id not in audio_bridge.clients_set:
-            await audio_bridge.register_client(client_id)
-        
-        # Handle the WebRTC offer
-        result = await audio_bridge.handle_signaling({
+        # Handle the WebRTC offer using the signaling handler
+        message = {
             "type": "offer",
             "sdp": sdp,
             "client_id": client_id
-        })
+        }
         
+        # Process the offer through the audio bridge server
+        result = await audio_bridge.handle_signaling(message)
         return result
     except Exception as e:
         logger.error(f"Error handling offer: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        return {"type": "error", "message": f"Error handling offer: {str(e)}"}
+        return {"type": "error", "message": f"Error: {str(e)}"}
 
 @router.websocket("/ws/{client_id}")
 async def websocket_handler(websocket: WebSocket, client_id: str):
@@ -237,41 +233,24 @@ async def websocket_handler(websocket: WebSocket, client_id: str):
             pass
 
 @router.post("/test")
-async def handle_test(request: Request):
-    """Test endpoint for the audio bridge"""
-    if not audio_bridge.is_enabled():
-        return {"status": "error", "message": "Audio bridge is disabled"}
-    
+async def test_audio_bridge(request: Request):
+    """Test the audio bridge connection"""
     try:
-        body = await request.json()
-        client_id = body.get("client_id")
+        # Get the request data
+        data = await request.json()
+        client_id = data.get("client_id", "test_client")
         
-        if not client_id:
-            return {"status": "error", "message": "Client ID is required"}
+        # Get detailed status from the audio bridge
+        test_response = await audio_bridge.get_test_response(data)
         
-        # Get the current status
-        status = audio_bridge.get_status()
-        
-        # Check if this client is registered
-        client_registered = client_id in audio_bridge.clients_set
-        
-        # Check if we have any audio data from this client
-        audio_data_available = False
-        if client_id in audio_bridge.client_audio and audio_bridge.client_audio[client_id]:
-            audio_data_available = True
-        
-        # Is this client streaming?
-        is_streaming = audio_bridge.is_client_streaming.get(client_id, False)
-        
-        # Return test response
-        return {
-            "status": "success",
-            "bridge_status": status,
-            "client_registered": client_registered,
-            "audio_data_available": audio_data_available,
-            "is_streaming": is_streaming,
-            "timestamp": time.time()
-        }
+        # Return the test response
+        return test_response
     except Exception as e:
-        logger.error(f"Error in test endpoint: {e}")
-        return {"status": "error", "message": str(e)} 
+        logger.error(f"Error testing audio bridge: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {
+            "status": "error",
+            "message": f"Error testing audio bridge: {str(e)}",
+            "bridge_enabled": audio_bridge.enabled
+        } 

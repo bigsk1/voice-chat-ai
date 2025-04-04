@@ -10,13 +10,14 @@ import logging
 import json
 import threading
 from typing import Dict, Set, Optional, Any, Deque
-from collections import deque
+from collections import deque, defaultdict
 import numpy as np
 import subprocess
 import aiohttp_cors
 from aiohttp import web
 import time
 import uuid
+from queue import Queue
 
 # Try to import WebRTC components
 AIORTC_AVAILABLE = False
@@ -43,62 +44,51 @@ class AudioBridgeServer:
     """
     
     def __init__(self):
-        """Initialize audio bridge server"""
-        # Server state
-        self.enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
-        self.port = int(os.getenv("AUDIO_BRIDGE_PORT", "8080"))
+        """Initialize the audio bridge"""
         self.clients_set = set()
-        
-        # WebRTC connections
-        self.connections = {}  # client_id -> RTCPeerConnection
-        self.data_channels = {}  # client_id -> RTCDataChannel
-        
-        # Audio storage
-        self.client_audio = {}  # client_id -> deque of audio chunks
-        self.audio_pcm = {}  # client_id -> deque of PCM chunks
-        
-        # Tracking
-        self.is_client_streaming = {}  # client_id -> bool
-        self.last_audio_time = {}  # client_id -> timestamp
-        
-        # Audio processors
-        self.track_processors = {}  # client_id -> AudioTrackProcessor
-        
-        # TLS/SSL
+        self.client_audio = defaultdict(deque)
+        self.audio_pcm = defaultdict(deque)
+        self.connections = {}
+        self.data_channels = {}
+        self.ws_connections = {}
+        self.track_processors = {}
+        self.last_audio_time = {}
+        self.is_client_streaming = {}
+        self.message_queue = Queue()
+        self.enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+        self.port = int(os.getenv("AUDIO_BRIDGE_PORT", "8081"))  # Use 8081 as default
         self.ssl_context = None
+        
+        # Create certificate if using HTTPS
+        if os.getenv("ENABLE_HTTPS", "false").lower() == "true":
+            self.ssl_context = self._create_ssl_context()
+            
+        # Check for FFmpeg
+        try:
+            subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+            logger.info("FFmpeg is available for audio bridge")
+            self.ffmpeg_available = True
+        except (subprocess.SubprocessError, FileNotFoundError):
+            logger.warning("FFmpeg is not available, some audio processing features may be limited")
+            self.ffmpeg_available = False
+        
+        # Initialize WebRTC media relay if available
+        if AIORTC_AVAILABLE:
+            try:
+                logger.info("Initializing WebRTC MediaRelay for audio bridge")
+                self.relay = MediaRelay()
+                logger.info("MediaRelay initialized successfully")
+            except Exception as e:
+                logger.error(f"Error initializing MediaRelay: {e}")
+                self.relay = None
+        else:
+            self.relay = None
         
         # Debug mode
         self.debug_mode = DEBUG_MODE
         
         # Initialize event loop
         self.loop = None
-        
-        if AIORTC_AVAILABLE:
-            # Try to detect if ffmpeg is installed
-            try:
-                process = subprocess.Popen(
-                    ["ffmpeg", "-version"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-                process.communicate()
-                if process.returncode == 0:
-                    logger.info("FFmpeg is available for audio bridge")
-                else:
-                    logger.warning("FFmpeg check failed - some audio features may not work")
-            except Exception as e:
-                logger.warning(f"Error checking FFmpeg: {e} - some audio features may not work")
-            
-            # Set up the media relay for WebRTC
-            logger.info("Initializing WebRTC MediaRelay for audio bridge")
-            try:
-                self.relay = MediaRelay()
-                logger.info("MediaRelay initialized successfully")
-            except Exception as e:
-                logger.error(f"Error initializing MediaRelay: {e}")
-        else:
-            logger.warning("aiortc is not available - WebRTC audio bridge will not work")
     
     async def register_client(self, client_id: str) -> bool:
         """Register a new client with the server"""
@@ -208,127 +198,78 @@ class AudioBridgeServer:
                                 
                                 logger.info(f"Successfully set up audio track processor for client {client_id}")
                                 
-                                # Add a task to process audio frames
-                                asyncio.create_task(self.process_audio_frames(client_id, processor))
-                                
-                                # Hook up the track to processor
-                                @track.on("ended")
-                                async def on_ended():
-                                    logger.info(f"Track ended for {client_id}")
-                                    self.is_client_streaming[client_id] = False
                             except Exception as e:
                                 logger.error(f"Error setting up audio track: {e}")
-                                import traceback
-                                logger.error(traceback.format_exc())
-                    
-                # Set remote description for the peer connection
-                await peer_connection.setRemoteDescription(
-                    RTCSessionDescription(sdp=sdp, type="offer")
-                )
                 
-                # Create answer
-                answer = await peer_connection.createAnswer()
-                await peer_connection.setLocalDescription(answer)
-                
-                logger.info(f"Created answer for {client_id}")
-                return {
-                    "type": "answer",
-                    "sdp": peer_connection.localDescription.sdp
-                }
-            
-            elif message_type == "ice-candidate":
-                # Handle ICE candidate
-                if not AIORTC_AVAILABLE:
-                    logger.warning("Received ICE candidate but aiortc is not available")
-                    return {"type": "ack"}
-                
+                # Set remote description (the offer)
                 try:
-                    if client_id in self.connections:
-                        peer_connection = self.connections[client_id]
-                        candidate = message.get("candidate")
-                        
-                        if candidate:
-                            try:
-                                # Try to create an RTCIceCandidate from the candidate object
-                                # The client now sends a properly formatted object with sdpCandidate
-                                logger.info(f"Processing ICE candidate for {client_id}")
-                                
-                                if isinstance(candidate, dict):
-                                    # Create RTCIceCandidate with proper parameters
-                                    # Parse the SDP candidate string to extract required parameters
-                                    candidate_str = candidate.get("sdpCandidate", candidate.get("candidate", ""))
-                                    sdpMid = candidate.get("sdpMid", "")
-                                    sdpMLineIndex = candidate.get("sdpMLineIndex", 0)
-                                    
-                                    logger.info(f"Creating ICE candidate with: sdpMid={sdpMid}, sdpMLineIndex={sdpMLineIndex}, candidate={candidate_str}")
-                                    
-                                    try:
-                                        # Parse the SDP candidate string to extract components
-                                        # Format: candidate:foundation component protocol priority ip port type ...
-                                        if candidate_str and candidate_str.startswith("candidate:"):
-                                            parts = candidate_str.split()
-                                            if len(parts) >= 8:
-                                                foundation = parts[0].split(':')[1]
-                                                component = int(parts[1])
-                                                protocol = parts[2]
-                                                priority = int(parts[3])
-                                                ip = parts[4]
-                                                port = int(parts[5])
-                                                candidate_type = parts[7]
-                                                
-                                                logger.info(f"Parsed candidate: foundation={foundation}, component={component}, protocol={protocol}, priority={priority}, ip={ip}, port={port}, type={candidate_type}")
-                                                
-                                                # Create the RTCIceCandidate with the extracted parameters
-                                                ice_candidate = RTCIceCandidate(
-                                                    foundation=foundation,
-                                                    component=component,
-                                                    protocol=protocol,
-                                                    priority=priority,
-                                                    ip=ip,
-                                                    port=port,
-                                                    type=candidate_type,
-                                                    sdpMid=sdpMid,
-                                                    sdpMLineIndex=sdpMLineIndex
-                                                )
-                                                
-                                                await peer_connection.addIceCandidate(ice_candidate)
-                                                logger.info(f"Added ICE candidate for {client_id}")
-                                            else:
-                                                logger.error(f"Invalid candidate format, not enough parts: {candidate_str}")
-                                                return {"type": "error", "message": "Invalid ICE candidate format"}
-                                        else:
-                                            logger.error(f"Invalid candidate format, does not start with 'candidate:': {candidate_str}")
-                                            return {"type": "error", "message": "Invalid ICE candidate format"}
-                                    
-                                    except Exception as e:
-                                        logger.error(f"Error creating ICE candidate: {e}")
-                                        import traceback
-                                        logger.error(traceback.format_exc())
-                                        return {"type": "error", "message": f"Error creating ICE candidate: {str(e)}"}
-                                else:
-                                    logger.warning(f"Unexpected candidate type: {type(candidate)}")
-                                    return {"type": "error", "message": "Invalid ICE candidate format"}
-                            except Exception as e:
-                                logger.error(f"Error processing ICE candidate: {e}")
-                                import traceback
-                                logger.error(traceback.format_exc())
-                                return {"type": "error", "message": f"Error processing ICE candidate: {str(e)}"}
-                        
-                    return {"type": "ack"}
+                    offer = RTCSessionDescription(sdp=sdp, type="offer")
+                    await peer_connection.setRemoteDescription(offer)
+                    
+                    # Create answer
+                    answer = await peer_connection.createAnswer()
+                    await peer_connection.setLocalDescription(answer)
+                    
+                    # Return the answer
+                    return {
+                        "type": "answer",
+                        "sdp": peer_connection.localDescription.sdp
+                    }
                 except Exception as e:
-                    logger.error(f"Error handling ICE candidate: {e}")
+                    logger.error(f"Error creating answer for {client_id}: {e}")
                     import traceback
                     logger.error(traceback.format_exc())
-                    return {"type": "error", "message": f"Error handling ICE candidate: {str(e)}"}
-            
-            elif message_type == "disconnect":
-                # Handle disconnect request
-                await self.unregister_client(client_id)
-                return {"type": "disconnected"}
-            
-            return {"type": "error", "message": f"Unsupported message type: {message_type}"}
+                    return {"type": "error", "message": f"Error creating answer: {str(e)}"}
+                    
+            elif message_type == "ice-candidate":
+                logger.info(f"Processing ICE candidate from {client_id}")
+                candidate = message.get("candidate")
+                
+                if not candidate:
+                    return {"type": "error", "message": "Candidate data is required"}
+                
+                # Get the peer connection
+                peer_connection = self.connections.get(client_id)
+                if not peer_connection:
+                    return {"type": "error", "message": "No connection found for this client"}
+                
+                # Handle different candidate formats
+                try:
+                    # Check for sdpCandidate format - this is our custom format
+                    if isinstance(candidate, dict) and "sdpCandidate" in candidate:
+                        ice_candidate = RTCIceCandidate(
+                            sdpMid=candidate.get("sdpMid"),
+                            sdpMLineIndex=candidate.get("sdpMLineIndex"),
+                            candidate=candidate.get("sdpCandidate")
+                        )
+                    # Check for standard format
+                    elif isinstance(candidate, dict) and "candidate" in candidate:
+                        ice_candidate = RTCIceCandidate(
+                            sdpMid=candidate.get("sdpMid"),
+                            sdpMLineIndex=candidate.get("sdpMLineIndex"),
+                            candidate=candidate.get("candidate")
+                        )
+                    # Direct use of the candidate object
+                    else:
+                        ice_candidate = RTCIceCandidate(**candidate)
+                    
+                    await peer_connection.addIceCandidate(ice_candidate)
+                    logger.info(f"Added ICE candidate for {client_id}")
+                    return {"type": "success", "message": "ICE candidate added"}
+                except TypeError as e:
+                    # Log details about the candidate data to debug the TypeError
+                    logger.error(f"TypeError adding ICE candidate for {client_id}: {e}")
+                    logger.error(f"Candidate data: {candidate}")
+                    return {"type": "error", "message": f"Invalid ICE candidate format: {str(e)}"}
+                except Exception as e:
+                    logger.error(f"Error adding ICE candidate for {client_id}: {e}")
+                    return {"type": "error", "message": f"Error adding ICE candidate: {str(e)}"}
+                    
+            else:
+                logger.warning(f"Unhandled message type '{message_type}' from {client_id}")
+                return {"type": "error", "message": f"Unhandled message type: {message_type}"}
         else:
-            logger.warning("Received invalid message format")
+            logger.warning(f"Received non-dict message: {message}")
             return {"type": "error", "message": "Invalid message format"}
         
     async def send_audio(self, client_id: str, audio_data: bytes) -> bool:
@@ -426,8 +367,8 @@ class AudioBridgeServer:
             logger.error(f"Error processing audio: {e}")
             return False
         
-    def is_enabled(self) -> bool:
-        """Check if the audio bridge is enabled"""
+    def is_enabled(self):
+        """Return whether the audio bridge is enabled"""
         return self.enabled
         
     def get_status(self) -> Dict[str, Any]:
@@ -639,16 +580,16 @@ class AudioBridgeServer:
             # Check if we have SSL context for HTTPS
             if self.ssl_context:
                 logger.info("Using SSL for WebRTC audio bridge")
-                runner = web.AppRunner(app)
-                await runner.setup()
-                site = web.TCPSite(runner, "0.0.0.0", self.port, ssl_context=self.ssl_context)
+                self.runner = web.AppRunner(app)
+                await self.runner.setup()
+                site = web.TCPSite(self.runner, "0.0.0.0", self.port, ssl_context=self.ssl_context)
                 await site.start()
                 logger.info(f"WebRTC audio bridge server started on port {self.port} with SSL")
             else:
                 # No SSL
-                runner = web.AppRunner(app)
-                await runner.setup()
-                site = web.TCPSite(runner, "0.0.0.0", self.port)
+                self.runner = web.AppRunner(app)
+                await self.runner.setup()
+                site = web.TCPSite(self.runner, "0.0.0.0", self.port)
                 await site.start()
                 logger.info(f"WebRTC audio bridge server started on port {self.port} (no SSL)")
             
@@ -660,8 +601,44 @@ class AudioBridgeServer:
         except Exception as e:
             logger.error(f"Error in WebRTC audio bridge server: {e}")
         finally:
-            await runner.cleanup()
+            if hasattr(self, 'runner'):
+                await self.runner.cleanup()
             logger.info("WebRTC audio bridge server stopped")
+            
+    async def stop_server(self):
+        """Stop the WebRTC audio bridge server"""
+        logger.info("Stopping WebRTC audio bridge server...")
+        
+        # Close all peer connections
+        for client_id, conn in list(self.connections.items()):
+            try:
+                await conn.close()
+                logger.info(f"Closed peer connection for client {client_id}")
+            except Exception as e:
+                logger.error(f"Error closing peer connection for client {client_id}: {e}")
+        
+        # Clear all collections
+        self.connections.clear()
+        self.data_channels.clear()
+        self.ws_connections.clear()
+        self.track_processors.clear()
+        self.clients_set.clear()
+        self.client_audio.clear()
+        self.audio_pcm.clear()
+        self.last_audio_time.clear()
+        self.is_client_streaming.clear()
+        
+        # Clean up runner if it exists
+        if hasattr(self, 'runner') and self.runner is not None:
+            try:
+                await self.runner.cleanup()
+                logger.info("Application runner cleaned up")
+                self.runner = None
+            except Exception as e:
+                logger.error(f"Error cleaning up application runner: {e}")
+        
+        logger.info("WebRTC audio bridge server stopped")
+        return True
 
     async def _handle_test_request(self, request):
         """Private helper to properly handle test requests"""
@@ -756,7 +733,7 @@ class AudioBridgeServer:
                                 logger.info(f"Audio frame {processor.frame_count} from client {client_id}, level: {level:.2f}")
                             
                             # If the audio level is very low, log a warning occasionally
-                            if level < 50 and processor.frame_count % 100 == 0:
+                            if level < 25 and processor.frame_count % 100 == 0:
                                 logger.warning(f"Very low audio level detected from client {client_id}: {level:.2f}")
                         except Exception as e:
                             if processor.frame_count % 100 == 0:
@@ -852,7 +829,7 @@ class AudioTrackProcessor(MediaStreamTrack):
                     logger.info(f"Audio level from client {self.client_id}: {level:.2f}")
                     
                     # If the audio level is very low, log a warning
-                    if level < 50:
+                    if level < 25:
                         logger.warning(f"Very low audio level detected from client {self.client_id}: {level:.2f}")
                     
                     self.last_log_time = now

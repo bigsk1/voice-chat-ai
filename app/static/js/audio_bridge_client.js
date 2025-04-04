@@ -59,7 +59,7 @@ class AudioBridgeClient {
                                 if (granted) {
                                     this.isInitialized = true;
                                     this.isConnected = true;
-                                    this.setupWebSocket();
+                                    this._initWebSocket();
                                     
                                     // Also establish the peer connection
                                     this.createPeerConnection();
@@ -337,6 +337,24 @@ class AudioBridgeClient {
     }
     
     /**
+     * Generate a unique client ID
+     * @private
+     * @returns {string} A unique ID for this client
+     */
+    _generateClientId() {
+        // Generate a random ID using timestamp and random number
+        const timestamp = new Date().getTime();
+        const random = Math.floor(Math.random() * 1000000);
+        const clientId = `client_${timestamp}_${random}`;
+        
+        // Store the client ID in local storage for persistence
+        localStorage.setItem('audio_bridge_client_id', clientId);
+        
+        console.log(`Generated new client ID: ${clientId}`);
+        return clientId;
+    }
+    
+    /**
      * Initialize the client
      */
     async initialize() {
@@ -528,36 +546,62 @@ class AudioBridgeClient {
             this.wsConnection = null;
         }
         
+        // Generate a client ID if we don't have one
+        if (!this.clientId) {
+            this.clientId = 'client_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+            console.log('Generated new client ID: ' + this.clientId);
+            // Save to local storage
+            localStorage.setItem('audio_bridge_client_id', this.clientId);
+        }
+        
+        // Construct the WebSocket URL
         let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let wsPort = window.location.protocol === 'https:' ? '8080' : '8080';  // Use 8080 for both HTTP/HTTPS
+        let wsPort = '8081';  // Use port 8081 for the audio bridge
         let wsUrl = `${protocol}//${window.location.hostname}:${wsPort}/audio-bridge/ws/${this.clientId}`;
         
-        this.wsConnection = new WebSocket(wsUrl);
+        console.log('Connecting to WebSocket:', wsUrl);
         
-        this.wsConnection.onopen = () => {
-            console.log('WebSocket connection opened');
-            this.wsConnected = true;
+        try {
+            this.wsConnection = new WebSocket(wsUrl);
             
-            // Execute any queued messages
-            this._processQueuedMessages();
-        };
-        
-        this.wsConnection.onclose = () => {
-            console.log('WebSocket connection closed');
-            this.wsConnected = false;
+            this.wsConnection.onopen = () => {
+                console.log('WebSocket connection opened');
+                this.wsConnected = true;
+                
+                // Execute any queued messages
+                this._processQueuedMessages();
+            };
             
-            // Try to reconnect after a delay
-            setTimeout(() => this._initWebSocket(), 2000);
-        };
-        
-        this.wsConnection.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-        
-        this.wsConnection.onmessage = (event) => {
-            console.log('Received WebSocket message:', event.data);
-            this._handleSignalingMessage(event.data);
-        };
+            this.wsConnection.onclose = (event) => {
+                console.log('WebSocket connection closed', event.code, event.reason);
+                this.wsConnected = false;
+                
+                // Try to reconnect after a delay, unless this was a clean close
+                if (event.code !== 1000) {
+                    console.log('Attempting to reconnect WebSocket in 2 seconds...');
+                    setTimeout(() => this._initWebSocket(), 2000);
+                }
+            };
+            
+            this.wsConnection.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                // Error will be followed by onclose event, so no need to reconnect here
+            };
+            
+            this.wsConnection.onmessage = (event) => {
+                console.log('Received WebSocket message:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    this._handleSignalingMessage(data);
+                } catch (e) {
+                    console.error('Error parsing WebSocket message:', e);
+                }
+            };
+        } catch (error) {
+            console.error('Error creating WebSocket connection:', error);
+            // Try to reconnect after a longer delay
+            setTimeout(() => this._initWebSocket(), 5000);
+        }
     }
     
     /**
@@ -1226,177 +1270,100 @@ class AudioBridgeClient {
     }
     
     /**
-     * Create the WebRTC peer connection and set up data channels
+     * Create WebRTC peer connection
      */
     async createPeerConnection() {
-        if (this.peerConnection) {
-            // Close existing connection
-            this.peerConnection.close();
-            this.peerConnection = null;
+        if (!this.clientId) {
+            console.error('Cannot create peer connection without client ID');
+            return false;
         }
         
         try {
-            console.log('Creating WebRTC peer connection');
-            
-            // Better ICE servers configuration with multiple STUN servers
+            // Define ICE servers for WebRTC
             const iceServers = [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
+                { 
+                    urls: [
+                        'stun:stun.l.google.com:19302',
+                        'stun:stun1.l.google.com:19302',
+                        'stun:stun2.l.google.com:19302'
+                    ] 
+                }
             ];
             
-            // Create the RTCPeerConnection with additional configurations
+            // Create peer connection
             this.peerConnection = new RTCPeerConnection({
-                iceServers: iceServers,
-                iceTransportPolicy: 'all',
-                iceCandidatePoolSize: 10,
-                bundlePolicy: 'max-bundle',
-                rtcpMuxPolicy: 'require'
+                iceServers: iceServers
             });
             
+            // Log connection state changes for debugging
+            this.peerConnection.onconnectionstatechange = () => {
+                console.log(`Connection state: ${this.peerConnection.connectionState}`);
+                
+                if (this.peerConnection.connectionState === 'connected') {
+                    console.log('WebRTC peer connection established');
+                    this.isConnected = true;
+                    
+                    if (this.onStatusChange) {
+                        this.onStatusChange({
+                            enabled: this.isEnabled,
+                            connected: this.isConnected,
+                            status: 'connected'
+                        });
+                    }
+                } else if (this.peerConnection.connectionState === 'failed' || 
+                          this.peerConnection.connectionState === 'disconnected' ||
+                          this.peerConnection.connectionState === 'closed') {
+                    console.log('WebRTC peer connection closed');
+                    this.isConnected = false;
+                    
+                    if (this.onStatusChange) {
+                        this.onStatusChange({
+                            enabled: this.isEnabled,
+                            connected: this.isConnected,
+                            status: 'disconnected'
+                        });
+                    }
+                }
+            };
+            
+            // Handle ICE candidates
+            this.peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log('Generated ICE candidate:', event.candidate);
+                    
+                    // Format the candidate correctly for aiortc
+                    const formattedCandidate = {
+                        sdpMid: event.candidate.sdpMid,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        sdpCandidate: event.candidate.candidate  // This is the key change - use sdpCandidate
+                    };
+                    
+                    // Send the ICE candidate to the server
+                    this.sendSignalingMessage({
+                        type: 'ice-candidate',
+                        candidate: formattedCandidate
+                    });
+                }
+            };
+            
             // Create data channel for control messages
-            this.dataChannel = this.peerConnection.createDataChannel('audio_bridge', {
-                ordered: true,
-                maxRetransmits: 10
+            this.dataChannel = this.peerConnection.createDataChannel('audio', {
+                ordered: true
             });
             
             this.dataChannel.onopen = () => {
                 console.log('Data channel opened');
-                this.dataChannelOpen = true;
-                
-                // Send a "hello" message to confirm connection
-                this.dataChannel.send(JSON.stringify({
-                    type: 'hello',
-                    client_id: this.clientId,
-                    timestamp: Date.now()
-                }));
             };
             
             this.dataChannel.onclose = () => {
                 console.log('Data channel closed');
-                this.dataChannelOpen = false;
-            };
-            
-            this.dataChannel.onerror = (error) => {
-                console.error('Data channel error:', error);
             };
             
             this.dataChannel.onmessage = (event) => {
-                console.log('Received message on data channel:', event.data);
-                // Handle data channel messages here
+                console.log('Received data channel message:', event.data);
             };
             
-            // Add local audio track if available
-            if (this.localStream) {
-                const audioTracks = this.localStream.getAudioTracks();
-                if (audioTracks.length > 0) {
-                    console.log('Adding audio track to peer connection');
-                    
-                    // Add the audio track to the peer connection
-                    this.peerConnection.addTrack(audioTracks[0], this.localStream);
-                    
-                    // Make sure the track is enabled
-                    audioTracks[0].enabled = true;
-                    console.log('Audio track added and enabled');
-                } else {
-                    console.warn('No audio tracks available from your microphone');
-                    
-                    // Create a minimal audio track on the fly if nothing else works
-                    this._createEmergencyAudioTrack();
-                }
-            }
-            
-            // Set up more detailed event logging
-            this.peerConnection.onicegatheringstatechange = () => {
-                console.log(`ICE gathering state changed to: ${this.peerConnection.iceGatheringState}`);
-                // If we're done gathering candidates, log that we've completed the process
-                if (this.peerConnection.iceGatheringState === 'complete') {
-                    console.log('Completed gathering ICE candidates');
-                }
-            };
-            
-            this.peerConnection.oniceconnectionstatechange = () => {
-                console.log(`ICE connection state changed to: ${this.peerConnection.iceConnectionState}`);
-                
-                // Add more detailed logs based on specific states
-                switch (this.peerConnection.iceConnectionState) {
-                    case 'connected':
-                        console.log('ICE connected - WebRTC connection established');
-                        break;
-                    case 'failed':
-                        console.error('ICE connection failed - check network or firewall settings');
-                        if (this.onError) {
-                            this.onError('WebRTC connection failed. This may be due to network restrictions or firewall settings.');
-                        }
-                        break;
-                    case 'disconnected':
-                        console.warn('ICE connection disconnected - connection may recover');
-                        break;
-                    case 'closed':
-                        console.log('ICE connection closed');
-                        break;
-                }
-            };
-            
-            // Handle connection state changes
-            this.peerConnection.onconnectionstatechange = () => {
-                console.log(`WebRTC connection state: ${this.peerConnection.connectionState}`);
-                
-                if (this.peerConnection.connectionState === 'connected') {
-                    console.log('WebRTC connection established');
-                    
-                    // We're fully connected now, update status
-                    if (this.onStatusChange) {
-                        this.onStatusChange({
-                            enabled: this.isEnabled,
-                            connected: true,
-                            status: 'active'
-                        });
-                    }
-                } else if (this.peerConnection.connectionState === 'failed' || 
-                           this.peerConnection.connectionState === 'disconnected' || 
-                           this.peerConnection.connectionState === 'closed') {
-                    console.warn(`WebRTC connection ${this.peerConnection.connectionState}`);
-                    
-                    // Try to reconnect if we were previously connected
-                    if (this.isConnected) {
-                        console.log('Attempting to reconnect WebRTC connection');
-                        setTimeout(() => this.reconnect(), 1000);
-                    }
-                }
-            };
-            
-            // Log all ICE candidates for debugging
-            this.peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    // Log detailed candidate information
-                    console.log(`ICE candidate: ${event.candidate.candidate}`);
-                    
-                    // For aiortc compatibility, we need to use the correct format
-                    // The server will parse the candidate string to extract the required parameters
-                    if (event.candidate.candidate && event.candidate.candidate.startsWith('candidate:')) {
-                        // Extract only the needed properties from the ICE candidate
-                        const candidateObj = {
-                            sdpMid: event.candidate.sdpMid,
-                            sdpMLineIndex: event.candidate.sdpMLineIndex,
-                            sdpCandidate: event.candidate.candidate
-                        };
-                        
-                        this.sendSignalingMessage({
-                            type: 'ice-candidate', 
-                            candidate: candidateObj
-                        });
-                    } else {
-                        console.warn(`Skipping invalid ICE candidate format: ${event.candidate.candidate}`);
-                    }
-                } else {
-                    console.log('All ICE candidates have been collected');
-                }
-            };
-            
-            // Create offer
+            // Create offer and set local description
             const offer = await this.peerConnection.createOffer({
                 offerToReceiveAudio: false,  // We're sending audio only
                 offerToReceiveVideo: false
@@ -1406,7 +1373,7 @@ class AudioBridgeClient {
             
             // Send offer to server
             const protocol = window.location.protocol; // http: or https:
-            const audioPort = "8080"; // Use 8080 for audio bridge
+            const audioPort = "8081"; // Changed from 8080 to 8081 for audio bridge
             const audioHost = window.location.hostname;
             const offerUrl = `${protocol}//${audioHost}:${audioPort}/audio-bridge/offer`;
             
