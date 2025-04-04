@@ -463,29 +463,22 @@ class AudioBridgeServer:
         """Return whether the audio bridge is enabled"""
         return self.enabled
         
-    def get_status(self) -> Dict[str, Any]:
-        """Get the current status of the audio bridge"""
+    def get_status(self):
+        """Get the status of the audio bridge"""
         active_clients = 0
-        streaming_clients = 0
         
-        # Count active clients based on recent audio reception
-        now = asyncio.get_event_loop().time()
-        for client_id, last_time in self.last_audio_time.items():
-            # Client is active if we've received audio in the last 30 seconds
-            if now - last_time < 30:
+        # Count active clients (those that are streaming audio)
+        for client_id in self.clients_set:
+            if client_id in self.is_client_streaming and self.is_client_streaming[client_id]:
                 active_clients += 1
-                
-        # Count streaming clients
-        for client_id, is_streaming in self.is_client_streaming.items():
-            if is_streaming:
-                streaming_clients += 1
-                
+        
         return {
             "status": "active" if self.enabled else "disabled",
+            "enabled": self.enabled,
             "total_clients": len(self.clients_set),
             "active_clients": active_clients,
-            "streaming_clients": streaming_clients,
-            "webrtc_available": AIORTC_AVAILABLE
+            "connected": active_clients > 0 or len(self.clients_set) > 0,
+            "clients": list(self.clients_set)
         }
 
     async def handle_status(self, request):

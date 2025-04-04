@@ -220,18 +220,53 @@ if audio_bridge_enabled:
         
         print("WebRTC Audio Bridge enabled and registered on port 8081")
         
-        # Add status endpoint
-        @app.get("/audio-bridge-status")
-        async def audio_bridge_status():
-            """Get WebRTC audio bridge status"""
-            if audio_bridge:
-                status = audio_bridge.get_status()
-                return status
-            else:
-                return {"status": "unavailable", "message": "Audio bridge is not initialized"}
-                
     except ImportError as e:
         print(f"WebRTC Audio Bridge enabled but failed to import: {e}")
+
+# This endpoint is available regardless of whether audio bridge is enabled
+@app.get("/audio-bridge/status")
+async def get_audio_bridge_status():
+    """Get the status of the audio bridge server"""
+    
+    # The environment variable that controls if audio bridge is enabled
+    audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+    
+    # If audio bridge is disabled, return a proper response instead of 404
+    if not audio_bridge_enabled:
+        return {
+            "enabled": False,
+            "status": "disabled",
+            "message": "Audio bridge is disabled. Set ENABLE_AUDIO_BRIDGE=true to enable.",
+            "total_clients": 0,
+            "active_clients": 0
+        }
+    
+    try:
+        from .audio_bridge.audio_bridge_server import audio_bridge
+        
+        # Get the list of clients
+        clients = audio_bridge.clients_set
+        active_clients = sum(1 for c in clients if audio_bridge.is_client_streaming.get(c, False))
+        
+        return {
+            "enabled": True,
+            "status": "active",
+            "total_clients": len(clients),
+            "active_clients": active_clients,
+            "clients": list(clients)
+        }
+    except Exception as e:
+        import traceback
+        logger.error(f"Error getting audio bridge status: {e}")
+        logger.error(traceback.format_exc())
+        
+        return {
+            "enabled": False,
+            "status": "error",
+            "message": f"Error getting audio bridge status: {str(e)}",
+            "total_clients": 0,
+            "active_clients": 0
+        }
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):

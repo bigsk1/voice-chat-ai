@@ -230,79 +230,77 @@ class AudioBridgeClient {
     }
     
     /**
-     * Check if the audio bridge is enabled
+     * Check if the audio bridge is enabled on the server
      */
     async checkEnabled() {
-        if (this.checkingStatus) {
-            return this.isEnabled;
-        }
-        
-        this.checkingStatus = true;
-        this.lastStatusCheck = Date.now();
-        
         try {
             const response = await fetch('/audio-bridge/status');
+            
+            // If status is 404, the audio bridge is disabled on the server
+            if (response.status === 404) {
+                console.log('Audio bridge is disabled on the server');
+                this.isEnabled = false;
+                // Update status indicator if callback exists
+                if (this.onStatusChange) {
+                    this.onStatusChange({
+                        enabled: false,
+                        connected: false,
+                        status: 'disabled',
+                        fallback: false
+                    });
+                }
+                return false;
+            }
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
             
             const data = await response.json();
+            this.isEnabled = data.enabled === true;
             
-            // Only log status occasionally to reduce console spam
-            if (Math.random() < 0.1) { // Only log about 10% of checks
-                console.log('Audio bridge status check result:', data);
-            }
+            // Only update the last check time on successful checks
+            this.lastStatusCheck = Date.now();
             
-            // Set isEnabled based on the 'status' field being 'active'
-            this.isEnabled = data.status === 'active';
-            
-            // Set a long interval before next check can run (3 minutes minimum)
-            this.statusCheckMinInterval = 180000; // 3 minutes minimum
-            
-            // Important: If we have a client ID, we should consider ourselves connected
-            // even if the server doesn't see us as an active client yet
-            const wasConnected = this.isConnected;
-            const hasActiveClient = data.active_clients > 0;
-            
-            // Only update connection status if we have consistent information
-            if (this.clientId && this.isInitialized) {
-                // If we were connected and have a client ID, maintain that state
-                // This prevents flickering between states
-                this.isConnected = true;
-                
-                // If server reports no active clients but we think we're connected, ping to remind server
-                if (!hasActiveClient && wasConnected) {
-                    console.log('Pinging server to maintain connection state');
-                    this._pingServer();
-                }
-            } else if (!this.clientId) {
-                // If we don't have a client ID, we're definitely not connected
-                this.isConnected = false;
-            }
-            
+            // Update status indicator if callback exists
             if (this.onStatusChange) {
                 this.onStatusChange({
                     enabled: this.isEnabled,
                     connected: this.isConnected,
                     status: data.status,
-                    activeClients: data.active_clients,
-                    totalClients: data.total_clients,
                     fallback: this.useFallbackMode
                 });
             }
             
-            this.checkingStatus = false;
             return this.isEnabled;
         } catch (error) {
             console.error('Error checking audio bridge status:', error);
-            this.isEnabled = false;
             
-            if (this.onError) {
-                this.onError(`Failed to check audio bridge status: ${error.message}`);
+            // If the error is a 404, it means the audio bridge is disabled
+            if (error.message && error.message.includes('404')) {
+                this.isEnabled = false;
+                if (this.onStatusChange) {
+                    this.onStatusChange({
+                        enabled: false,
+                        connected: false,
+                        status: 'disabled',
+                        fallback: false
+                    });
+                }
+                return false;
             }
             
-            this.checkingStatus = false;
-            return false;
+            // For other errors, don't change the enabled state
+            if (this.onStatusChange) {
+                this.onStatusChange({
+                    enabled: this.isEnabled,
+                    connected: this.isConnected,
+                    status: 'error',
+                    fallback: this.useFallbackMode,
+                    error: error.message
+                });
+            }
+            return this.isEnabled;
         }
     }
     
