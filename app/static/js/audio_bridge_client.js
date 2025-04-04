@@ -42,14 +42,22 @@ class AudioBridgeClient {
         this.clientId = localStorage.getItem('audio_bridge_client_id');
         if (this.clientId) {
             console.log(`Restored audio bridge client ID from storage: ${this.clientId}`);
-            // Mark as already connected if we have a client ID
+            // Mark as potentially connected if we have a client ID
+            // We'll verify this when we check if the bridge is enabled
             this.isInitialized = true;
-            this.isConnected = true;
         }
         
         // Do an initial status check after loading
         setTimeout(() => {
             this.checkEnabled().then(enabled => {
+                if (!enabled) {
+                    console.log('Audio bridge is disabled, operating in fallback mode');
+                    this.useFallbackMode = true;
+                    this.isConnected = false;
+                    this.isInitialized = false;
+                    return;
+                }
+                
                 if (enabled && this.clientId) {
                     // If we have a client ID and bridge is enabled, try to reconnect
                     console.log('Attempting to reconnect to audio bridge with saved client ID');
@@ -133,6 +141,12 @@ class AudioBridgeClient {
                         // If recording state changed, update our state
                         if (isRecording !== this.isRecording) {
                             this.isRecording = isRecording;
+                            
+                            // Only attempt to start/stop recording if the audio bridge is enabled
+                            if (!this.isEnabled) {
+                                console.log('Audio bridge is disabled, using local microphone instead');
+                                return;
+                            }
                             
                             if (this.isRecording && this.isConnected) {
                                 // If we've started recording and we're connected, activate the audio bridge
@@ -290,17 +304,19 @@ class AudioBridgeClient {
                 return false;
             }
             
-            // For other errors, don't change the enabled state
+            // For other errors, assume disabled for safety
+            this.isEnabled = false;
+            
             if (this.onStatusChange) {
                 this.onStatusChange({
-                    enabled: this.isEnabled,
-                    connected: this.isConnected,
+                    enabled: false,
+                    connected: false,
                     status: 'error',
-                    fallback: this.useFallbackMode,
+                    fallback: true,
                     error: error.message
                 });
             }
-            return this.isEnabled;
+            return false;
         }
     }
     
@@ -665,6 +681,12 @@ class AudioBridgeClient {
      * Record audio from the microphone and send it to the server using WebRTC
      */
     startRecording() {
+        // Check if audio bridge is enabled
+        if (!this.isEnabled) {
+            console.log('Audio bridge is disabled, skipping recording');
+            return false;
+        }
+        
         if (!this.isConnected || !this.peerConnection) {
             console.error('Cannot start recording - not connected to audio bridge');
             return false;
@@ -845,6 +867,12 @@ class AudioBridgeClient {
      * Stop recording audio
      */
     stopRecording() {
+        // Check if audio bridge is enabled
+        if (!this.isEnabled) {
+            console.log('Audio bridge is disabled, skipping stop recording');
+            return false;
+        }
+        
         if (!this.isInitialized || !this.mediaRecorder) {
             console.warn('Cannot stop recording - not initialized or no media recorder');
             return false;
