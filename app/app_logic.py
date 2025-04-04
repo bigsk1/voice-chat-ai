@@ -69,15 +69,34 @@ async def record_audio_and_transcribe():
         message = json.dumps(status_data) if isinstance(status_data, dict) else status_data
         # Use the existing send_message_to_clients function from shared
         await send_message_to_clients(message)
-        
-    # Use our new unified transcription module
-    user_input = await transcribe_audio(
-        transcription_model=current_transcription_model,
-        use_local=use_local_whisper,
-        send_status_callback=status_callback
-    )
     
-    return user_input
+    # Check if audio bridge is enabled - use a very low threshold for WebRTC
+    audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+    silence_threshold = 25 if audio_bridge_enabled else 50
+    
+    print(f"Using silence_threshold: {silence_threshold} for {'WebRTC audio' if audio_bridge_enabled else 'local microphone'}")
+    
+    try:
+        # Use our unified transcription module
+        user_input = await transcribe_audio(
+            transcription_model=current_transcription_model,
+            use_local=use_local_whisper,
+            send_status_callback=status_callback,
+            silence_threshold=silence_threshold
+        )
+        
+        if user_input is None or user_input.strip() == "":
+            print("Warning: No transcription result received")
+            await status_callback({"action": "error", "message": "No speech was detected. Please try again."})
+            return None
+            
+        return user_input
+    except Exception as e:
+        print(f"Error in record_audio_and_transcribe: {e}")
+        import traceback
+        print(traceback.format_exc())
+        await status_callback({"action": "error", "message": f"Error: {str(e)}"})
+        return None
 
 # We can keep this as a utility function but it's not used directly with transcription
 async def send_message_to_all_clients(message):

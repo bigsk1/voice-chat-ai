@@ -103,14 +103,25 @@ async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe")
                     print(f"Error from OpenAI API: {error_text}")
                     raise Exception(f"Transcription error: {response.status} - {error_text}")
 
-def detect_silence(data, threshold=512, chunk_size=1024):
-    """Detect silence in audio data"""
-    audio_data = np.frombuffer(data, dtype=np.int16)
-    level = np.mean(np.abs(audio_data))
-    # Only print audio levels if debug is enabled
-    if DEBUG_AUDIO_LEVELS:
-        print(f"Audio level: {level}")
-    return level < threshold
+def detect_silence(data, threshold=300, chunk_size=1024):
+    """Detect if the given audio data is silence"""
+    try:
+        # Use numpy for faster processing
+        audio_data = np.frombuffer(data, dtype=np.int16)
+        
+        # Calculate RMS level (more accurate than simple mean)
+        level = np.sqrt(np.mean(np.square(audio_data.astype(np.float32))))
+        
+        # Special debug for low level audio
+        if level > 0 and level < 50:
+            print(f"Very low audio level detected: {level:.2f}")
+        
+        return level < threshold
+    except Exception as e:
+        print(f"Error in detect_silence: {e}")
+        # Return default value on error
+        return True
+    
 
 async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, chunk_size=1024, send_status_callback=None):
     """Record audio to a file path
@@ -166,21 +177,50 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, c
     wf.writeframes(b''.join(frames))
     wf.close()
 
-async def record_audio_enhanced(send_status_callback=None, silence_threshold=300, silence_duration=2.0):
+async def record_audio_enhanced(send_status_callback=None, silence_threshold=200, silence_duration=2.0):
     """Enhanced audio recording with waiting for speech detection
     
     Args:
         send_status_callback: Callback to send status messages
-        silence_threshold: Threshold for silence detection
+        silence_threshold: Threshold for silence detection (lower is more sensitive)
         silence_duration: Duration of silence to stop recording
     
     Returns:
         Path to the recorded audio file
     """
+    # Check if audio bridge is enabled
+    audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
+    
     # Create temp file
     temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     temp_filename = temp_file.name
     temp_file.close()
+    
+    # If audio bridge is enabled, check if we have any clients
+    if audio_bridge_enabled:
+        try:
+            from .audio_bridge.audio_bridge_server import audio_bridge
+            if audio_bridge.clients_set:
+                print(f"Audio bridge enabled with {len(audio_bridge.clients_set)} clients")
+                
+                # Create a direct file for audio bridge to write to
+                bridge_file = temp_filename
+                
+                # Use app.record_audio to capture from audio bridge
+                # Import here to avoid circular imports
+                from .app import record_audio
+                await record_audio(bridge_file, silence_threshold=silence_threshold)
+                
+                # Check if file was created successfully
+                if os.path.exists(bridge_file) and os.path.getsize(bridge_file) > 0:
+                    print(f"Audio bridge created file: {bridge_file} ({os.path.getsize(bridge_file)} bytes)")
+                    return bridge_file
+                else:
+                    print("Audio bridge failed to create audio file, falling back to local microphone")
+        except Exception as e:
+            print(f"Error using audio bridge in enhanced mode: {e}")
+            import traceback
+            print(traceback.format_exc())
     
     # Recording parameters
     FORMAT = pyaudio.paInt16
@@ -191,20 +231,19 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     # Recording logic
     p = pyaudio.PyAudio()
     
-    # Debug info about audio devices - only show once
-    if DEBUG_AUDIO_LEVELS:
-        print("\nAudio input devices:")
-        for i in range(p.get_device_count()):
-            dev_info = p.get_device_info_by_index(i)
-            if dev_info['maxInputChannels'] > 0:  # Only input devices
-                print(f"Device {i}: {dev_info['name']}")
-        print("Using default input device\n")
+    # Always show audio devices when recording starts to help with debugging
+    print("\nAudio input devices:")
+    for i in range(p.get_device_count()):
+        dev_info = p.get_device_info_by_index(i)
+        if dev_info['maxInputChannels'] > 0:  # Only input devices
+            print(f"Device {i}: {dev_info['name']}")
+    print("Using default input device\n")
     
     # Open the stream with input_device_index=None to use default device
     stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     
     # Wait for user to start speaking
-    print(YELLOW + "Waiting for speech..." + RESET_COLOR)
+    print(YELLOW + "Waiting for speech... (threshold: " + str(silence_threshold) + ")" + RESET_COLOR)
     if send_status_callback:
         await send_status_callback({"action": "waiting_for_speech"})
     
@@ -227,6 +266,13 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
         # If waiting too long (15 seconds), abort
         if initial_silent_chunks > 15 * (RATE / CHUNK):
             print("No speech detected after timeout. Aborting.")
+            # Try reading audio levels directly to confirm microphone is working
+            print("Testing microphone with direct read:")
+            test_data = stream.read(CHUNK, exception_on_overflow=False)
+            audio_data = np.frombuffer(test_data, dtype=np.int16)
+            level = np.mean(np.abs(audio_data))
+            print(f"Direct audio level test: {level} (threshold: {silence_threshold})")
+            
             stream.stop_stream()
             stream.close()
             p.terminate()
@@ -237,18 +283,18 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
             if send_status_callback:
                 await send_status_callback({
                     "action": "error", 
-                    "message": "No speech detected. Please check your microphone and try again."
+                    "message": "No speech detected. Please check your microphone and try again. Audio level: " + str(level)
                 })
             return None
             
-        # Every 2 seconds, provide feedback
-        if initial_silent_chunks % (2 * int(RATE / CHUNK)) == 0 and initial_silent_chunks > 0 and initial_silent_chunks % (4 * int(RATE / CHUNK)) == 0:
+        # Provide more frequent feedback
+        if initial_silent_chunks % int(RATE / CHUNK) == 0 and initial_silent_chunks > 0:
+            print(f"Still waiting for speech... ({initial_silent_chunks} chunks)")
             if send_status_callback:
-                # Just send a reminder ping, no need for message text as UI now handles this
                 await send_status_callback({
                     "action": "waiting_for_speech"
                 })
-                
+
     # Now begin actual recording
     frames = []
     print("Enhanced recording...")
@@ -319,16 +365,18 @@ async def send_status_message(callback, message):
     if callback:
         await callback(message)
 
-async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None):
-    """Main function to record audio and transcribe it
+async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None, silence_threshold=100):
+    """
+    Record audio, transcribe it, and return the transcription.
     
     Args:
-        transcription_model: Model to use for OpenAI transcription
-        use_local: Whether to use local Faster Whisper
-        send_status_callback: Callback to send status messages
-    
+        transcription_model: Model to use for transcription
+        use_local: Whether to use local or OpenAI transcription
+        send_status_callback: Function to call to send status messages to client
+        silence_threshold: Threshold for silence detection (lower is more sensitive)
+        
     Returns:
-        Transcribed text
+        The transcribed text
     """
     try:
         # Create an async wrapper for the callback
@@ -338,7 +386,8 @@ async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_loc
                 
         # Record audio with enhanced mode
         temp_filename = await record_audio_enhanced(
-            send_status_callback=callback_wrapper
+            send_status_callback=callback_wrapper,
+            silence_threshold=silence_threshold
         )
         
         if not temp_filename:

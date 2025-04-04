@@ -63,6 +63,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include the audio bridge router if enabled
+if os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true":
+    try:
+        # Import and check availability
+        from .audio_bridge.audio_bridge_router import router as audio_bridge_router
+        from .audio_bridge.audio_bridge_server import audio_bridge
+        
+        # Register the router with the app
+        app.include_router(audio_bridge_router)
+        
+        print("WebRTC Audio Bridge enabled and registered on port 8080")
+        
+        # Start the audio bridge server
+        @app.on_event("startup")
+        async def startup_audio_bridge():
+            print("Starting WebRTC Audio Bridge server on port 8080...")
+            import asyncio
+            # Start in a background task
+            asyncio.create_task(audio_bridge.run_server())
+        
+        # Add status endpoint
+        @app.get("/audio-bridge-status")
+        async def audio_bridge_status():
+            """Get WebRTC audio bridge status"""
+            if audio_bridge:
+                status = audio_bridge.get_status()
+                return status
+            else:
+                return {"status": "unavailable", "message": "Audio bridge is not initialized"}
+                
+    except ImportError as e:
+        print(f"WebRTC Audio Bridge enabled but failed to import: {e}")
+
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
     model_provider = os.getenv("MODEL_PROVIDER")

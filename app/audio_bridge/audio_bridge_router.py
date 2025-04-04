@@ -8,6 +8,7 @@ import uuid
 import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Response
 from typing import Dict
+import time
 
 from .audio_bridge_server import audio_bridge
 from .audio_processor import audio_processor
@@ -139,53 +140,138 @@ async def receive_audio(request: Request, response: Response):
         logger.error(f"Error receiving audio: {e}")
         return {"status": "error", "message": str(e)}
 
+@router.post("/offer")
+async def handle_offer(request: Request):
+    """Handle WebRTC offer from client"""
+    if not audio_bridge.is_enabled():
+        return {"type": "error", "message": "Audio bridge is disabled"}
+    
+    try:
+        # Get the request data
+        data = await request.json()
+        sdp = data.get("sdp")
+        client_id = data.get("client_id")
+        
+        # Check if required fields are present
+        if not sdp or not client_id:
+            logger.warning("Missing SDP or client ID in offer request")
+            return {"type": "error", "message": "Client ID and SDP are required"}
+        
+        # Register client if not already registered
+        if client_id not in audio_bridge.clients_set:
+            await audio_bridge.register_client(client_id)
+        
+        # Handle the WebRTC offer
+        result = await audio_bridge.handle_signaling({
+            "type": "offer",
+            "sdp": sdp,
+            "client_id": client_id
+        })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error handling offer: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {"type": "error", "message": f"Error handling offer: {str(e)}"}
+
 @router.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    """WebSocket endpoint for real-time audio communication"""
+async def websocket_handler(websocket: WebSocket, client_id: str):
+    """WebSocket handler for audio bridge signaling"""
     if not audio_bridge.is_enabled():
         await websocket.close(code=1000, reason="Audio bridge is disabled")
         return
-    
+        
     try:
-        # Accept the WebSocket connection
         await websocket.accept()
+        logger.info(f"WebSocket connection established with client {client_id}")
         
-        # Register client if not already registered
-        if client_id not in audio_bridge.clients:
-            success = await audio_bridge.register_client(client_id)
-            if not success:
-                await websocket.close(code=1000, reason="Failed to register client")
-                return
+        # Register the client
+        await audio_bridge.register_client(client_id)
         
-        # Store the WebSocket connection
-        websocket_connections[client_id] = websocket
+        # Send a welcome message
+        await websocket.send_json({
+            "type": "welcome",
+            "client_id": client_id,
+            "message": "Connected to audio bridge"
+        })
         
-        # Main WebSocket loop
+        # Keep connection alive until closed
         try:
             while True:
-                # Receive message from client
-                data = await websocket.receive_text()
-                message = json.loads(data)
+                # Wait for messages from the client
+                message = await websocket.receive_text()
                 
-                # Handle signaling messages
-                if "type" in message:
-                    response = await audio_bridge.handle_signaling(client_id, message)
+                try:
+                    # Parse the message
+                    data = json.loads(message)
                     
+                    # Add client_id to message if not present
+                    if "client_id" not in data:
+                        data["client_id"] = client_id
+                    
+                    # Handle the message
+                    response = await audio_bridge.handle_signaling(data)
+                    
+                    # Send the response
                     if response:
-                        await websocket.send_text(json.dumps(response))
-                
-                # Handle binary audio data
-                # In a real implementation, we would handle binary frames as well
+                        await websocket.send_json(response)
+                except json.JSONDecodeError:
+                    logger.warning(f"Received invalid JSON from client {client_id}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid JSON format"
+                    })
+                    
         except WebSocketDisconnect:
-            # Remove client from active connections
-            if client_id in websocket_connections:
-                del websocket_connections[client_id]
-            
-            # Unregister client
+            logger.info(f"WebSocket disconnected for client {client_id}")
+        finally:
+            # Unregister the client
             await audio_bridge.unregister_client(client_id)
+            
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        if client_id in websocket_connections:
-            del websocket_connections[client_id]
+        logger.error(f"Error in WebSocket handler: {e}")
+        try:
+            await websocket.close(code=1011, reason=f"Error: {str(e)}")
+        except:
+            pass
+
+@router.post("/test")
+async def handle_test(request: Request):
+    """Test endpoint for the audio bridge"""
+    if not audio_bridge.is_enabled():
+        return {"status": "error", "message": "Audio bridge is disabled"}
+    
+    try:
+        body = await request.json()
+        client_id = body.get("client_id")
         
-        await audio_bridge.unregister_client(client_id) 
+        if not client_id:
+            return {"status": "error", "message": "Client ID is required"}
+        
+        # Get the current status
+        status = audio_bridge.get_status()
+        
+        # Check if this client is registered
+        client_registered = client_id in audio_bridge.clients_set
+        
+        # Check if we have any audio data from this client
+        audio_data_available = False
+        if client_id in audio_bridge.client_audio and audio_bridge.client_audio[client_id]:
+            audio_data_available = True
+        
+        # Is this client streaming?
+        is_streaming = audio_bridge.is_client_streaming.get(client_id, False)
+        
+        # Return test response
+        return {
+            "status": "success",
+            "bridge_status": status,
+            "client_registered": client_registered,
+            "audio_data_available": audio_data_available,
+            "is_streaming": is_streaming,
+            "timestamp": time.time()
+        }
+    except Exception as e:
+        logger.error(f"Error in test endpoint: {e}")
+        return {"status": "error", "message": str(e)} 
