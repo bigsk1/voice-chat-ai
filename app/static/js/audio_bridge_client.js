@@ -554,10 +554,11 @@ class AudioBridgeClient {
             localStorage.setItem('audio_bridge_client_id', this.clientId);
         }
         
-        // Construct the WebSocket URL
-        let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        let wsPort = '8081';  // Use port 8081 for the audio bridge
-        let wsUrl = `${protocol}//${window.location.hostname}:${wsPort}/audio-bridge/ws/${this.clientId}`;
+        // Use a relative URL to connect through the same origin/proxy as the main app
+        // This avoids direct connection to port 8081 which causes certificate errors
+        const wsUrl = ((window.location.protocol === 'https:') ? 'wss://' : 'ws://') + 
+                      window.location.host + 
+                      '/audio-bridge/ws/' + this.clientId;
         
         console.log('Connecting to WebSocket:', wsUrl);
         
@@ -1372,10 +1373,8 @@ class AudioBridgeClient {
             await this.peerConnection.setLocalDescription(offer);
             
             // Send offer to server
-            const protocol = window.location.protocol; // http: or https:
-            const audioPort = "8081"; // Changed from 8080 to 8081 for audio bridge
-            const audioHost = window.location.hostname;
-            const offerUrl = `${protocol}//${audioHost}:${audioPort}/audio-bridge/offer`;
+            // Use relative URL with the proxy endpoint instead of direct connection to port 8081
+            const offerUrl = `/audio-bridge/offer`;
             
             const response = await fetch(offerUrl, {
                 method: 'POST',

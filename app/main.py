@@ -19,6 +19,10 @@ import uuid
 from .logger_config import logger  # Import our configured logger
 from contextlib import asynccontextmanager
 
+# Configure logging to reduce verbosity of certain modules
+logging.getLogger('aioice.ice').setLevel(logging.WARNING)
+logging.getLogger('aiortc').setLevel(logging.WARNING)
+
 # Set up audio bridge
 audio_bridge_enabled = os.getenv("ENABLE_AUDIO_BRIDGE", "false").lower() == "true"
 
@@ -40,10 +44,23 @@ async def lifespan(app: FastAPI):
     if audio_bridge_enabled:
         try:
             from .audio_bridge.audio_bridge_server import audio_bridge
-            await audio_bridge.stop_server()
-            print("WebRTC Audio Bridge server stopped")
+            print("Stopping WebRTC Audio Bridge server...")
+            try:
+                await audio_bridge.stop_server()
+                print("WebRTC Audio Bridge server stopped successfully")
+            except AttributeError as e:
+                # Handle the case where the server hasn't fully started yet
+                print(f"Audio bridge server not fully initialized: {e}")
+            except Exception as e:
+                print(f"Error stopping audio bridge server: {e}")
+                import traceback
+                print(traceback.format_exc())
+        except ImportError as e:
+            print(f"Error importing audio bridge for shutdown: {e}")
         except Exception as e:
-            print(f"Error stopping audio bridge: {e}")
+            print(f"Unexpected error during audio bridge shutdown: {e}")
+            import traceback
+            print(traceback.format_exc())
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(lifespan=lifespan)
@@ -96,6 +113,110 @@ if audio_bridge_enabled:
         
         # Register the router with the app
         app.include_router(audio_bridge_router)
+        
+        # Add a WebSocket route that can proxy to the audio bridge server for browsers
+        @app.websocket("/audio-bridge/ws/{client_id}")
+        async def proxy_audio_bridge_websocket(websocket: WebSocket, client_id: str):
+            """Proxy WebSocket connections to the audio bridge server"""
+            # This endpoint handles the WebSocket connection directly in FastAPI
+            # which allows browsers to connect to the same origin without certificate issues
+            await websocket.accept()
+            logger.info(f"WebSocket connection accepted for client {client_id}")
+            
+            # Register the client with the audio bridge
+            if not await audio_bridge.register_client(client_id):
+                await websocket.close(code=1000, reason="Failed to register client")
+                return
+                
+            # Send welcome message
+            await websocket.send_json({
+                "type": "welcome", 
+                "client_id": client_id,
+                "message": "Connected to audio bridge via FastAPI proxy"
+            })
+            
+            try:
+                # Main message handling loop
+                while True:
+                    # Receive message from client
+                    data = await websocket.receive_text()
+                    message = json.loads(data)
+                    
+                    # Add client_id to the message
+                    message["client_id"] = client_id
+                    
+                    # Process the message with the audio bridge server
+                    response = await audio_bridge.handle_signaling(message)
+                    
+                    # Send response back to client
+                    await websocket.send_json(response)
+                    
+            except WebSocketDisconnect:
+                logger.info(f"WebSocket disconnected for client {client_id}")
+            except Exception as e:
+                logger.error(f"Error in audio bridge WebSocket handler: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+            finally:
+                # Unregister client when connection is closed
+                await audio_bridge.unregister_client(client_id)
+                logger.info(f"Unregistered client {client_id} from audio bridge")
+        
+        # HTTP proxy endpoints for the audio bridge
+        @app.post("/audio-bridge/offer")
+        async def proxy_audio_bridge_offer(request: Request):
+            """Proxy for the audio bridge offer endpoint"""
+            try:
+                # Get the client request data
+                data = await request.json()
+                
+                # Pass to the audio bridge server
+                response = await audio_bridge.handle_offer(request)
+                
+                # Return the response
+                return response
+            except Exception as e:
+                logger.error(f"Error in audio bridge offer proxy: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                return {"type": "error", "message": f"Error: {str(e)}"}
+        
+        @app.post("/audio-bridge/test")
+        async def proxy_audio_bridge_test(request: Request):
+            """Proxy for the audio bridge test endpoint"""
+            try:
+                # Get the client request data
+                data = await request.json()
+                
+                # Pass to the audio bridge server
+                response = await audio_bridge.handle_test(request)
+                
+                # Return the response
+                return response
+            except Exception as e:
+                logger.error(f"Error in audio bridge test proxy: {e}")
+                return {"status": "error", "message": f"Error: {str(e)}"}
+        
+        @app.post("/audio-bridge/register")
+        async def proxy_audio_bridge_register(request: Request):
+            """Proxy for the audio bridge register endpoint"""
+            try:
+                data = await request.json()
+                client_id = data.get("client_id")
+                
+                if not client_id:
+                    return {"status": "error", "message": "Client ID is required"}
+                    
+                # Register with the audio bridge
+                result = await audio_bridge.register_client(client_id)
+                
+                if result:
+                    return {"status": "success", "message": f"Client {client_id} registered"}
+                else:
+                    return {"status": "error", "message": "Failed to register client"}
+            except Exception as e:
+                logger.error(f"Error in audio bridge register proxy: {e}")
+                return {"status": "error", "message": str(e)}
         
         print("WebRTC Audio Bridge enabled and registered on port 8081")
         

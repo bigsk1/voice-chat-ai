@@ -1034,7 +1034,7 @@ async def record_audio(file_path, silence_threshold=25, silence_duration=0.5, ch
                     
                     # Set a timeout (15 seconds - reduced from 20)
                     start_time = asyncio.get_event_loop().time()
-                    timeout = 15.0  # seconds
+                    timeout = 7.0  # seconds
                     
                     # Wait for audio data to arrive - show progress indicators
                     print("Waiting for WebRTC audio data...")

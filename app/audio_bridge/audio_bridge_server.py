@@ -629,13 +629,19 @@ class AudioBridgeServer:
         self.is_client_streaming.clear()
         
         # Clean up runner if it exists
+        cleanup_success = False
         if hasattr(self, 'runner') and self.runner is not None:
             try:
                 await self.runner.cleanup()
                 logger.info("Application runner cleaned up")
-                self.runner = None
+                cleanup_success = True
             except Exception as e:
                 logger.error(f"Error cleaning up application runner: {e}")
+        else:
+            logger.info("No runner to clean up - server may not have started fully")
+            
+        # Explicitly set runner to None to prevent future cleanup attempts
+        self.runner = None
         
         logger.info("WebRTC audio bridge server stopped")
         return True

@@ -123,7 +123,7 @@ def detect_silence(data, threshold=300, chunk_size=1024):
         return True
     
 
-async def record_audio(file_path, silence_threshold=512, silence_duration=0.5, chunk_size=1024, send_status_callback=None):
+async def record_audio(file_path, silence_threshold=512, silence_duration=0.5, chunk_size=1024, send_status_callback=None, no_fallback=False):
     """Record audio to a file path
     
     Args:
@@ -132,6 +132,7 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=0.5, c
         silence_duration: Duration of silence to stop recording
         chunk_size: Size of audio chunks
         send_status_callback: Callback to send status updates (optional)
+        no_fallback: If True, don't fall back to local microphone on error
     """
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=chunk_size)
@@ -203,9 +204,14 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=200
             if audio_bridge.clients_set:
                 print(f"Audio bridge enabled with {len(audio_bridge.clients_set)} clients")
                 
-                # Use no_fallback=True to prevent fallback to local microphone
-                await record_audio(temp_filename, silence_threshold=25, silence_duration=silence_duration, 
-                send_status_callback=send_status_callback, no_fallback=True)
+                # Call record_audio with the correct parameters
+                await record_audio(
+                    file_path=temp_filename,
+                    silence_threshold=25,
+                    silence_duration=silence_duration,
+                    send_status_callback=send_status_callback,
+                    no_fallback=True
+                )
                 
                 # Print a success message
                 print(f"Audio bridge created file: {temp_filename}")
