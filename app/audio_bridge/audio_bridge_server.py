@@ -233,29 +233,69 @@ class AudioBridgeServer:
                 if not peer_connection:
                     return {"type": "error", "message": "No connection found for this client"}
                 
-                # Handle different candidate formats
                 try:
-                    # Check for sdpCandidate format - this is our custom format
-                    if isinstance(candidate, dict) and "sdpCandidate" in candidate:
+                    if isinstance(candidate, dict):
+                        # Get the candidate string
+                        candidate_str = candidate.get("candidate", "")
+                        
+                        if not candidate_str:
+                            # This is an "end of candidates" signal, which is normal
+                            logger.info(f"Received empty ICE candidate (end of candidates) for {client_id}")
+                            return {"type": "success", "message": "Empty ICE candidate acknowledged"}
+                        
+                        # Extract required parameters from the candidate string
+                        # Parse the SDP candidate string to extract the required fields
+                        # Format: candidate:foundation component protocol priority ip port type ...
+                        parts = candidate_str.split(" ")
+                        if len(parts) < 8:
+                            return {"type": "error", "message": f"Invalid candidate format: {candidate_str}"}
+                        
+                        # The first part contains "candidate:foundation"
+                        foundation = parts[0].split(":")[1] if ":" in parts[0] else parts[0]
+                        component = int(parts[1])
+                        protocol = parts[2]
+                        priority = int(parts[3])
+                        ip = parts[4]
+                        port = int(parts[5])
+                        candidate_type = parts[7]
+                        
+                        # Optional related address and port
+                        related_address = None
+                        related_port = None
+                        
+                        # Look for related address and port in the remaining parts
+                        for i in range(8, len(parts) - 1, 2):
+                            if parts[i] == "raddr":
+                                related_address = parts[i + 1]
+                            elif parts[i] == "rport":
+                                related_port = int(parts[i + 1])
+                        
+                        # Get sdpMid and sdpMLineIndex
+                        sdp_mid = candidate.get("sdpMid")
+                        sdp_mline_index = candidate.get("sdpMLineIndex")
+                        
+                        # Create the RTCIceCandidate with all required parameters
                         ice_candidate = RTCIceCandidate(
-                            sdpMid=candidate.get("sdpMid"),
-                            sdpMLineIndex=candidate.get("sdpMLineIndex"),
-                            candidate=candidate.get("sdpCandidate")
+                            component=component,
+                            foundation=foundation,
+                            ip=ip,
+                            port=port,
+                            priority=priority,
+                            protocol=protocol,
+                            type=candidate_type,
+                            relatedAddress=related_address,
+                            relatedPort=related_port,
+                            sdpMid=sdp_mid,
+                            sdpMLineIndex=sdp_mline_index
                         )
-                    # Check for standard format
-                    elif isinstance(candidate, dict) and "candidate" in candidate:
-                        ice_candidate = RTCIceCandidate(
-                            sdpMid=candidate.get("sdpMid"),
-                            sdpMLineIndex=candidate.get("sdpMLineIndex"),
-                            candidate=candidate.get("candidate")
-                        )
-                    # Direct use of the candidate object
+                        
+                        # Add the candidate to the peer connection
+                        await peer_connection.addIceCandidate(ice_candidate)
+                        logger.info(f"Added ICE candidate for {client_id}")
+                        return {"type": "success", "message": "ICE candidate added"}
                     else:
-                        ice_candidate = RTCIceCandidate(**candidate)
+                        return {"type": "error", "message": "Invalid ICE candidate format - expected a dictionary"}
                     
-                    await peer_connection.addIceCandidate(ice_candidate)
-                    logger.info(f"Added ICE candidate for {client_id}")
-                    return {"type": "success", "message": "ICE candidate added"}
                 except TypeError as e:
                     # Log details about the candidate data to debug the TypeError
                     logger.error(f"TypeError adding ICE candidate for {client_id}: {e}")
@@ -263,6 +303,8 @@ class AudioBridgeServer:
                     return {"type": "error", "message": f"Invalid ICE candidate format: {str(e)}"}
                 except Exception as e:
                     logger.error(f"Error adding ICE candidate for {client_id}: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
                     return {"type": "error", "message": f"Error adding ICE candidate: {str(e)}"}
                     
             else:
@@ -549,6 +591,8 @@ class AudioBridgeServer:
             return
         
         self.loop = asyncio.get_event_loop()
+        # Initialize runner to None at the start to ensure it's defined
+        self.runner = None
         
         app = web.Application()
         
@@ -560,7 +604,7 @@ class AudioBridgeServer:
         # Add test endpoint
         app.router.add_post("/audio-bridge/test", self.handle_test)
         
-        # Add CORS middleware
+        # Apply CORS to all routes
         cors = aiohttp_cors.setup(app, defaults={
             "*": aiohttp_cors.ResourceOptions(
                 allow_credentials=True,
@@ -597,12 +641,23 @@ class AudioBridgeServer:
             while True:
                 await asyncio.sleep(3600)  # Check every hour
         except asyncio.CancelledError:
-            logger.info("WebRTC audio bridge server shutting down")
+            logger.info("WebRTC audio bridge server shutting down due to cancellation")
         except Exception as e:
             logger.error(f"Error in WebRTC audio bridge server: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
         finally:
-            if hasattr(self, 'runner'):
-                await self.runner.cleanup()
+            # Ensure self.runner is defined and not None before calling cleanup()
+            if hasattr(self, 'runner') and self.runner is not None:
+                try:
+                    await self.runner.cleanup()
+                    logger.info("Application runner cleaned up during shutdown")
+                except Exception as e:
+                    logger.error(f"Error during runner cleanup: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+            else:
+                logger.info("No runner to clean up during shutdown")
             logger.info("WebRTC audio bridge server stopped")
             
     async def stop_server(self):

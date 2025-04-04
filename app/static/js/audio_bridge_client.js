@@ -31,6 +31,7 @@ class AudioBridgeClient {
         this.maxReconnectAttempts = 3;
         this.lastStatusCheck = 0;
         this.statusCheckMinInterval = 180000; // 3 minutes minimum
+        this.messageQueue = []; // Initialize messageQueue for signaling messages
         
         // Event callbacks
         this.onStatusChange = null;
@@ -634,36 +635,14 @@ class AudioBridgeClient {
                     if (message.candidate) {
                         console.log('Received ICE candidate from server:', message.candidate);
                         
-                        // Create a proper RTCIceCandidate object
-                        // Handle both formats - our custom format and standard format
-                        const candidateObj = message.candidate;
-                        let iceCandidate;
+                        const formattedCandidate = {
+                            // Standard RTCIceCandidate format for browsers
+                            candidate: message.candidate.candidate,
+                            sdpMid: message.candidate.sdpMid,
+                            sdpMLineIndex: message.candidate.sdpMLineIndex
+                        };
                         
-                        if (candidateObj.sdpCandidate) {
-                            // Our custom format
-                            iceCandidate = new RTCIceCandidate({
-                                sdpMid: candidateObj.sdpMid,
-                                sdpMLineIndex: candidateObj.sdpMLineIndex,
-                                candidate: candidateObj.sdpCandidate
-                            });
-                        } else if (candidateObj.candidate) {
-                            // Standard format (might be a string or an object)
-                            if (typeof candidateObj.candidate === 'string') {
-                                iceCandidate = new RTCIceCandidate({
-                                    sdpMid: candidateObj.sdpMid,
-                                    sdpMLineIndex: candidateObj.sdpMLineIndex,
-                                    candidate: candidateObj.candidate
-                                });
-                            } else {
-                                // Just pass the whole object
-                                iceCandidate = new RTCIceCandidate(candidateObj);
-                            }
-                        } else {
-                            // Direct use
-                            iceCandidate = new RTCIceCandidate(candidateObj);
-                        }
-                        
-                        await this.peerConnection.addIceCandidate(iceCandidate);
+                        await this.peerConnection.addIceCandidate(new RTCIceCandidate(formattedCandidate));
                         console.log('Added ICE candidate from server');
                     }
                 } catch (error) {
@@ -1332,17 +1311,15 @@ class AudioBridgeClient {
                 if (event.candidate) {
                     console.log('Generated ICE candidate:', event.candidate);
                     
-                    // Format the candidate correctly for aiortc
-                    const formattedCandidate = {
-                        sdpMid: event.candidate.sdpMid,
-                        sdpMLineIndex: event.candidate.sdpMLineIndex,
-                        sdpCandidate: event.candidate.candidate  // This is the key change - use sdpCandidate
-                    };
-                    
-                    // Send the ICE candidate to the server
+                    // Send the complete candidate string which includes all the required parameters
+                    // for aiortc's RTCIceCandidate constructor
                     this.sendSignalingMessage({
                         type: 'ice-candidate',
-                        candidate: formattedCandidate
+                        candidate: {
+                            candidate: event.candidate.candidate, // Contains all required params in the string
+                            sdpMid: event.candidate.sdpMid,
+                            sdpMLineIndex: event.candidate.sdpMLineIndex
+                        }
                     });
                 }
             };
@@ -1423,17 +1400,34 @@ class AudioBridgeClient {
      * Send signaling message to the server via WebSocket
      */
     sendSignalingMessage(message) {
+        // Add client_id to the message if not already present
+        if (!message.client_id && this.clientId) {
+            message.client_id = this.clientId;
+        }
+        
         if (!this.wsConnection || this.wsConnection.readyState !== WebSocket.OPEN) {
-            console.warn('Cannot send signaling message - WebSocket not open');
+            console.warn('WebSocket not open, queuing signaling message');
+            // Queue message for later delivery
+            this.messageQueue.push(message);
+            
+            // Initialize WebSocket if it doesn't exist or is closed
+            if (!this.wsConnection || this.wsConnection.readyState === WebSocket.CLOSED) {
+                console.log('Initializing WebSocket connection');
+                this._initWebSocket();
+            }
+            
             return false;
         }
         
         try {
             const messageJson = JSON.stringify(message);
             this.wsConnection.send(messageJson);
+            console.log('Sent signaling message:', message.type);
             return true;
         } catch (error) {
             console.error('Error sending signaling message:', error);
+            // Queue the message for retry
+            this.messageQueue.push(message);
             return false;
         }
     }
