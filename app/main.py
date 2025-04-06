@@ -15,6 +15,7 @@ from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversat
 import logging
 from threading import Thread
 import uuid
+import aiohttp
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -45,6 +46,7 @@ async def get_index(request: Request):
     ollama_model = os.getenv("OLLAMA_MODEL")
     xtts_speed = os.getenv("XTTS_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
+    kokoro_voice = os.getenv("KOKORO_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 
     return templates.TemplateResponse("index.html", {
@@ -57,6 +59,7 @@ async def get_index(request: Request):
         "ollama_model": ollama_model,
         "xtts_speed": xtts_speed,
         "elevenlabs_voice": elevenlabs_voice,
+        "kokoro_voice": kokoro_voice,
         "faster_whisper_local": faster_whisper_local,
     })
 
@@ -439,6 +442,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("XTTS_SPEED", message["speed"])
             elif message["action"] == "set_elevenlabs_voice":
                 set_env_variable("ELEVENLABS_TTS_VOICE", message["voice"])
+            elif message["action"] == "set_kokoro_voice":
+                set_env_variable("KOKORO_TTS_VOICE", message["voice"])
             elif message["action"] == "clear":
                 conversation_history.clear()
                 await websocket.send_json({"message": "Conversation history cleared."})
@@ -570,6 +575,67 @@ async def get_character_history():
     except Exception as e:
         print(f"Error getting character history: {e}")
         return {"status": "error", "message": str(e)}
+
+@app.get("/kokoro_voices")
+async def get_kokoro_voices():
+    try:
+        # Get the base URL from environment or use default
+        kokoro_base_url = os.getenv("KOKORO_BASE_URL", "http://localhost:8880/v1")
+        
+        try:
+            # Use the correct API endpoint for voices
+            voices_url = f"{kokoro_base_url}/audio/voices"
+            
+            # Make HTTP request directly
+            async with aiohttp.ClientSession() as session:
+                try:
+                    async with session.get(voices_url, timeout=3) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            # Process the voices from the response
+                            voices = []
+                            for voice_id in data.get("voices", []):
+                                # Create a readable name from the ID
+                                # Format: language code (af/am) + name
+                                parts = voice_id.split('_')
+                                if len(parts) >= 2:
+                                    lang_code = parts[0]
+                                    name = parts[1].capitalize()
+                                    gender = "Female" if lang_code == "af" else "Male"
+                                    voices.append({
+                                        "id": voice_id,
+                                        "name": f"{name} ({gender})"
+                                    })
+                                else:
+                                    # Fallback for voices without standard format
+                                    voices.append({
+                                        "id": voice_id,
+                                        "name": voice_id
+                                    })
+                            
+                            return {"voices": voices}
+                        else:
+                            # Log the error and return empty voices
+                            error_text = await response.text()
+                            logger.error(f"Error fetching Kokoro voices: HTTP {response.status} - {error_text}")
+                            return {"voices": [], "error": f"HTTP Error: {response.status}"}
+                except aiohttp.ClientConnectorError as e:
+                    # Handle connection errors specifically (server not available)
+                    logger.info(f"Kokoro server not available at {kokoro_base_url} - This is normal if you don't have Kokoro running")
+                    return {"voices": [], "error": "Kokoro server not available"}
+                except asyncio.TimeoutError:
+                    # Handle timeout errors
+                    # logger.info(f"Timeout connecting to Kokoro server at {kokoro_base_url}")
+                    return {"voices": [], "error": "Connection timeout"}
+            
+        except Exception as e:
+            # Log the error and return empty voices with error message
+            logger.error(f"Error fetching Kokoro voices: {str(e)}")
+            return {"voices": [], "error": str(e)}
+            
+    except Exception as e:
+        logger.error(f"Critical error in get_kokoro_voices: {str(e)}")
+        return {"voices": [], "error": str(e)}
 
 def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')

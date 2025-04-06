@@ -32,7 +32,7 @@ Get up and running fast with Voice Chat AI! 🔊
 ## Features
 
 - **Supports OpenAI, xAI, Anthropic or Ollama language models**: Choose the model that best fits your needs.
-- **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs**: Enjoy natural and expressive voices.
+- **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs or Kokoro TTS**: Enjoy natural and expressive voices.
 - **Provides speech to speech using OpenAI Realtime API**: Have a real time conversation with AI characters, interrupt the AI and have instant responses.
 - **OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
 - **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper.
@@ -116,6 +116,23 @@ is in system PATH or whatever version you downloaded, you can also disable cudnn
 If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS the first time you select XTTS the model will download and be ready to use, if your device is cuda enabled it will load into cuda if not will fall back to cpu.
 
 > Note: the sample .wav files in the characters folder are not the greatest quality, you can provide your own to replace them.
+
+### Kokoro TTS for local voices - Optional
+
+[Kokoro TTS](https://github.com/remsky/Kokoro-FastAPI) is an open-source neural text-to-speech system based on the Kokoro-82M model, offering high-quality voice synthesis with various male and female voices.
+
+Install it based on the instructions in the Kokoro repo.
+
+To use Kokoro TTS:
+
+1. Configure Voice-Chat-AI to use Kokoro:
+   - `KOKORO_BASE_URL=http://localhost:8880/v1` to your `.env` file
+   - Set `TTS_PROVIDER=kokoro` in your `.env` file
+   - Select a voice with `KOKORO_TTS_VOICE=af_bella` (female) or `KOKORO_TTS_VOICE=am_onyx` (male)
+
+2. Start the Voice Chat AI application normally
+
+Kokoro TTS operates locally on your machine, requiring no API key or internet connection once installed. The server supports GPU acceleration for faster processing if you have compatible NVIDIA hardware.
 
 ## Usage
 
@@ -376,6 +393,10 @@ ELEVENLABS_TTS_MODEL=eleven_multilingual_v2
 # ElevenLabs TTS Speed 0.7 to 1.2
 ELEVENLABS_TTS_SPEED=1
 
+# Kokoro TTS Configuration:
+# Default voice for Kokoro TTS - examples: af_bella, af_nova, am_onyx, etc.
+KOKORO_TTS_VOICE=af_bella
+
 # AUDIO GENERATION LENGTH
 # Maximum character length for audio generation - set to 2000+ for stories and games, 3000 for assassin story, 4000 for mars encounter interactive
 # MAX_CHAR_LENGTH is used for openai and elevenlabs, is also used for max tokens for chat response, if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 max tokens is sent to provider
@@ -420,6 +441,9 @@ OLLAMA_BASE_URL=http://localhost:11434
 # IF RUNNING IN DOCKER CHANGE OLLAMA BASE URL TO THE ONE BELOW
 # OLLAMA_BASE_URL=http://host.docker.internal:11434
 XAI_BASE_URL=https://api.x.ai/v1
+# Kokoro API base URL - default is localhost, change if running on another machine or in docker
+# KOKORO_BASE_URL=http://host.docker.internal:8880/v1
+KOKORO_BASE_URL=http://localhost:8880/v1
 
 # Debug settings - true or false
 # Set to true to enable extensive debug output 

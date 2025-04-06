@@ -20,6 +20,7 @@ from .app import (
     init_xtts_speed,
     init_set_tts,
     init_set_provider,
+    init_kokoro_tts_voice,
     save_conversation_history,
     send_message_to_clients,
 )
@@ -301,6 +302,8 @@ def set_env_variable(key: str, value: str):
         init_openai_tts_voice(value)  # Reinitialize OpenAI TTS voice
     if key == "ELEVENLABS_TTS_VOICE":
         init_elevenlabs_tts_voice(value)  # Reinitialize Elevenlabs TTS voice
+    if key == "KOKORO_TTS_VOICE":
+        init_kokoro_tts_voice(value)  # Reinitialize Kokoro TTS voice
     if key == "XTTS_SPEED":
         init_xtts_speed(value)  # Reinitialize XTTS speed
     if key == "TTS_PROVIDER":

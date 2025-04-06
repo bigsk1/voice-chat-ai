@@ -49,6 +49,8 @@ ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
 ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
+KOKORO_BASE_URL = os.getenv('KOKORO_BASE_URL', 'http://localhost:8880/v1')
+KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1')
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
@@ -160,6 +162,11 @@ def init_elevenlabs_tts_voice(voice_name):
     global ELEVENLABS_TTS_VOICE
     ELEVENLABS_TTS_VOICE = voice_name
     print(f"Switched to ElevenLabs TTS voice: {voice_name}")
+
+def init_kokoro_tts_voice(voice_name):
+    global KOKORO_TTS_VOICE
+    KOKORO_TTS_VOICE = voice_name
+    print(f"Switched to Kokoro TTS voice: {voice_name}")
 
 def init_xtts_speed(speed_value):
     global XTTS_SPEED
@@ -322,6 +329,22 @@ async def process_and_play(prompt, audio_file_pth):
             await send_message_to_clients(json.dumps({
                 "action": "error",
                 "message": "ElevenLabs audio file not found after generation"
+            }))
+    elif TTS_PROVIDER == 'kokoro':
+        output_path = os.path.join(output_dir, 'output.wav')
+        success = await kokoro_text_to_speech(prompt, output_path)
+        if success and os.path.exists(output_path):
+            print("Playing generated audio...")
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+        elif not success:
+            print("Failed to generate Kokoro audio.")
+        else:
+            print("Error: Kokoro audio file not found after generation.")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "Kokoro audio file not found after generation"
             }))
     elif TTS_PROVIDER == 'xtts':
         if tts is not None:
@@ -974,6 +997,9 @@ async def execute_once(question_prompt):
     if TTS_PROVIDER == 'elevenlabs':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.mp3')  # Use mp3 for ElevenLabs
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for ElevenLabs
+    elif TTS_PROVIDER == 'kokoro':
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for Kokoro
+        max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for Kokoro
     elif TTS_PROVIDER == 'openai':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for OpenAI
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
@@ -1130,6 +1156,9 @@ async def generate_speech(text, temp_audio_path):
 
     elif TTS_PROVIDER == 'elevenlabs':
         await elevenlabs_text_to_speech(text, temp_audio_path)
+    
+    elif TTS_PROVIDER == 'kokoro':
+        await kokoro_text_to_speech(text, temp_audio_path)
 
     else:  # XTTS
         if tts is not None:
@@ -1147,6 +1176,52 @@ async def generate_speech(text, temp_audio_path):
                 print(f"Error during XTTS audio generation: {e}")
         else:
             print("XTTS model is not loaded.")
+
+async def kokoro_text_to_speech(text, output_path):
+    """Convert text to speech using Kokoro TTS API."""
+    try:
+        # Using direct aiohttp request
+        kokoro_url = f"{KOKORO_BASE_URL}/audio/speech"
+        
+        # Prepare payload with the format expected by Kokoro API
+        payload = {
+            "model": "kokoro",
+            "voice": KOKORO_TTS_VOICE,
+            "input": text,
+            "response_format": "wav"  # Use wav format for more compatibility
+        }
+        
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        # Make the request
+        async with aiohttp.ClientSession() as session:
+            async with session.post(kokoro_url, json=payload, headers=headers) as response:
+                if response.status == 200:
+                    # Save the audio data to file
+                    with open(output_path, 'wb') as f:
+                        async for chunk in response.content.iter_chunked(1024):
+                            f.write(chunk)
+                    
+                    print("Audio generated successfully with Kokoro.")
+                    return True
+                else:
+                    error_text = await response.text()
+                    print(f"Error from Kokoro API: HTTP {response.status} - {error_text}")
+                    await send_message_to_clients(json.dumps({
+                        "action": "error",
+                        "message": f"Kokoro TTS error: HTTP {response.status}"
+                    }))
+                    return False
+                
+    except Exception as e:
+        print(f"Error during Kokoro TTS generation: {e}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": f"Kokoro TTS error: {str(e)}"
+        }))
+        return False
 
 async def user_chatbot_conversation():
     # Track previous character
