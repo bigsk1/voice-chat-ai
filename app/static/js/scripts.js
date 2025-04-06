@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const openaiModelSelect = document.getElementById('openai-model-select');
     const ollamaModelSelect = document.getElementById('ollama-model-select');
     const xaiModelSelect = document.getElementById('xai-model-select');
-    const xttsSpeedSelect = document.getElementById('xtts-speed-select');
+    const voiceSpeedSelect = document.getElementById('voice-speed-select');
     const transcriptionSelect = document.getElementById('transcription-select');
 
     let aiMessageQueue = [];
@@ -414,9 +414,9 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_anthropic_model", model: selectedModel }));
     }
 
-    function setXTTSSpeed() {
-        const selectedSpeed = document.getElementById('xtts-speed-select').value;
-        websocket.send(JSON.stringify({ action: "set_xtts_speed", speed: selectedSpeed }));
+    function setVoiceSpeed() {
+        const selectedSpeed = document.getElementById('voice-speed-select').value;
+        websocket.send(JSON.stringify({ action: "set_voice_speed", speed: selectedSpeed }));
     }
 
     function setElevenLabsVoice() {
@@ -528,7 +528,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (anthropicModelSelect) {
         anthropicModelSelect.addEventListener('change', setAnthropicModel);
     }
-    xttsSpeedSelect.addEventListener('change', setXTTSSpeed);
+    voiceSpeedSelect.addEventListener('change', setVoiceSpeed);
     elevenLabsVoiceSelect.addEventListener('change', setElevenLabsVoice);
     kokoroVoiceSelect.addEventListener('change', setKokoroVoice);
 

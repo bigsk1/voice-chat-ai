@@ -24,7 +24,7 @@ router = APIRouter()
 # Enhanced-specific variables
 enhanced_conversation_active = False
 enhanced_conversation_thread = None
-enhanced_speed = "1.0"
+enhanced_speed = os.getenv('VOICE_SPEED', '1.0')
 enhanced_voice = os.getenv("OPENAI_TTS_VOICE", "coral")
 enhanced_model = os.getenv("OPENAI_MODEL", "gpt-4o")
 enhanced_tts_model = os.getenv("OPENAI_MODEL_TTS", "gpt-4o-mini-tts")

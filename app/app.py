@@ -48,11 +48,10 @@ ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-7-sonnet-20250219')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
-ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
 KOKORO_BASE_URL = os.getenv('KOKORO_BASE_URL', 'http://localhost:8880/v1')
 KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
-XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1')
+VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
 os.environ["COQUI_TOS_AGREED"] = "1"
 
@@ -168,10 +167,10 @@ def init_kokoro_tts_voice(voice_name):
     KOKORO_TTS_VOICE = voice_name
     print(f"Switched to Kokoro TTS voice: {voice_name}")
 
-def init_xtts_speed(speed_value):
-    global XTTS_SPEED
-    XTTS_SPEED = speed_value
-    print(f"Switched to XTTS speed: {speed_value}")
+def init_voice_speed(speed_value):
+    global VOICE_SPEED
+    VOICE_SPEED = speed_value
+    print(f"Switched to global voice speed: {speed_value}")
 
 def init_set_tts(set_tts):
     global TTS_PROVIDER, tts
@@ -354,7 +353,7 @@ async def process_and_play(prompt, audio_file_pth):
                 text=prompt,
                 speaker_wav=current_audio_file,  # Use the updated current character audio
                 language="en",
-                speed=float(XTTS_SPEED)
+                speed=float(os.getenv('VOICE_SPEED', '1.0'))
             )
                 src_path = os.path.join(output_dir, 'output.wav')
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
@@ -410,6 +409,8 @@ def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, c
 async def openai_text_to_speech(prompt, output_path):
     file_extension = Path(output_path).suffix.lstrip('.').lower()
 
+    voice_speed = float(os.getenv("VOICE_SPEED", "1.0"))
+
     async with aiohttp.ClientSession() as session:
         if file_extension == 'wav':
             pcm_data = await fetch_pcm_audio(OPENAI_MODEL_TTS, OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL, session)
@@ -419,7 +420,7 @@ async def openai_text_to_speech(prompt, output_path):
                 async with session.post(
                     url=OPENAI_TTS_URL,
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                    json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension},
+                    json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension, "speed": voice_speed},
                     timeout=30
                 ) as response:
                     response.raise_for_status()
@@ -454,6 +455,9 @@ async def elevenlabs_text_to_speech(text, output_path):
     CHUNK_SIZE = 1024
     tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_TTS_VOICE}/stream"
 
+    # Get global voice speed from environment (default to 1.0)
+    voice_speed = os.getenv("VOICE_SPEED", "1.0")
+
     headers = {
         "Accept": "application/json",
         "xi-api-key": ELEVENLABS_API_KEY
@@ -467,7 +471,7 @@ async def elevenlabs_text_to_speech(text, output_path):
             "similarity_boost": 0.8,
             "style": 0.0,
             "use_speaker_boost": True,
-            "speed": ELEVENLABS_TTS_SPEED
+            "speed": voice_speed
         }
     }
 
@@ -1145,7 +1149,7 @@ async def fallback_to_openai_image_analysis(encoded_image, question_prompt):
 async def generate_speech(text, temp_audio_path):
     if TTS_PROVIDER == 'openai':
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {OPENAI_API_KEY}"}
-        payload = {"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": text, "response_format": "wav"}
+        payload = {"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "speed": float(VOICE_SPEED), "input": text, "response_format": "wav"}
         async with aiohttp.ClientSession() as session:
             async with session.post(OPENAI_TTS_URL, headers=headers, json=payload, timeout=30) as response:
                 if response.status == 200:
@@ -1168,7 +1172,7 @@ async def generate_speech(text, temp_audio_path):
                     text=text,
                     speaker_wav=character_audio_file,
                     language="en",
-                    speed=float(os.getenv('XTTS_SPEED', '1.1'))
+                    speed=float(os.getenv('VOICE_SPEED', '1.0'))
                 )
                 sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
@@ -1183,12 +1187,16 @@ async def kokoro_text_to_speech(text, output_path):
         # Using direct aiohttp request
         kokoro_url = f"{KOKORO_BASE_URL}/audio/speech"
         
+        # Get voice speed from environment
+        voice_speed = float(os.getenv("VOICE_SPEED", "1.0"))
+        
         # Prepare payload with the format expected by Kokoro API
         payload = {
             "model": "kokoro",
             "voice": KOKORO_TTS_VOICE,
             "input": text,
-            "response_format": "wav"  # Use wav format for more compatibility
+            "response_format": "wav",  # Use wav format for more compatibility
+            "speed": voice_speed
         }
         
         headers = {

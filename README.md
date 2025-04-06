@@ -366,8 +366,11 @@ MODEL_PROVIDER=openai
 CHARACTER_NAME=bigfoot
 
 # Text-to-Speech (TTS) Configuration:
-# TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs
+# TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs or kokoro
 TTS_PROVIDER=openai
+
+# Voice Speed for all TTS providers - 0.7 to 1.2, default is 1.0
+VOICE_SPEED=1.0
 
 # OpenAI TTS Voice - Used when TTS_PROVIDER is set to openai above
 # Voice options: alloy, echo, fable, onyx, nova, shimmer, ash, coral, sage
@@ -390,8 +393,6 @@ ELEVENLABS_API_KEY=your_api_key_here
 ELEVENLABS_TTS_VOICE=your_voice_id_here
 # ElevenLabs TTS Model eleven_multilingual_v2 , eleven_flash_v2_5 is faster but less quality
 ELEVENLABS_TTS_MODEL=eleven_multilingual_v2
-# ElevenLabs TTS Speed 0.7 to 1.2
-ELEVENLABS_TTS_SPEED=1
 
 # Kokoro TTS Configuration:
 # Default voice for Kokoro TTS - examples: af_bella, af_nova, am_onyx, etc.
@@ -405,8 +406,6 @@ MAX_CHAR_LENGTH=1000
 XTTS_NUM_CHARS=1000
 
 # XTTS Configuration:
-# The voice speed for XTTS only (1.0 - 1.5, default is 1.1)
-XTTS_SPEED=1.1
 COQUI_TOS_AGREED=1
 
 # OpenAI Configuration:

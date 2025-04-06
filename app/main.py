@@ -44,7 +44,7 @@ async def get_index(request: Request):
     openai_tts_voice = os.getenv("OPENAI_TTS_VOICE")
     openai_model = os.getenv("OPENAI_MODEL")
     ollama_model = os.getenv("OLLAMA_MODEL")
-    xtts_speed = os.getenv("XTTS_SPEED")
+    voice_speed = os.getenv("VOICE_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
     kokoro_voice = os.getenv("KOKORO_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
@@ -57,7 +57,7 @@ async def get_index(request: Request):
         "openai_tts_voice": openai_tts_voice,
         "openai_model": openai_model,
         "ollama_model": ollama_model,
-        "xtts_speed": xtts_speed,
+        "voice_speed": voice_speed,
         "elevenlabs_voice": elevenlabs_voice,
         "kokoro_voice": kokoro_voice,
         "faster_whisper_local": faster_whisper_local,
@@ -438,8 +438,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("XAI_MODEL", message["model"])
             elif message["action"] == "set_anthropic_model":
                 set_env_variable("ANTHROPIC_MODEL", message["model"])
-            elif message["action"] == "set_xtts_speed":
-                set_env_variable("XTTS_SPEED", message["speed"])
+            elif message["action"] == "set_voice_speed":
+                set_env_variable("VOICE_SPEED", message["speed"])
             elif message["action"] == "set_elevenlabs_voice":
                 set_env_variable("ELEVENLABS_TTS_VOICE", message["voice"])
             elif message["action"] == "set_kokoro_voice":

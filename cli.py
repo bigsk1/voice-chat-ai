@@ -45,11 +45,11 @@ ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-7-sonnet-20250219')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
-ELEVENLABS_TTS_SPEED = os.getenv('ELEVENLABS_TTS_SPEED', '1')
 KOKORO_BASE_URL = os.getenv('KOKORO_BASE_URL', 'http://localhost:8880/v1')
 KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
-XTTS_SPEED = os.getenv('XTTS_SPEED', '1.1') 
+VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
+XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
 os.environ["COQUI_TOS_AGREED"] = "1"
 
 
@@ -220,7 +220,7 @@ def process_and_play(prompt, audio_file_pth):
                     text=prompt,
                     speaker_wav=audio_file_pth,  # For voice cloning
                     language="en",
-                    speed=float(XTTS_SPEED)
+                    speed=float(VOICE_SPEED)
                 )
                 src_path = os.path.join(output_dir, 'output.wav')
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
@@ -288,6 +288,7 @@ def openai_text_to_speech(prompt, output_path):
                 json={
                     "model": OPENAI_MODEL_TTS,
                     "voice": OPENAI_TTS_VOICE,
+                    "speed": float(VOICE_SPEED),
                     "input": prompt,
                     "response_format": file_extension
                 },
@@ -322,7 +323,7 @@ def elevenlabs_text_to_speech(text, output_path):
             "similarity_boost": 0.8,
             "style": 0.0,
             "use_speaker_boost": True,
-            "speed": ELEVENLABS_TTS_SPEED
+            "speed": float(VOICE_SPEED)
         }
     }
 
@@ -347,7 +348,8 @@ def kokoro_text_to_speech(text, output_path):
             "model": "kokoro",
             "voice": KOKORO_TTS_VOICE,
             "input": text,
-            "response_format": "wav"  # Use wav format for more compatibility
+            "response_format": "wav",  # Use wav format for more compatibility
+            "speed": float(VOICE_SPEED)  # Use the global VOICE_SPEED parameter
         }
         
         headers = {
@@ -925,6 +927,7 @@ def generate_speech(text, temp_audio_path):
         payload = {
             "model": OPENAI_MODEL_TTS,
             "voice": OPENAI_TTS_VOICE,
+            "speed": float(VOICE_SPEED),
             "input": text,
             "response_format": "wav"
         }
@@ -945,7 +948,7 @@ def generate_speech(text, temp_audio_path):
                     text=text,
                     speaker_wav=character_audio_file,
                     language="en",
-                    speed=float(XTTS_SPEED)
+                    speed=float(VOICE_SPEED)
                 )
                 sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")

@@ -193,14 +193,13 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="xtts-speed-select">XTTS Speed:</label>
-                <select id="xtts-speed-select">
-                    <option value="1.0">1.0</option>
+                <label for="voice-speed-select">Voice Speed:</label>
+                <select id="voice-speed-select">
+                    <option value="0.7">0.7</option>
+                    <option value="0.9">0.9</option>
+                    <option value="1.0">1.0 (Normal)</option>
                     <option value="1.1">1.1</option>
                     <option value="1.2">1.2</option>
-                    <option value="1.3">1.3</option>
-                    <option value="1.4">1.4</option>
-                    <option value="1.5">1.5</option>
                 </select>
             </div>
             <div class="setting-group">
@@ -256,7 +255,7 @@
             document.getElementById('openai-voice-select').value = "{{ openai_tts_voice }}";
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
             document.getElementById('ollama-model-select').value = "{{ ollama_model }}";
-            document.getElementById('xtts-speed-select').value = "{{ xtts_speed }}";
+            document.getElementById('voice-speed-select').value = "{{ voice_speed }}";
             
             // Set Kokoro voice value
             setTimeout(() => {
