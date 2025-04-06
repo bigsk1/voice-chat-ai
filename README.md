@@ -121,18 +121,18 @@ If you are only using speech with Openai or Elevenlabs then you don't need this.
 
 [Kokoro TTS](https://github.com/remsky/Kokoro-FastAPI) is an open-source neural text-to-speech system based on the Kokoro-82M model, offering high-quality voice synthesis with various male and female voices.
 
-Install it based on the instructions in the Kokoro repo.
+Install it based on the instructions in the Kokoro repo, like run it in docker, then you can connect to the api endpoints to use it's voices.
 
 To use Kokoro TTS:
 
 1. Configure Voice-Chat-AI to use Kokoro:
-   - `KOKORO_BASE_URL=http://localhost:8880/v1` to your `.env` file
-   - Set `TTS_PROVIDER=kokoro` in your `.env` file
-   - Select a voice with `KOKORO_TTS_VOICE=af_bella` (female) or `KOKORO_TTS_VOICE=am_onyx` (male)
+   - `KOKORO_BASE_URL=http://localhost:8880/v1` - set to your url
+   - Set `TTS_PROVIDER=kokoro` - use it as the TTS_PROVIDER in .env or select in UI.
+   - Select a voice with `KOKORO_TTS_VOICE=af_bella` (female) or `KOKORO_TTS_VOICE=am_onyx` (male) - defaults to use in .env, all voices will show in UI.
 
 2. Start the Voice Chat AI application normally
 
-Kokoro TTS operates locally on your machine, requiring no API key or internet connection once installed. The server supports GPU acceleration for faster processing if you have compatible NVIDIA hardware.
+Kokoro TTS operates locally on your machine or local network, requiring no API key or internet connection once installed. The server supports GPU acceleration for faster processing if you have compatible NVIDIA hardware.
 
 ## Usage
 
@@ -352,8 +352,8 @@ docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubunt
 
 ```env
 # Conditional API Usage:
+# Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
 # You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc.
-# If not using certain providers just leave defaults as is and don't select it in the UI.
 
 # Model Provider: openai or ollama or xai or anthropic
 MODEL_PROVIDER=openai
@@ -366,7 +366,7 @@ MODEL_PROVIDER=openai
 CHARACTER_NAME=bigfoot
 
 # Text-to-Speech (TTS) Configuration:
-# TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs or kokoro
+# TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs or kokoro (your own selfhosted tts)
 TTS_PROVIDER=openai
 
 # Voice Speed for all TTS providers - 0.7 to 1.2, default is 1.0
@@ -395,12 +395,13 @@ ELEVENLABS_TTS_VOICE=your_voice_id_here
 ELEVENLABS_TTS_MODEL=eleven_multilingual_v2
 
 # Kokoro TTS Configuration:
-# Default voice for Kokoro TTS - examples: af_bella, af_nova, am_onyx, etc.
+# bm_fable, bm_daniel, bm_lewis, af_alloy, af_bella
+# See the kokoro web url ( if you have it installed ) for more voices http://localhost:8880/web/
 KOKORO_TTS_VOICE=af_bella
 
 # AUDIO GENERATION LENGTH
 # Maximum character length for audio generation - set to 2000+ for stories and games, 3000 for assassin story, 4000 for mars encounter interactive
-# MAX_CHAR_LENGTH is used for openai and elevenlabs, is also used for max tokens for chat response, if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 max tokens is sent to provider
+# MAX_CHAR_LENGTH is used for openai, elevenlabs and kokoro, is also used for max tokens for chat response, if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 max tokens is sent to provider
 MAX_CHAR_LENGTH=1000
 # XTTS Max Number of characters to generate audio, default is 255 but we are overriding that
 XTTS_NUM_CHARS=1000
@@ -449,25 +450,21 @@ KOKORO_BASE_URL=http://localhost:8880/v1
 DEBUG=false  
 # Set to true to see audio level readings during recording           
 DEBUG_AUDIO_LEVELS=false 
-
-# NOTES:
-# List of trigger phrases to have the model view your desktop (desktop, browser, images, etc.).
-# It will describe what it sees, and you can ask questions about it:
-# "what's on my screen", "take a screenshot", "show me my screen", "analyze my screen", 
-# "what do you see on my screen", "screen capture", "screenshot"
-# To stop the conversation, say "Quit" or "Exit". ( ctl+c always works also)
 ```
 
 ### Audio Commands
 
 - You have 3 secs to talk, if there is silence then it's the AI's turn to talk
-- Say any of the following to have the AI look at your screen - "what's on my screen",
-        "take a screenshot",
-        "show me my screen",
-        "analyze my screen",
-        "what do you see on my screen",
-        "screen capture",
-        "screenshot" to have the AI explain what it is seeing in detail.
+- Say any of the following to have the AI look at your screen ( uses llava for ollama and openai as fall back )
+
+  "what's on my screen",
+  "take a screenshot",
+  "show me my screen",
+  "analyze my screen",
+  "what do you see on my screen",
+  "screen capture",
+  "screenshot" to have the AI explain what it is seeing in detail.
+
 - To stop the conversation, say "Quit" or "Exit". ( ctl+c always works also in terminal )
 
 ### ElevenLabs
