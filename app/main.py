@@ -594,20 +594,110 @@ async def get_kokoro_voices():
                             data = await response.json()
                             # Process the voices from the response
                             voices = []
-                            for voice_id in data.get("voices", []):
-                                # Create a readable name from the ID
-                                # Format: language code (af/am) + name
+                            
+                            # Language/accent codes mapping
+                            language_codes = {
+                                'a': 'American English',
+                                'b': 'British English',
+                                'e': 'European Spanish',
+                                'f': 'French',
+                                'g': 'German',
+                                'h': 'Hindi',
+                                'i': 'Italian',
+                                'j': 'Japanese',
+                                'k': 'Korean',
+                                'p': 'Polish',
+                                'r': 'Russian',
+                                's': 'Spanish',
+                                'z': 'Chinese'
+                            }
+                            
+                            # Get all voice IDs
+                            voice_ids = data.get("voices", [])
+                            
+                            # Group voices by language/accent
+                            english_voices = []  # American and British English
+                            other_voices_by_language = {}  # Organize other voices by language code
+                            unknown_voices = []  # For voices that don't follow the naming pattern
+                            
+                            for voice_id in voice_ids:
+                                parts = voice_id.split('_')
+                                if len(parts) >= 2:
+                                    lang_code = parts[0]
+                                    # First character is language code
+                                    accent_code = lang_code[:1]
+                                    
+                                    # Prioritize English voices (American and British)
+                                    if accent_code in ['a', 'b']:
+                                        english_voices.append(voice_id)
+                                    else:
+                                        # Group other voices by language
+                                        if accent_code not in other_voices_by_language:
+                                            other_voices_by_language[accent_code] = []
+                                        other_voices_by_language[accent_code].append(voice_id)
+                                else:
+                                    unknown_voices.append(voice_id)
+                            
+                            # Sort voices within each group
+                            english_voices.sort()
+                            for lang in other_voices_by_language:
+                                other_voices_by_language[lang].sort()
+                            unknown_voices.sort()
+                            
+                            # Create final sorted list: English first, then other languages alphabetically
+                            sorted_voice_ids = english_voices
+                            
+                            # Process English voices
+                            for voice_id in english_voices:
                                 parts = voice_id.split('_')
                                 if len(parts) >= 2:
                                     lang_code = parts[0]
                                     name = parts[1].capitalize()
-                                    gender = "Female" if lang_code == "af" else "Male"
+                                    
+                                    accent_code = lang_code[:1]
+                                    gender_code = lang_code[1:2]
+                                    
+                                    gender = "Female" if gender_code == "f" else "Male"
+                                    accent_label = f" - {language_codes.get(accent_code, 'Unknown')}"
+                                    
                                     voices.append({
                                         "id": voice_id,
-                                        "name": f"{name} ({gender})"
+                                        "name": f"{name} ({gender}){accent_label}"
                                     })
-                                else:
-                                    # Fallback for voices without standard format
+                            
+                            # Add other language groups with separators
+                            for lang in sorted(other_voices_by_language.keys()):
+                                # Add a language group header if we have voices for this language
+                                if other_voices_by_language[lang]:
+                                    language_name = language_codes.get(lang, "Unknown Language")
+                                    
+                                    # Add a separator for this language group
+                                    voices.append({
+                                        "id": f"separator_{lang}",
+                                        "name": f"--- {language_name} Voices ---"
+                                    })
+                                    
+                                    # Add the voices for this language
+                                    for voice_id in other_voices_by_language[lang]:
+                                        parts = voice_id.split('_')
+                                        if len(parts) >= 2:
+                                            name = parts[1].capitalize()
+                                            gender_code = parts[0][1:2]
+                                            gender = "Female" if gender_code == "f" else "Male"
+                                            
+                                            voices.append({
+                                                "id": voice_id,
+                                                "name": f"{name} ({gender})"
+                                            })
+                            
+                            # Add unknown voices at the end if any
+                            if unknown_voices:
+                                voices.append({
+                                    "id": "separator_unknown",
+                                    "name": "--- Other Voices ---"
+                                })
+                                
+                                for voice_id in unknown_voices:
                                     voices.append({
                                         "id": voice_id,
                                         "name": voice_id
