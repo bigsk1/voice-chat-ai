@@ -387,60 +387,6 @@ document.addEventListener("DOMContentLoaded", function() {
     function setTTS() {
         const selectedTTS = document.getElementById('tts-select').value;
         websocket.send(JSON.stringify({ action: "set_tts", tts: selectedTTS }));
-        
-        // When Kokoro is selected, attempt to fetch available voices
-        if (selectedTTS === 'kokoro') {
-            fetch('/kokoro_voices')
-                .then(response => response.json())
-                .then(data => {
-                    const voiceSelect = document.getElementById('kokoro-voice-select');
-                    // Keep existing placeholder option
-                    const placeholderOption = voiceSelect.querySelector('option[value=""]');
-                    // Clear all options except placeholder
-                    voiceSelect.innerHTML = '';
-                    if (placeholderOption) {
-                        voiceSelect.add(placeholderOption);
-                    } else {
-                        // Add placeholder if it doesn't exist
-                        const defaultOption = document.createElement('option');
-                        defaultOption.value = '';
-                        defaultOption.text = 'Select Kokoro to Load';
-                        voiceSelect.add(defaultOption);
-                    }
-                    
-                    // Only add options if voices are available
-                    if (data.voices && data.voices.length > 0) {
-                        data.voices.forEach(voice => {
-                            const option = document.createElement('option');
-                            option.value = voice.id;
-                            option.text = voice.name;
-                            voiceSelect.add(option);
-                        });
-                        
-                        // Try to restore saved value or select first
-                        const savedVoice = kokoroVoiceSelect.getAttribute('data-voice');
-                        if (savedVoice && data.voices.some(v => v.id === savedVoice)) {
-                            voiceSelect.value = savedVoice;
-                            // Also send this voice selection to the server when TTS is changed
-                            websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: savedVoice }));
-                            console.log(`Kokoro TTS selected, voice set to: ${savedVoice}`);
-                        } else if (data.voices.length > 0) {
-                            const firstVoice = data.voices[0].id;
-                            voiceSelect.value = firstVoice;
-                            // Send first voice as default when TTS is changed
-                            websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: firstVoice }));
-                            console.log(`Kokoro TTS selected, default voice set to: ${firstVoice}`);
-                        }
-                    } else if (data.error) {
-                        // Show a message if there's an error with Kokoro server
-                        console.log("Kokoro TTS selected but server not available:", data.error);
-                        displayMessage("Note: Kokoro TTS selected, but server not available. Configure KOKORO_BASE_URL in .env file.", "system-message");
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching Kokoro voices when selecting TTS:', error);
-                });
-        }
     }
 
     function setOpenAIVoice() {
@@ -480,15 +426,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function setKokoroVoice() {
         const selectedVoice = document.getElementById('kokoro-voice-select').value;
-        
-        // Only send to server if a valid voice is selected (not empty placeholder)
-        if (selectedVoice) {
-            websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: selectedVoice }));
-            console.log(`Kokoro voice set to: ${selectedVoice}`);
-        } else {
-            // Show message if placeholder is selected
-            console.log("Placeholder selected. Please select an actual Kokoro voice.");
-        }
+        websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: selectedVoice }));
     }
 
     characterSelect.addEventListener('change', function() {
@@ -667,13 +605,7 @@ document.addEventListener("DOMContentLoaded", function() {
             // Clear any existing options
             voiceSelect.innerHTML = '';
             
-            // Always add the placeholder option
-            const defaultOption = document.createElement('option');
-            defaultOption.value = ''; // Empty value means it's just a placeholder
-            defaultOption.text = 'Select Kokoro to Load';
-            voiceSelect.add(defaultOption);
-            
-            // Only populate voices if we got a valid response with voices
+            // If we have voices, populate the dropdown with them
             if (data.voices && data.voices.length > 0) {
                 // Populate with available voices
                 data.voices.forEach(voice => {
@@ -682,34 +614,23 @@ document.addEventListener("DOMContentLoaded", function() {
                     option.text = voice.name;
                     voiceSelect.add(option);
                 });
-                
-                // Try to set the selected voice if available
-                const savedVoice = kokoroVoiceSelect.getAttribute('data-voice');
-                if (savedVoice && data.voices.some(v => v.id === savedVoice)) {
-                    voiceSelect.value = savedVoice;
-                    // Also send this initial selection to the server to ensure it's active
-                    websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: savedVoice }));
-                    console.log(`Initial Kokoro voice set to: ${savedVoice}`);
-                } else if (data.voices.length > 0) {
-                    // Select first voice as fallback and send to server
-                    const firstVoice = data.voices[0].id;
-                    voiceSelect.value = firstVoice;
-                    websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: firstVoice }));
-                    console.log(`Default Kokoro voice set to: ${firstVoice}`);
-                }
+            } else {
+                // If no voices are available, add a placeholder
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = 'af_bella';
+                placeholderOption.text = 'Select Kokoro TTS to Load';
+                voiceSelect.add(placeholderOption);
             }
         })
         .catch(error => {
             console.error('Error fetching Kokoro voices:', error);
             
-            // If there's an error, we still want a default option
+            // On error, ensure we have a placeholder
             const voiceSelect = document.getElementById('kokoro-voice-select');
-            if (voiceSelect) {
-                voiceSelect.innerHTML = '';
-                const defaultOption = document.createElement('option');
-                defaultOption.value = '';
-                defaultOption.text = 'Select Kokoro to Load';
-                voiceSelect.add(defaultOption);
-            }
+            voiceSelect.innerHTML = '';
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = 'af_bella';
+            placeholderOption.text = 'Select Kokoro TTS to Load';
+            voiceSelect.add(placeholderOption);
         });
 });

@@ -131,9 +131,9 @@
                 <label for="tts-select">TTS Provider:</label>
                 <select id="tts-select">
                     <option value="openai">OpenAI</option>
-                    <option value="xtts">XTTS</option>
                     <option value="elevenlabs">ElevenLabs</option>
                     <option value="kokoro">Kokoro-TTS</option>
+                    <option value="xtts">XTTS</option>
                 </select>
             </div>
             <div class="setting-group">
@@ -156,7 +156,7 @@
             </div>
             <div class="setting-group">
                 <label for="kokoro-voice-select">Kokoro Voice:</label>
-                <select id="kokoro-voice-select" data-voice="{{ kokoro_voice }}"></select>
+                <select id="kokoro-voice-select"></select>
             </div>
             <div class="setting-group">
                 <label for="openai-model-select">OpenAI Model:</label>
@@ -258,6 +258,13 @@
             document.getElementById('ollama-model-select').value = "{{ ollama_model }}";
             document.getElementById('xtts-speed-select').value = "{{ xtts_speed }}";
             
+            // Set Kokoro voice value
+            setTimeout(() => {
+                const kokoroVoiceSelect = document.getElementById('kokoro-voice-select');
+                if (kokoroVoiceSelect && kokoroVoiceSelect.options.length > 0) {
+                    kokoroVoiceSelect.value = "{{ kokoro_voice }}";
+                }
+            }, 300); // Short delay to ensure the dropdown is populated
         });
     </script>
 </body>
