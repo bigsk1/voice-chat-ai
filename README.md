@@ -51,7 +51,7 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 - Python 3.10
 - ffmpeg
 - Ollama models or OpenAI or xAI or Anthropic for chat
-- Local XTTS or Openai API or ElevenLabs API for speech
+- Local XTTS, Openai API or ElevenLabs API or Kokoro TTS for speech
 - Microsoft C++ Build Tools on windows
 - Microphone
 - A sense of humor
@@ -469,7 +469,7 @@ DEBUG_AUDIO_LEVELS=false
 
 ### ElevenLabs
 
-The app needs an `elevenlabs_voices.json` file. This file stores your voice IDs from ElevenLabs.
+The app uses an `elevenlabs_voices.json` file. This file stores your voice IDs from ElevenLabs.
 
 #### For local use
 
