@@ -730,9 +730,7 @@ If you continue to have issues after these steps, creating a fresh virtual envir
 
 OpenAI RealTime
 
-[![Watch the video](https://img.youtube.com/vi/0X4WTKfhnaU/maxresdefault.jpg)](https://youtu.be/0X4WTKfhnaU)
-
-Click on the thumbnail to open the video☝️
+https://github.com/user-attachments/assets/d6ed3c62-fe07-418c-9708-673f21fcf5c2
 
 ---
 
