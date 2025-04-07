@@ -60,6 +60,7 @@ PINK = '\033[95m'
 CYAN = '\033[96m'
 YELLOW = '\033[93m'
 NEON_GREEN = '\033[92m'
+BLUE = '\033[94m'
 RESET_COLOR = '\033[0m'
 
 # Initialize OpenAI API key if available
@@ -103,7 +104,7 @@ if FASTER_WHISPER_LOCAL:
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
 else:
-    print("Faster-Whisper initialization skipped (FASTER_WHISPER_LOCAL=false). Will use OpenAI API for transcription or load on demand.")
+    print("Faster-Whisper initialization skipped. Using OpenAI for transcription or load on demand.")
 
 # Paths for character-specific files
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -262,12 +263,12 @@ def sync_play_audio(file_path):
 output_dir = os.path.join(project_dir, 'outputs')
 os.makedirs(output_dir, exist_ok=True)
 
-print(f"Using device: {device}")
-print(f"Model provider: {MODEL_PROVIDER}")
-print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
-print(f"Character: {character_display_name}")
-print(f"Text-to-Speech provider: {TTS_PROVIDER}")
-print("To stop chatting say Quit or Exit. One moment please loading...")
+print(f"{NEON_GREEN}Using device: {device}{RESET_COLOR}")
+print(f"{NEON_GREEN}Model provider: {MODEL_PROVIDER}{RESET_COLOR}")
+print(f"{NEON_GREEN}Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}{RESET_COLOR}")
+print(f"{NEON_GREEN}Character: {character_display_name}{RESET_COLOR}")
+print(f"{NEON_GREEN}Text-to-Speech provider: {TTS_PROVIDER}{RESET_COLOR}")
+print(f"To stop chatting say Quit or Exit. One moment please loading...")
 
 async def process_and_play(prompt, audio_file_pth):
     # Always get the current character name to ensure we have the right audio file

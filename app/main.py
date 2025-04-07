@@ -16,11 +16,36 @@ import logging
 from threading import Thread
 import uuid
 import aiohttp
+import shutil
+
+
+def center_banner(banner_text: str) -> str:
+    terminal_width = shutil.get_terminal_size((80, 20)).columns  # fallback = 80
+    centered_lines = []
+    for line in banner_text.splitlines():
+        centered_line = line.center(terminal_width)
+        centered_lines.append(centered_line)
+    return "\n".join(centered_lines)
+
+def display_banner():
+    raw_banner = f"""
+
+ ▌ ▐·      ▪   ▄▄· ▄▄▄ .     ▄▄·  ▄ .▄ ▄▄▄· ▄▄▄▄▄     ▄▄▄· ▪  
+▪█·█▌▪     ██ ▐█ ▌▪▀▄.▀·    ▐█ ▌▪██▪▐█▐█ ▀█ •██      ▐█ ▀█ ██ 
+▐█▐█• ▄█▀▄ ▐█·██ ▄▄▐▀▀▪▄    ██ ▄▄██▀▐█▄█▀▀█  ▐█.▪    ▄█▀▀█ ▐█·
+ ███ ▐█▌.▐▌▐█▌▐███▌▐█▄▄▌    ▐███▌██▌▐▀▐█ ▪▐▌ ▐█▌·    ▐█ ▪▐▌▐█▌
+. ▀   ▀█▄▀▪▀▀▀·▀▀▀  ▀▀▀     ·▀▀▀ ▀▀▀ · ▀  ▀  ▀▀▀      ▀  ▀ ▀▀▀
+
+"""
+    print(center_banner(raw_banner))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Display banner
+display_banner()
 
 app = FastAPI()
 
