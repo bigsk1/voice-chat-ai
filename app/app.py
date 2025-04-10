@@ -1070,6 +1070,7 @@ async def analyze_image(image_path, question_prompt):
                 async with session.post(f'{OLLAMA_BASE_URL}/api/generate', headers=headers, json=payload, timeout=30) as response:
                     print(f"Response status code: {response.status}")
                     if response.status == 200:
+                        print("Using ollama for image analysis")
                         response_json = await response.json()
                         return {"choices": [{"message": {"content": response_json.get('response', 'No response received.')}}]}
                     elif response.status == 404:
@@ -1081,7 +1082,6 @@ async def analyze_image(image_path, question_prompt):
             return {"choices": [{"message": {"content": "Failed to process the image with the llava model."}}]}
     
     elif MODEL_PROVIDER == 'xai':
-        # First, try XAI's image analysis if it's supported
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {XAI_API_KEY}"
@@ -1090,11 +1090,11 @@ async def analyze_image(image_path, question_prompt):
             "role": "user",
             "content": [
                 {"type": "text", "text": question_prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "low"}}
+                {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
             ]
         }
         payload = {
-            "model": XAI_MODEL,
+            "model": "grok-2-vision-1212",
             "temperature": 0.5,
             "messages": [message],
             "max_tokens": 1000
@@ -1104,9 +1104,10 @@ async def analyze_image(image_path, question_prompt):
             async with aiohttp.ClientSession() as session:
                 async with session.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, timeout=30) as response:
                     if response.status == 200:
+                        print("Using xAI for image analysis")
                         return await response.json()
                     else:
-                        # If XAI doesn't support image analysis or returns an error,
+                        # If XAI returns an error,
                         # fall back to OpenAI's image analysis
                         print("XAI image analysis failed or not supported, falling back to OpenAI")
                         return await fallback_to_openai_image_analysis(encoded_image, question_prompt)
@@ -1127,7 +1128,7 @@ async def fallback_to_openai_image_analysis(encoded_image, question_prompt):
         "role": "user",
         "content": [
             {"type": "text", "text": question_prompt},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "low"}}
+            {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
         ]
     }
     payload = {
@@ -1141,6 +1142,7 @@ async def fallback_to_openai_image_analysis(encoded_image, question_prompt):
         async with aiohttp.ClientSession() as session:
             async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=30) as response:
                 response.raise_for_status()
+                print("Using OpenAI for image analysis")
                 return await response.json()
     except aiohttp.ClientError as e:
         print(f"OpenAI fallback request failed: {e}")

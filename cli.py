@@ -846,6 +846,7 @@ def analyze_image(image_path, question_prompt):
             response = requests.post(f'{OLLAMA_BASE_URL}/api/generate', headers=headers, json=payload, timeout=20)
             print(f"Response status code: {response.status_code}")  # Debugging statement
             if response.status_code == 200:
+                print("Using ollama for image analysis")
                 return {"choices": [{"message": {"content": response.json().get('response', 'No response received.')}}]}
             elif response.status_code == 404:
                 return {"choices": [{"message": {"content": "The llava model is not available on this server."}}]}
@@ -865,11 +866,11 @@ def analyze_image(image_path, question_prompt):
             "role": "user",
             "content": [
                 {"type": "text", "text": question_prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "low"}}
+                {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
             ]
         }
         payload = {
-            "model": XAI_MODEL,
+            "model": "grok-2-vision-1212",
             "temperature": 0.5,
             "messages": [message],
             "max_tokens": 1000
@@ -878,6 +879,7 @@ def analyze_image(image_path, question_prompt):
         try:
             response = requests.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, timeout=30)
             if response.status_code == 200:
+                print("Using xAI for image analysis")
                 return response.json()
             else:
                 print("XAI image analysis failed or not supported, falling back to OpenAI")
@@ -900,7 +902,7 @@ def analyze_image_with_openai(encoded_image, question_prompt):
         "role": "user",
         "content": [
             {"type": "text", "text": question_prompt},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "low"}}
+            {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
         ]
     }
     payload = {
@@ -912,6 +914,7 @@ def analyze_image_with_openai(encoded_image, question_prompt):
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=30)
         response.raise_for_status()
+        print("Using OpenAI for image analysis")
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f"OpenAI request failed: {e}")
