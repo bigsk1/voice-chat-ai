@@ -773,7 +773,10 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                     try:
                         chunk = json.loads(line)
                         delta_content = chunk['choices'][0]['delta'].get('content', '')
+                        # print(f"Raw delta_content: {repr(delta_content)}")
                         if delta_content:
+                            # Clean the weird characters
+                            delta_content = delta_content.replace('â\x80\x99', "'")
                             line_buffer += delta_content
                             if '\n' in line_buffer:
                                 lines = line_buffer.split('\n')
