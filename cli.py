@@ -650,6 +650,8 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                     chunk = json.loads(line)
                     delta_content = chunk['choices'][0]['delta'].get('content', '')
                     if delta_content:
+                        # Clean the weird characters before printing
+                        delta_content = delta_content.replace('â\x80\x99', "'")
                         print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
                         full_response += delta_content
                 except json.JSONDecodeError:
@@ -756,7 +758,7 @@ def record_audio(file_path, silence_threshold=512, silence_duration=4.0, chunk_s
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=chunk_size)
     frames = []
-    print("Recording...")
+    print(f"{PINK}Recording...{RESET_COLOR}")
     silent_chunks = 0
     speaking_chunks = 0
     while True:
