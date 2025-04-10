@@ -22,7 +22,6 @@ import torch
 from pydub import AudioSegment
 from .shared import clients, get_current_character
 
-
 import logging
 logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
 
@@ -1034,13 +1033,34 @@ async def execute_once(question_prompt):
         await play_audio(temp_audio_path)
 
     os.remove(image_path)
+    return text_response
 
 async def execute_screenshot_and_analyze():
+    # Import the necessary modules at the beginning of the function
+    from .shared import get_current_character, conversation_history
+    from .app_logic import save_conversation_history as save_conversation_history_app, save_character_specific_history as save_character_specific_history_app
+    
     question_prompt = "What do you see in this image? Keep it short but detailed and answer any follow up questions about it"
     print("Taking screenshot and analyzing...")
-    await execute_once(question_prompt)
-    print("\nReady for the next question....")
+    text_response = await execute_once(question_prompt)
     
+    # Add the AI's response to the conversation history
+    conversation_history.append({"role": "assistant", "content": text_response})
+    
+    # Save the updated conversation history
+    current_character = get_current_character()
+    is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+    
+    if is_story_character:
+        save_character_specific_history_app(conversation_history, current_character)
+    else:
+        save_conversation_history_app(conversation_history)
+    
+    # Send the response to any connected websocket clients
+    await send_message_to_clients(f"{current_character}: {text_response}")
+    
+    print("\nReady for the next question....")
+
 async def take_screenshot(temp_image_path):
     await asyncio.sleep(5)
     screenshot = ImageGrab.grab()
