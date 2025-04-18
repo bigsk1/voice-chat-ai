@@ -702,6 +702,20 @@ OSError: [Errno -9996] Invalid input device (no default output device)
 
 PulseAudio Failure: The container's PulseAudio client can't connect to a server (Connection refused), meaning no host PulseAudio socket is accessible. Make sure you if running docker your volume mapping is correct to the audio device on your host.
 
+### Pyaudio Install Errors
+
+If you have an older laptop or wsl version I have had this issue, it is missing packages in wsl2.
+
+gcc and python3-dev for compiling Python extensions
+portaudio19-dev for PyAudio
+libasound2-dev for ALSA
+libstdc++6 with GLIBCXX_3.4.32 support
+PulseAudio for audio redirection
+
+```bash
+sudo apt-get update && sudo apt-get install -y gcc python3-dev portaudio19-dev libstdc++6 pulseaudio pulseaudio-utils ffmpeg
+```
+
 ### ImportError: Coqpit module not found
 
 If you update to coqui-tts 0.26.0 (which supports transformers 4.48.0+) and encounter an error related to importing Coqpit, this is because of a package dependency change. The newer version of coqui-tts uses a forked version of coqpit called `coqpit-config` instead of the original `coqpit` package.
