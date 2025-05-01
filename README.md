@@ -48,6 +48,7 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
 ### Requirements
 
+- Windows or Linux
 - Python 3.10
 - ffmpeg
 - Ollama models or OpenAI or xAI or Anthropic for chat
