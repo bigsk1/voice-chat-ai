@@ -1229,8 +1229,20 @@ async def kokoro_text_to_speech(text, output_path):
             "Content-Type": "application/json"
         }
         
-        # Make the request
-        async with aiohttp.ClientSession() as session:
+        # Add Basic Auth if credentials are provided
+        kokoro_username = os.getenv("KOKORO_USERNAME", "")
+        kokoro_password = os.getenv("KOKORO_PASSWORD", "")
+        
+        if kokoro_username and kokoro_password:
+            import base64
+            auth_str = f"{kokoro_username}:{kokoro_password}"
+            auth_bytes = auth_str.encode('ascii')
+            base64_auth = base64.b64encode(auth_bytes).decode('ascii')
+            headers["Authorization"] = f"Basic {base64_auth}"
+        
+        # Make the request with SSL verification disabled
+        connector = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(kokoro_url, json=payload, headers=headers) as response:
                 if response.status == 200:
                     # Save the audio data to file

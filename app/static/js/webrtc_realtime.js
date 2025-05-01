@@ -764,6 +764,31 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
+    // Fetch available characters
+    function fetchCharacters() {
+        fetch('/characters')
+            .then(response => response.json())
+            .then(data => {
+                characterSelect.innerHTML = '';
+                
+                // Sort the characters alphabetically
+                data.characters.sort((a, b) => a.localeCompare(b));
+                
+                data.characters.forEach(character => {
+                    const option = document.createElement('option');
+                    option.value = character;
+                    option.textContent = character.replace(/_/g, ' '); // Replace all underscores with spaces
+                    characterSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching characters:', error);
+                displayMessage("Failed to load characters", "error-message");
+            });
+    }
+
+    fetchCharacters();
+
     // Function to fetch character prompt from server
     async function fetchCharacterPrompt(characterName) {
         debugLog(`Fetching character prompt for: ${characterName}`, "info");

@@ -607,14 +607,28 @@ async def get_kokoro_voices():
         # Get the base URL from environment or use default
         kokoro_base_url = os.getenv("KOKORO_BASE_URL", "http://localhost:8880/v1")
         
+        # Get authentication credentials
+        kokoro_username = os.getenv("KOKORO_USERNAME", "")
+        kokoro_password = os.getenv("KOKORO_PASSWORD", "")
+        
+        # Prepare auth headers if credentials are provided
+        headers = {}
+        if kokoro_username and kokoro_password:
+            import base64
+            auth_str = f"{kokoro_username}:{kokoro_password}"
+            auth_bytes = auth_str.encode('ascii')
+            base64_auth = base64.b64encode(auth_bytes).decode('ascii')
+            headers["Authorization"] = f"Basic {base64_auth}"
+        
         try:
             # Use the correct API endpoint for voices
             voices_url = f"{kokoro_base_url}/audio/voices"
             
-            # Make HTTP request directly
-            async with aiohttp.ClientSession() as session:
+            # Make HTTP request directly with SSL verification disabled
+            connector = aiohttp.TCPConnector(ssl=False)
+            async with aiohttp.ClientSession(connector=connector) as session:
                 try:
-                    async with session.get(voices_url, timeout=3) as response:
+                    async with session.get(voices_url, headers=headers, timeout=3) as response:
                         if response.status == 200:
                             data = await response.json()
                             # Process the voices from the response
@@ -643,7 +657,7 @@ async def get_kokoro_voices():
                             # Group voices by language/accent
                             english_voices = []  # American and British English
                             other_voices_by_language = {}  # Organize other voices by language code
-                            unknown_voices = []  # For voices that don't follow the naming pattern
+                            unknown_voices = []
                             
                             for voice_id in voice_ids:
                                 parts = voice_id.split('_')

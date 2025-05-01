@@ -444,6 +444,9 @@ XAI_BASE_URL=https://api.x.ai/v1
 # Kokoro API base URL - default is localhost, change if running on another machine or in docker
 # KOKORO_BASE_URL=http://host.docker.internal:8880/v1
 KOKORO_BASE_URL=http://localhost:8880/v1
+# For remote Kokoro TTS basic auth username and password if needed
+# KOKORO_USERNAME=admin
+# KOKORO_PASSWORD=test123
 
 # Debug settings - true or false
 # Set to true to enable extensive debug output 
