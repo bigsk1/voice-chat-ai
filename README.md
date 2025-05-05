@@ -18,7 +18,7 @@ Check out the game and story documentation:
 
 Get up and running fast with Voice Chat AI! 🔊
 
-- [**Install Locally**](#installation): Set up with Python 3.10 on Windows or Linux.
+- [**Install Locally**](#installation): Set up with Python 3.10 on Windows, Linux or MacOS.
 - [**Run with Docker**](#install-with-docker): Use Docker run or Docker Compose
 - [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env` on startup.
 - [**OpenAI Enhanced**](#openai-enhanced): Use OpenAI Enhanced Mode to speak with the AI in a more human like way with emotions.
@@ -105,10 +105,10 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
     pip install -r requirements_cpu.txt
     ```
 
-   On MacOS only - replace the torch libaries in requirements_cpu with:
+   On MacOS only - replace the torch libaries in requirements_cpu.txt with:
 
    ```bash
-   pip install torch==2.3.1 torchaudio==2.3.1 torchvision==0.18.1
+   torch==2.3.1 torchaudio==2.3.1 torchvision==0.18.1
    ```
 
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
