@@ -48,7 +48,7 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
 ### Requirements
 
-- Windows or Linux
+- Windows, Linux or MacOS
 - Python 3.10
 - ffmpeg
 - Ollama models or OpenAI or xAI or Anthropic for chat
@@ -105,7 +105,13 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
     pip install -r requirements_cpu.txt
     ```
 
-    Make sure you have ffmpeg downloaded if using local XTTS, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
+   On MacOS only - replace the torch libaries in requirements_cpu with:
+
+   ```bash
+   pip install torch==2.3.1 torchaudio==2.3.1 torchvision==0.18.1
+   ```
+
+    Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
     Note: The app uses OpenAI transcription by default. If you select Local Faster Whisper in the UI, it will automatically download the model (about 1GB) on first use. The model is stored in your user's cache directory and shared across environments.
 
