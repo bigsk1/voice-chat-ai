@@ -1,7 +1,7 @@
 # CPU-optimized PyTorch and related libraries (no CUDA)
-torch==2.3.1+cpu
-torchaudio==2.3.1+cpu
-torchvision==0.18.1+cpu
+torch==2.7.0
+torchaudio==2.7.0
+torchvision==0.22.0
 -f https://download.pytorch.org/whl/torch_stable.html
 
 PyAudio==0.2.14
