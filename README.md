@@ -89,27 +89,17 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
    For GPU (CUDA) version:
 
-    Install CUDA-enabled PyTorch and other dependencies
-
-    ```bash
-   pip install torch==2.3.1+cu121 torchaudio==2.3.1+cu121 torchvision==0.18.1+cu121 -f https://download.pytorch.org/whl/torch_stable.html
-   ```
+    Install CUDA-enabled PyTorch and other dependencies. Note: On Windows, torch==2.7.0 will install the CPU-only version, as GPU wheels are not published yet for Windows.
 
    ```bash
    pip install -r requirements.txt
    ```
 
-    To install cpu only ( which is fine if only using api's ) use:
+   For CPU only RECOMMENDED:
 
     ```bash
     pip install -r requirements_cpu.txt
     ```
-
-   On MacOS only - replace the torch libaries in requirements_cpu.txt with:
-
-   ```bash
-   torch==2.3.1 torchaudio==2.3.1 torchvision==0.18.1
-   ```
 
     Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
 
@@ -725,6 +715,20 @@ PulseAudio for audio redirection
 ```bash
 sudo apt-get update && sudo apt-get install -y gcc python3-dev portaudio19-dev libstdc++6 pulseaudio pulseaudio-utils ffmpeg
 ```
+
+IF YOU ARE ON CONDA:
+
+Some system-level library (in this case, libjack.so.0, used by PyAudio or PortAudio) depends on a newer version of libstdc++.so.6 than what's provided by your Conda environment.
+
+The version of libstdc++.so.6 inside your Conda env (likely from an older GCC runtime) overrides the system’s newer version, breaking compatibility.
+
+Tell Conda not to override the system C++ libs
+
+```bash
+conda remove libstdcxx-ng --force
+```
+
+This will let it use the system's /usr/lib/x86_64-linux-gnu/libstdc++.so.6 instead — which has GLIBCXX_3.4.32
 
 ### ImportError: Coqpit module not found
 
