@@ -89,7 +89,7 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
    For GPU (CUDA) version:
 
-    Install CUDA-enabled PyTorch and other dependencies. Note: On Windows, torch==2.7.0 will install the CPU-only version, as GPU wheels are not published yet for Windows.
+    Install CUDA-enabled PyTorch and other dependencies.
 
    ```bash
    pip install -r requirements.txt
