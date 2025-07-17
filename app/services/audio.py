@@ -2,20 +2,21 @@ import os
 import tempfile
 from typing import Optional
 
-from .transcription import transcribe_with_whisper, transcribe_with_openai_api
-from .app_logic import current_transcription_model, use_local_whisper, characters_folder
-from .app import (
+from ..transcription import transcribe_with_whisper, transcribe_with_openai_api
+from ..app_logic import current_transcription_model, use_local_whisper, characters_folder
+from ..app import (
     analyze_mood,
     chatgpt_streamed,
     sanitize_response,
     open_file,
     openai_text_to_speech,
     elevenlabs_text_to_speech,
+)
+from ..app_logic import (
     save_conversation_history,
     save_character_specific_history,
 )
-from .app_logic import adjust_prompt
-from .shared import conversation_history, get_current_character
+from ..shared import conversation_history, get_current_character
 
 async def transcribe_audio_bytes(audio_bytes: bytes) -> str:
     """Transcribe uploaded audio bytes using the configured method."""

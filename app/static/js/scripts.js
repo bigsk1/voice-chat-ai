@@ -1,5 +1,6 @@
-document.addEventListener("DOMContentLoaded", function() {
-    const websocket = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
+document.addEventListener("DOMContentLoaded", () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
     const themeToggle = document.getElementById('theme-toggle');
     const downloadButton = document.getElementById('download-button');
     const body = document.body;

@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", () => {
     let websocket;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
@@ -34,7 +34,8 @@ document.addEventListener("DOMContentLoaded", function() {
             websocket.close();
         }
         
-        websocket = new WebSocket(`ws://${window.location.hostname}:8000/ws_enhanced`);
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        websocket = new WebSocket(`${wsProtocol}//${window.location.host}/ws_enhanced`);
         
         websocket.onopen = function(event) {
             console.log("WebSocket connection established");
