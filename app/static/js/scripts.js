@@ -633,4 +633,53 @@ document.addEventListener("DOMContentLoaded", function() {
             placeholderOption.text = 'Select Kokoro TTS to Load';
             voiceSelect.add(placeholderOption);
         });
+
+    // === Browser-based audio capture ===
+    let mediaRecorder;
+    let audioChunks = [];
+
+    async function startBrowserConversation() {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioChunks = [];
+            const formData = new FormData();
+            formData.append('file', blob, 'speech.webm');
+            const transRes = await fetch('/api/transcribe', { method: 'POST', body: formData });
+            const transData = await transRes.json();
+            if (transData.text) {
+                displayMessage('You: ' + transData.text);
+                const chatRes = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: transData.text })
+                });
+                const chatData = await chatRes.json();
+                if (chatData.text) {
+                    displayMessage(chatData.text);
+                    const synthRes = await fetch('/api/synthesize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: chatData.text })
+                    });
+                    const audioBuffer = await synthRes.arrayBuffer();
+                    const url = URL.createObjectURL(new Blob([audioBuffer], { type: 'audio/wav' }));
+                    const audio = new Audio(url);
+                    audio.play();
+                }
+            }
+        };
+        mediaRecorder.start();
+    }
+
+    function stopBrowserConversation() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+    }
+
+    startButton.addEventListener('click', startBrowserConversation);
+    stopButton.addEventListener('click', stopBrowserConversation);
 });

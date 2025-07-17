@@ -3,15 +3,17 @@ import os
 import signal
 import uvicorn
 import asyncio
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
+from .services.audio import transcribe_audio_bytes, generate_response_text, synthesize_text
+from pydantic import BaseModel
 import logging
 from threading import Thread
 import uuid
@@ -429,6 +431,32 @@ async def proxy_openai_realtime(request: Request):
     except Exception as e:
         logger.error(f"Error proxying to OpenAI: {e}")
         return HTTPException(status_code=500, detail=f"Error proxying to OpenAI: {str(e)}")
+
+
+class TextInput(BaseModel):
+    text: str
+
+
+@app.post("/api/transcribe")
+async def api_transcribe(file: UploadFile = File(...)):
+    """Transcribe uploaded audio file and return text."""
+    data = await file.read()
+    text = await transcribe_audio_bytes(data)
+    return {"text": text}
+
+
+@app.post("/api/chat")
+async def api_chat(payload: TextInput):
+    """Generate chat response for given text."""
+    response_text = await generate_response_text(payload.text)
+    return {"text": response_text}
+
+
+@app.post("/api/synthesize")
+async def api_synthesize(payload: TextInput):
+    """Synthesize speech for provided text and return audio."""
+    audio_bytes = await synthesize_text(payload.text)
+    return Response(content=audio_bytes, media_type="audio/wav")
 
 
 @app.websocket("/ws")
