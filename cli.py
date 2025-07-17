@@ -50,6 +50,7 @@ KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
+LANGUAGE = os.getenv('LANGUAGE', 'en')
 os.environ["COQUI_TOS_AGREED"] = "1"
 
 
@@ -81,7 +82,7 @@ FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "tru
 whisper_model = None
 
 # Default model size (adjust as needed)
-model_size = "medium.en"
+model_size = f"medium.{LANGUAGE}"
 
 if FASTER_WHISPER_LOCAL:
     try:
@@ -94,7 +95,7 @@ if FASTER_WHISPER_LOCAL:
 
         # Force CPU fallback
         device = "cpu"
-        model_size = "tiny.en"  # Use a smaller model for CPU performance
+        model_size = f"tiny.{LANGUAGE}"  # Use a smaller model for CPU performance
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
 else:
@@ -219,7 +220,7 @@ def process_and_play(prompt, audio_file_pth):
                 wav = tts.tts(
                     text=prompt,
                     speaker_wav=audio_file_pth,  # For voice cloning
-                    language="en",
+                    language=LANGUAGE,
                     speed=float(VOICE_SPEED)
                 )
                 src_path = os.path.join(output_dir, 'output.wav')
@@ -255,7 +256,8 @@ def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str) -> by
                 "model": model,
                 "voice": voice,
                 "input": input_text,
-                "response_format": 'pcm'
+                "response_format": 'pcm',
+                "language": LANGUAGE
             },
             stream=True,
             timeout=30
@@ -290,7 +292,8 @@ def openai_text_to_speech(prompt, output_path):
                     "voice": OPENAI_TTS_VOICE,
                     "speed": float(VOICE_SPEED),
                     "input": prompt,
-                    "response_format": file_extension
+                    "response_format": file_extension,
+                    "language": LANGUAGE
                 },
                 stream=True,
                 timeout=30
@@ -754,7 +757,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
 
 # Function to transcribe the recorded audio using faster-whisper
 def transcribe_with_whisper(audio_file):
-    segments, info = whisper_model.transcribe(audio_file, beam_size=5)
+    segments, info = whisper_model.transcribe(audio_file, beam_size=5, language=LANGUAGE)
     transcription = ""
     for segment in segments:
         transcription += segment.text + " "
@@ -945,7 +948,8 @@ def generate_speech(text, temp_audio_path):
             "voice": OPENAI_TTS_VOICE,
             "speed": float(VOICE_SPEED),
             "input": text,
-            "response_format": "wav"
+            "response_format": "wav",
+            "language": LANGUAGE
         }
         response = requests.post(OPENAI_TTS_URL, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
@@ -963,7 +967,7 @@ def generate_speech(text, temp_audio_path):
                 wav = tts.tts(
                     text=text,
                     speaker_wav=character_audio_file,
-                    language="en",
+                    language=LANGUAGE,
                     speed=float(VOICE_SPEED)
                 )
                 sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
@@ -989,7 +993,8 @@ def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe"):
             "Authorization": f"Bearer {OPENAI_API_KEY}"
         }
         data = {
-            'model': model
+            'model': model,
+            'language': LANGUAGE
         }
         
         response = requests.post(api_url, headers=headers, files=files, data=data, timeout=30)

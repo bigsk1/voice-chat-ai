@@ -52,6 +52,7 @@ KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
+LANGUAGE = os.getenv('LANGUAGE', 'en')
 os.environ["COQUI_TOS_AGREED"] = "1"
 
 # ANSI escape codes for colors
@@ -86,7 +87,7 @@ FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "tru
 whisper_model = None
 
 # Default model size (adjust as needed)
-model_size = "medium.en"
+model_size = f"medium.{LANGUAGE}"
 
 if FASTER_WHISPER_LOCAL:
     try:
@@ -99,7 +100,7 @@ if FASTER_WHISPER_LOCAL:
 
         # Force CPU fallback
         device = "cpu"
-        model_size = "tiny.en"  # Use a smaller model for CPU performance
+        model_size = f"tiny.{LANGUAGE}"  # Use a smaller model for CPU performance
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
 else:
@@ -171,6 +172,12 @@ def init_voice_speed(speed_value):
     global VOICE_SPEED
     VOICE_SPEED = speed_value
     print(f"Switched to global voice speed: {speed_value}")
+
+def init_language(language_value):
+    global LANGUAGE, whisper_model
+    LANGUAGE = language_value
+    whisper_model = None  # Reinitialize on next use
+    print(f"Switched language to: {language_value}")
 
 def init_set_tts(set_tts):
     global TTS_PROVIDER, tts
@@ -352,7 +359,7 @@ async def process_and_play(prompt, audio_file_pth):
                 tts.tts,
                 text=prompt,
                 speaker_wav=current_audio_file,  # Use the updated current character audio
-                language="en",
+                language=LANGUAGE,
                 speed=float(os.getenv('VOICE_SPEED', '1.0'))
             )
                 src_path = os.path.join(output_dir, 'output.wav')
@@ -420,7 +427,7 @@ async def openai_text_to_speech(prompt, output_path):
                 async with session.post(
                     url=OPENAI_TTS_URL,
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                    json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension, "speed": voice_speed},
+                    json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension, "speed": voice_speed, "language": LANGUAGE},
                     timeout=30
                 ) as response:
                     response.raise_for_status()
@@ -439,7 +446,7 @@ async def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str,
         async with session.post(
             url=api_url,
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={"model": model, "voice": voice, "input": input_text, "response_format": 'pcm'},
+            json={"model": model, "voice": voice, "input": input_text, "response_format": 'pcm', "language": LANGUAGE},
             timeout=30
         ) as response:
             response.raise_for_status()
@@ -939,7 +946,7 @@ def transcribe_with_whisper(audio_file):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         
         # Default model size (adjust as needed)
-        model_size = "medium.en" if device == "cuda" else "tiny.en"
+        model_size = f"medium.{LANGUAGE}" if device == "cuda" else f"tiny.{LANGUAGE}"
         
         try:
             print(f"Lazy-loading Faster-Whisper on {device}...")
@@ -951,11 +958,11 @@ def transcribe_with_whisper(audio_file):
             
             # Force CPU fallback
             device = "cpu"
-            model_size = "tiny.en"
+            model_size = f"tiny.{LANGUAGE}"
             whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
             print("Faster-Whisper initialized on CPU successfully.")
     
-    segments, info = whisper_model.transcribe(audio_file, beam_size=5)
+    segments, info = whisper_model.transcribe(audio_file, beam_size=5, language=LANGUAGE)
     transcription = ""
     for segment in segments:
         transcription += segment.text + " "
@@ -1197,7 +1204,7 @@ async def generate_speech(text, temp_audio_path):
                     tts.tts,
                     text=text,
                     speaker_wav=character_audio_file,
-                    language="en",
+                    language=LANGUAGE,
                     speed=float(os.getenv('VOICE_SPEED', '1.0'))
                 )
                 sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])

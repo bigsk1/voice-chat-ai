@@ -204,6 +204,13 @@
                 </select>
             </div>
             <div class="setting-group">
+                <label for="language-select">Language:</label>
+                <select id="language-select">
+                    <option value="en">English</option>
+                    <option value="ja">Japanese</option>
+                </select>
+            </div>
+            <div class="setting-group">
                 <label for="transcription-select">Transcription:</label>
                 <select id="transcription-select">
                     {% if faster_whisper_local %}
@@ -257,6 +264,7 @@
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
             document.getElementById('ollama-model-select').value = "{{ ollama_model }}";
             document.getElementById('voice-speed-select').value = "{{ voice_speed }}";
+            document.getElementById('language-select').value = "{{ language }}";
             
             // Set Kokoro voice value
             setTimeout(() => {
