@@ -571,7 +571,7 @@ async def get_webrtc_realtime(request: Request):
         realtime_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview-2024-12-17")
             
         return templates.TemplateResponse(
-            "webrtc_realtime.html", 
+            "webrtc_realtime.html",
             {
                 "request": request,
                 "characters": characters,
@@ -582,13 +582,19 @@ async def get_webrtc_realtime(request: Request):
         logger.error(f"Error rendering WebRTC Realtime page: {e}")
         # Fallback with minimal context
         return templates.TemplateResponse(
-            "webrtc_realtime.html", 
+            "webrtc_realtime.html",
             {
                 "request": request,
                 "characters": ["assistant"],
                 "realtime_model": "gpt-4o-realtime-preview-2024-12-17",  # Default fallback
             }
         )
+
+
+@app.get("/speech_test")
+async def speech_test(request: Request):
+    """Serve a simple Web Speech API test page."""
+    return templates.TemplateResponse("speech_test.html", {"request": request})
 
 @app.get("/api/character/{character_name}")
 async def get_character_prompt(character_name: str):

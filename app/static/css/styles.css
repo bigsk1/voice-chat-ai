@@ -643,3 +643,22 @@ a:hover {
 .error-message.webrtc {
     text-align: left !important;
 }
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.transcript-box {
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    margin: 10px 0;
+    min-height: 100px;
+    width: 100%;
+    max-width: 500px;
+    background-color: var(--conversation-bg);
+}

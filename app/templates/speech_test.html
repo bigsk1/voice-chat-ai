@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Web Speech Test</title>
+  <link rel="stylesheet" href="/app/static/css/styles.css" />
+  <style>
+    /* 必要なら styles.css に移してください */
+    .section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #444; border-radius: 4px; }
+    .section h3 { margin-top: 0; }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .controls label { white-space: nowrap; }
+    .controls > * { margin-right: 0.5rem; }
+    .transcript-box { min-height: 4rem; padding: 0.5rem; background: #222; color: #fff; overflow-y: auto; }
+    .status { margin-top: 0.5rem; font-style: italic; }
+    .slider { vertical-align: middle; }
+  </style>
+</head>
+<body class="dark-mode">
+  <header>
+    <h1>
+      Voice Chat AI
+      <div id="mic-icon" class="mic-off">&#x1F399;</div>
+    </h1>
+    <div class="header-controls">
+      <nav class="main-nav">
+        <ul>
+          <li><a href="/">Dashboard</a></li>
+          <li><a href="/enhanced">Enhanced</a></li>
+          <li><a href="/webrtc_realtime">Realtime</a></li>
+          <li><a href="/speech_test" class="active">Voice Test</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  <main class="p-4">
+    <h2>Web Speech API テスト</h2>
+
+    <!-- 音声認識セクション -->
+    <section id="stt-section" class="section">
+      <h3>音声認識</h3>
+      <div class="controls">
+        <label for="stt-language-select">言語：</label>
+        <select id="stt-language-select">
+          <option value="ja-JP" selected>日本語 (ja-JP)</option>
+          <option value="en-US">英語 (en-US)</option>
+        </select>
+        <button id="start-rec">認識開始</button>
+        <button id="stop-rec">認識停止</button>
+      </div>
+      <div id="stt-status" class="status">待機中</div>
+      <div id="transcript" class="transcript-box"></div>
+    </section>
+
+    <!-- 音声合成セクション -->
+    <section id="tts-section" class="section">
+      <h3>音声合成</h3>
+      <div class="controls">
+        <label for="tts-language-select">言語：</label>
+        <select id="tts-language-select">
+          <option value="ja-JP" selected>日本語 (ja-JP)</option>
+          <option value="en-US">英語 (en-US)</option>
+        </select>
+
+        <label for="tts-rate">スピード：</label>
+        <input type="range" id="tts-rate" class="slider" min="0.5" max="2.0" step="0.1" value="1.0">
+        <span id="rate-value">1.0</span>
+
+        <label for="tts-pitch">声の高さ：</label>
+        <input type="range" id="tts-pitch" class="slider" min="0.0" max="2.0" step="0.1" value="1.0">
+        <span id="pitch-value">1.0</span>
+
+        <label for="tts-volume">音量：</label>
+        <input type="range" id="tts-volume" class="slider" min="0.0" max="1.0" step="0.1" value="1.0">
+        <span id="volume-value">1.0</span>
+      </div>
+
+      <div class="controls" style="margin-top:1rem; flex-direction: column; align-items: stretch;">
+        <label for="tts-input">読み上げテキスト：</label>
+        <textarea id="tts-input" rows="2">読み上げテキストを再生しています。今日の天気は晴れです。</textarea>
+      </div>
+      <button id="play-tts">再生</button>
+    </section>
+  </main>
+
+  <!-- 説明・注意事項 -->
+  <aside class="info-box" style="margin:2rem; padding:1rem; border:1px solid #666; border-radius:4px; background:#1a1a1a; color:#ccc;">
+    <h3 style="margin-top:0; color:#fff;">機能紹介・注意事項</h3>
+    <ul style="list-style:disc; padding-left:1.5rem;">
+      <li>本ページはブラウザ標準の <strong>Web Speech API</strong> を使った音声認識（STT）と音声合成（TTS）のテスト用画面です。</li>
+      <li>動作は <strong>Chrome / Edge</strong> など Web Speech API 対応ブラウザに依存します（Safari/Firefox は一部機能が制限される場合があります）。</li>
+      <li>認識・合成はすべてクライアント（ブラウザ）内で完結し、<strong>無料</strong>でお試しいただけます。</li>
+      <li>認識精度や読み上げ品質が足りない場合は、<strong>Google Cloud Speech-to-Text</strong> や <strong>Azure Speech</strong>、あるいはサーバー連携の STT/TTS API への切り替えを検討してください。</li>
+      <li>本画面では LLM（自然言語生成）を挟まず、認識→再生のみを確認できます。AI 応答やチャット機能は未実装です。</li>
+    </ul>
+  </aside>
+
+  <script src="/app/static/js/speech_test.js"></script>
+</body>
+</html>
