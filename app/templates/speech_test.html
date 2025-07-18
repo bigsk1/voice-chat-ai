@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Speech Test</title>
+    <link rel="stylesheet" href="/app/static/css/styles.css">
+</head>
+<body class="dark-mode">
+    <header>
+        <h1>
+            Voice Chat AI
+            <div id="mic-icon" class="mic-off">&#x1F399;</div>
+        </h1>
+        <div class="header-controls">
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="/">Dashboard</a></li>
+                    <li><a href="/enhanced">Enhanced</a></li>
+                    <li><a href="/webrtc_realtime">Realtime</a></li>
+                    <li><a href="/speech_test" class="active">Voice Test</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main>
+        <h2>Web Speech API テスト</h2>
+        <button id="start-rec">認識開始</button>
+        <button id="stop-rec">認識停止</button>
+        <div id="transcript" class="transcript-box"></div>
+        <input type="text" id="tts-input" placeholder="読み上げテキスト" />
+        <button id="play-tts">再生</button>
+    </main>
+    <script src="/app/static/js/speech_test.js"></script>
+</body>
+</html>
