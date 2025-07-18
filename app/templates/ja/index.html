@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="default-character" content="{{ character_name }}">
-    <title>Voice Chat AI</title>
+    <title>ボイスチャットAI</title>
     <link rel="stylesheet" href="/app/static/css/styles.css">
     <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
     <meta name="description" content="Voice Chat AI application">
@@ -67,7 +67,7 @@
 <body class="dark-mode">
     <header>
         <h1>
-            Voice Chat AI
+            ボイスチャットAI
             <div id="mic-icon" class="mic-off">&#x1F399;</div>
         </h1>
         <div class="header-controls">
@@ -110,17 +110,17 @@
             </div>
         </div>
         <div class="controls">
-            <button id="start-conversation-btn">Start</button>
-            <button id="stop-conversation-btn">Stop</button>
-            <button id="clear-conversation-btn">Clear</button>
+            <button id="start-conversation-btn">開始</button>
+            <button id="stop-conversation-btn">停止</button>
+            <button id="clear-conversation-btn">クリア</button>
         </div>
         <div class="settings">
             <div class="setting-group">
-                <label for="character-select">* Character:</label>
+                <label for="character-select">* キャラクター:</label>
                 <select id="character-select"></select>
             </div>
             <div class="setting-group">
-                <label for="provider-select">* Model Provider:</label>
+                <label for="provider-select">* モデルプロバイダー:</label>
                 <select id="provider-select">
                     <option value="openai">OpenAI</option>
                     <option value="ollama">Ollama</option>
@@ -129,7 +129,7 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="tts-select">* TTS Provider:</label>
+                <label for="tts-select">* TTSプロバイダー:</label>
                 <select id="tts-select">
                     <option value="openai">OpenAI</option>
                     <option value="elevenlabs">ElevenLabs</option>
@@ -138,7 +138,7 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="openai-voice-select">OpenAI Voice:</label>
+                <label for="openai-voice-select">OpenAI ボイス:</label>
                 <select id="openai-voice-select">
                     <option value="alloy">Alloy - female</option>
                     <option value="echo">Echo - male</option>
@@ -152,15 +152,15 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="elevenlabs-voice-select">ElevenLabs Voice:</label>
+                <label for="elevenlabs-voice-select">ElevenLabs ボイス:</label>
                 <select id="elevenlabs-voice-select"></select>
             </div>
             <div class="setting-group">
-                <label for="kokoro-voice-select">Kokoro Voice:</label>
+                <label for="kokoro-voice-select">Kokoro ボイス:</label>
                 <select id="kokoro-voice-select"></select>
             </div>
             <div class="setting-group">
-                <label for="openai-model-select">OpenAI Model:</label>
+                <label for="openai-model-select">OpenAI モデル:</label>
                 <select id="openai-model-select">
                     <option value="gpt-4o">GPT-4o</option>
                     <option value="gpt-4o-mini">GPT-4o-mini</option>
@@ -169,13 +169,13 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="ollama-model-select">Ollama Model:</label>
+                <label for="ollama-model-select">Ollama モデル:</label>
                 <select id="ollama-model-select">
                     <option value="llama3.2">Select Ollama to Load</option>
                 </select>
             </div>
             <div class="setting-group">
-                <label for="xai-model-select">XAI Model:</label>
+                <label for="xai-model-select">XAI モデル:</label>
                 <select id="xai-model-select">
                     <option value="grok-2-1212">Grok 2-1212</option>
                     <option value="grok-3-mini-beta">Grok 3 mini beta</option>
@@ -185,7 +185,7 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="anthropic-model-select">Anthropic Model:</label>
+                <label for="anthropic-model-select">Anthropic モデル:</label>
                 <select id="anthropic-model-select">
                     <option value="claude-3-7-sonnet-20250219">Claude 3.7 Sonnet</option>
                     <option value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet</option>
@@ -195,7 +195,7 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="voice-speed-select">Voice Speed:</label>
+                <label for="voice-speed-select">話速:</label>
                 <select id="voice-speed-select">
                     <option value="0.7">0.7</option>
                     <option value="0.9">0.9</option>
@@ -205,14 +205,14 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="language-select">Language:</label>
+                <label for="language-select">表示言語:</label>
                 <select id="language-select">
                     <option value="en">English</option>
                     <option value="ja">Japanese</option>
                 </select>
             </div>
             <div class="setting-group">
-                <label for="transcription-select">Transcription:</label>
+                <label for="transcription-select">文字起こし:</label>
                 <select id="transcription-select">
                     {% if faster_whisper_local %}
                     <option value="local_whisper" selected>Local Faster Whisper</option>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OpenAI Realtime</title>
+    <title>OpenAI リアルタイム</title>
     <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
@@ -643,23 +643,23 @@
         </label>
     </div>
     <div class="api-key-warning">
-        <p>This screen is provided for evaluation purposes only and is not strictly managed. There is a risk of API key leakage or misuse. Please generate a new API key before use and delete it after use.</p>
+        <p>この画面は評価目的で提供されており厳格な管理は行われていません。API キーが漏洩したり悪用される恐れがあります。利用する際は新しい API キーを生成し、使用後は削除してください。</p>
     </div>
     <main>
         <div class="container">
-            <h2>OpenAI Realtime webRTC</h2>
-            <p>This feature uses OpenAI's Realtime API for continuous voice streaming. Speak naturally with the AI with minimal latency.</p>
+            <h2>OpenAI リアルタイム webRTC</h2>
+            <p>この機能は OpenAI の Realtime API を利用し、低遅延で会話できます。</p>
             
             <div class="status-container">
-                <span>Session Status:</span>
-                <span id="session-status" class="badge badge-secondary">Inactive</span>
+                <span>セッション状態:</span>
+                <span id="session-status" class="badge badge-secondary">停止中</span>
             </div>
             
             <div class="controls-row">
-                <button id="startBtn" class="btn">Start Session</button>
-                <button id="stopBtn" class="btn" disabled>Stop Session</button>
-                <button id="clearBtn" class="btn">Clear Transcript</button>
-                <button id="testMicBtn" class="btn">Test Microphone</button>
+                <button id="startBtn" class="btn">セッション開始</button>
+                <button id="stopBtn" class="btn" disabled>セッション停止</button>
+                <button id="clearBtn" class="btn">履歴消去</button>
+                <button id="testMicBtn" class="btn">マイクテスト</button>
             </div>
             
             <!-- Microphone test result display -->
@@ -667,7 +667,7 @@
             
             <div class="character-selection">
                 <div class="form-group">
-                    <label for="character-select">Speaking as Character:</label>
+                    <label for="character-select">話すキャラクター:</label>
                     <select id="character-select" class="form-control" style="width: 300px; max-width: 100%;">
                         {% for character in characters %}
                         <option value="{{ character }}">{{ character }}</option>
@@ -676,7 +676,7 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="voice-select">Voice:</label>
+                    <label for="voice-select">ボイス:</label>
                     <select id="voice-select" class="form-control" style="width: 300px; max-width: 100%;">
                         <option value="alloy">Alloy - female</option>
                         <option value="ash">Ash - male</option>
@@ -690,14 +690,14 @@
                 </div>
             </div>
 
-            <p>Press the microphone button and start speaking. The AI will respond naturally as your conversation flows.</p>
+            <p>マイクボタンを押して話し始めてください。会話に合わせて AI が自然に応答します。</p>
             
             <!-- Microphone button -->
             <div class="mic-button-container">
                 <div class="mic-button" id="micBtn">
                     <i class="fas fa-microphone"></i>
                 </div>
-                <p id="micStatus">Click to speak</p>
+                <p id="micStatus">クリックして話す</p>
             </div>
             
             <!-- Voice visualizations -->
@@ -709,30 +709,30 @@
             <!-- Waiting indicator - hidden by default and only shown when needed -->
             <div class="dots hidden" id="waitingIndicator"></div>
             
-            <h3>Activity Log</h3>
+            <h3>アクティビティログ</h3>
             <div id="transcript" class="transcript-container" style="height: 200px; text-align: left;"></div>
             
             <!-- Info Box -->
             <div class="info-box-container">
-                <button id="infoToggleBtn" class="info-toggle-btn btn"><i class="fas fa-info-circle"></i> Show Usage Guide</button>
+                <button id="infoToggleBtn" class="info-toggle-btn btn"><i class="fas fa-info-circle"></i> 使い方を表示</button>
                 <div id="infoBox" class="info-box" style="display: none;">
-                    <h4>How to Use This Page</h4>
+                    <h4>このページの使い方</h4>
                     <ul>
-                        <li><strong>Start a Conversation</strong>: Click the "Start Session" button, the first time you will have to approve microphone access in browser and then "Click to Speak" to begin a voice chat with the AI.</li>
-                        <li><strong>Speaking to the AI</strong>: When the microphone icon pulses red, your voice is being detected and sent to the AI. Pause once the AI is done talking and it will wait till it hears your voice again.</li>
-                        <li><strong>Microphone States</strong>: 
+                        <li><strong>会話を始める</strong>: 「セッション開始」ボタンをクリックします。初回はブラウザでマイク利用を許可し、続けて「クリックして話す」を押すと AI との音声チャットが始まります。</li>
+                        <li><strong>AI へ話しかける</strong>: マイクアイコンが赤く点滅している間は声を検出して AI に送信しています。AI の発話が終わったら黙れば、再びあなたの声を待ちます。</li>
+                        <li><strong>マイクの状態</strong>:
                             <ul>
-                                <li>Gray - Microphone inactive or session not started</li>
-                                <li>Yellow - Waiting for your voice</li>
-                                <li>Pulsing Red - Your voice is being detected</li>
+                                <li>灰色 - マイク無効またはセッション未開始</li>
+                                <li>黄色 - あなたの声を待機中</li>
+                                <li>赤点滅 - あなたの声を検出中</li>
                             </ul>
                         </li>
-                        <li><strong>Toggle Microphone</strong>: Use the microphone button to temporarily disable/enable your microphone.</li>
-                        <li><strong>Change Character</strong>: Select different AI characters from the dropdown menu. Make sure to stop the session select the character and start session.</li>
-                        <li><strong>Debug Panel</strong>: Access technical details by clicking "Show Debug Panel".</li>
-                        <li><strong>End Conversation</strong>: Click red mic and stop session to end the session.</li>
+                        <li><strong>マイクの切り替え</strong>: マイクボタンを押すと一時的に無効化/有効化できます。</li>
+                        <li><strong>キャラクター変更</strong>: ドロップダウンから別のキャラクターを選択します。セッションを停止してから選び直してください。</li>
+                        <li><strong>デバッグパネル</strong>: 「デバッグパネルを表示」をクリックすると技術情報が確認できます。</li>
+                        <li><strong>会話終了</strong>: 赤いマイクをクリックしてセッション停止ボタンを押すと終了します。</li>
                     </ul>
-                    <p><em>Note: This is a real-time voice conversation - the AI responds as you speak and you can interrupt the AI at any time. If 30mins of inactivity session will end. Setting gpt-4o-realtime-preview-2024-12-17 is recommended for better performance and following the character prompt</em></p>
+                    <p><em>※これはリアルタイムの音声会話です。AI はあなたの発話に合わせて応答し、いつでも割り込むことができます。30 分以上操作がない場合セッションは終了します。より良い動作のため、gpt-4o-realtime-preview-2024-12-17 の設定を推奨します。</em></p>
                 </div>
             </div>
         </div>
