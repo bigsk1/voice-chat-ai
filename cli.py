@@ -82,12 +82,14 @@ FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "tru
 whisper_model = None
 
 # Default model size (adjust as needed)
-model_size = f"medium.{LANGUAGE}"
-
+# 'en' の場合だけ ".en" を付け、それ以外はサフィックス無し
+suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+model_size = f"medium{suffix}"
 if FASTER_WHISPER_LOCAL:
     try:
         print(f"Attempting to load Faster-Whisper on {device}...")
-        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        #whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        whisper_model = WhisperModel(model_size, device=device)
         print("Faster-Whisper initialized successfully.")
     except Exception as e:
         print(f"Error initializing Faster-Whisper on {device}: {e}")
@@ -95,7 +97,9 @@ if FASTER_WHISPER_LOCAL:
 
         # Force CPU fallback
         device = "cpu"
-        model_size = f"tiny.{LANGUAGE}"  # Use a smaller model for CPU performance
+        # CPU時も同様に 'en' だけサフィックスを付与
+        suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+        model_size = f"tiny{suffix}"
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
 else:
@@ -109,15 +113,31 @@ character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 
 # Initialize TTS model
 tts = None
+# 日本語系キーワードでフィルタ
+models = TTS.list_models()
+#jp_models = [m for m in models if "/ja/" in m.lower()]
+#print("All models:", models)
+#print("Japanese-related models:", jp_models)
+
 if TTS_PROVIDER == 'xtts':
     print("Initializing XTTS model (may download on first run)...")
     try:
-        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
-        print("XTTS model loaded successfully.")
+        #tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+        # 日本語なら専用モデル、それ以外は多言語 XTTS-v2
+        model_name = (
+#            "litagin/Style-Bert-VITS2-2.0-base-JP-Extra" if LANGUAGE == "ja"
+            "tts_models/ja/kokoro/tacotron2-DDC" if LANGUAGE == "ja"
+            else "tts_models/multilingual/multi-dataset/xtts_v2"
+        )
+        print("Loading XTTS model:", model_name)
+        tts = TTS(model_name).to(device)
+        print(f"XTTS model loaded successfully: {model_name}")
     except Exception as e:
         print(f"Failed to load XTTS model: {e}")
-        TTS_PROVIDER = 'openai'  # Fallback to OpenAI
-        print("Switched to default TTS provider: openai")
+        # unpack エラー（expected 4, got 2）の場合は多言語モデルにフォールバック
+        print("Model info unpack failed:", e)
+        print("Falling back to multilingual XTTS-v2")
+        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
 
 # Function to display ElevenLabs quota
 def display_elevenlabs_quota():
@@ -217,12 +237,25 @@ def process_and_play(prompt, audio_file_pth):
     elif TTS_PROVIDER == 'xtts':
         if tts is not None:
             try:
-                wav = tts.tts(
-                    text=prompt,
-                    speaker_wav=audio_file_pth,  # For voice cloning
-                    language=LANGUAGE,
-                    speed=float(VOICE_SPEED)
-                )
+                #wav = tts.tts(
+                #    text=prompt,
+                #    speaker_wav=audio_file_pth,  # For voice cloning
+                #    language=LANGUAGE,
+                #    speed=float(VOICE_SPEED)
+                #)
+                # Build args: omit `language` for monolingual Japanese model
+                tts_kwargs = {
+                    "text":     prompt,
+                    "speaker_wav": audio_file_pth,
+                    "speed":    float(VOICE_SPEED),
+                }
+                # Only pass `language` when not using the ja model
+                if LANGUAGE != "ja":
+                    tts_kwargs["language"] = LANGUAGE
+                wav = tts.tts(**tts_kwargs)
+                
+                
+                
                 src_path = os.path.join(output_dir, 'output.wav')
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
@@ -394,6 +427,7 @@ def sanitize_response(response):
     return response.strip()
 
 def analyze_mood(user_input):
+    #日本語対応できてないが0.0が返るみたいなのでそのまま（ほんとは代替用意が望ましい）
     analysis = TextBlob(user_input)
     polarity = analysis.sentiment.polarity
     print(f"Sentiment polarity: {polarity}")

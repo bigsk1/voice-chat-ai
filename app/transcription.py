@@ -42,11 +42,14 @@ def initialize_whisper_model():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
     # Default model size (adjust as needed)
-    model_size = f"medium.{LANGUAGE}"
+    # 'en' の場合だけ ".en" を付け、それ以外はベース名のみ
+    suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+    model_size = f"medium{suffix}"
     
     try:
         print(f"Attempting to load Faster-Whisper on {device}...")
-        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        #whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        whisper_model = WhisperModel(model_size, device=device)
         print("Faster-Whisper initialized successfully.")
     except Exception as e:
         print(f"Error initializing Faster-Whisper on {device}: {e}")
@@ -54,7 +57,10 @@ def initialize_whisper_model():
 
         # Force CPU fallback
         device = "cpu"
-        model_size = f"tiny.{LANGUAGE}"  # Use a smaller model for CPU performance
+        # CPU時も 'en' のみサフィックスを付与
+        suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+        model_size = f"tiny{suffix}"
+
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
         
