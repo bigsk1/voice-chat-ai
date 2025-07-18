@@ -6,6 +6,7 @@ import asyncio
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Depends, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from starlette.background import BackgroundTask
@@ -49,6 +50,10 @@ logger = logging.getLogger(__name__)
 # Display banner
 display_banner()
 
+# Load environment variables and select language specific templates
+load_dotenv()
+LANG = os.getenv("LANGUAGE", "en")
+
 
 def get_api_key(authorization: str = Header(None), api_key: str = Header(None)):
     if api_key:
@@ -61,7 +66,11 @@ app = FastAPI()
 
 # Mount static files and templates
 app.mount("/app/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+
+if LANG == "ja":
+    templates = Jinja2Templates(directory=["app/templates/ja", "app/templates"])
+else:
+    templates = Jinja2Templates(directory=["app/templates"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -105,10 +114,13 @@ async def get_characters():
     if not os.path.exists(characters_folder):
         logger.warning(f"Characters folder not found: {characters_folder}")
         return {"characters": ["Assistant"]}  # fallback
-    
+
     try:
-        character_dirs = [d for d in os.listdir(characters_folder) 
-                        if os.path.isdir(os.path.join(characters_folder, d))]
+        character_dirs = [d for d in os.listdir(characters_folder)
+                          if os.path.isdir(os.path.join(characters_folder, d))]
+        # When using Japanese templates, only expose characters starting with 'ja_'
+        if LANG == "ja":
+            character_dirs = [d for d in character_dirs if d.startswith("ja_")]
         if not character_dirs:
             logger.warning("No character folders found")
             return {"characters": ["Assistant"]}  # fallback
@@ -810,6 +822,15 @@ async def get_kokoro_voices():
     except Exception as e:
         logger.error(f"Critical error in get_kokoro_voices: {str(e)}")
         return {"voices": [], "error": str(e)}
+
+
+@app.get("/{path:path}", response_class=HTMLResponse)
+async def serve_template(request: Request, path: str):
+    """Render arbitrary template path if it exists."""
+    try:
+        return templates.TemplateResponse(path, {"request": request})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Template not found")
 
 def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')
