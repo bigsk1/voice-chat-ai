@@ -59,14 +59,17 @@ document.addEventListener("DOMContentLoaded", function() {
     const infoToggleBtn = document.getElementById('infoToggleBtn');
     const infoBox = document.getElementById('infoBox');
     if (infoToggleBtn && infoBox) {
+        const lang = document.documentElement.lang;
+        const showText = lang === 'ja' ? '使い方を表示' : 'Show Usage Guide';
+        const hideText = lang === 'ja' ? '使い方を隠す' : 'Hide Usage Guide';
         infoToggleBtn.addEventListener('click', function() {
             const isVisible = infoBox.style.display !== 'none';
             if (isVisible) {
                 infoBox.style.display = 'none';
-                infoToggleBtn.innerHTML = '<i class="fas fa-info-circle"></i> Show Usage Guide';
+                infoToggleBtn.innerHTML = `<i class="fas fa-info-circle"></i> ${showText}`;
             } else {
                 infoBox.style.display = 'block';
-                infoToggleBtn.innerHTML = '<i class="fas fa-info-circle"></i> Hide Usage Guide';
+                infoToggleBtn.innerHTML = `<i class="fas fa-info-circle"></i> ${hideText}`;
             }
         });
     }
