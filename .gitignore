@@ -206,6 +206,7 @@ models/
 
 # Ignore the downloads directory
 downloads/
+tool/
 
 XTTS-v2
 checkpoints

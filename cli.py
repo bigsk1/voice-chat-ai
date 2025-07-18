@@ -50,6 +50,7 @@ KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
+LANGUAGE = os.getenv('LANGUAGE', 'en')
 os.environ["COQUI_TOS_AGREED"] = "1"
 
 
@@ -81,12 +82,14 @@ FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "tru
 whisper_model = None
 
 # Default model size (adjust as needed)
-model_size = "medium.en"
-
+# 'en' の場合だけ ".en" を付け、それ以外はサフィックス無し
+suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+model_size = f"medium{suffix}"
 if FASTER_WHISPER_LOCAL:
     try:
         print(f"Attempting to load Faster-Whisper on {device}...")
-        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        #whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        whisper_model = WhisperModel(model_size, device=device)
         print("Faster-Whisper initialized successfully.")
     except Exception as e:
         print(f"Error initializing Faster-Whisper on {device}: {e}")
@@ -94,7 +97,9 @@ if FASTER_WHISPER_LOCAL:
 
         # Force CPU fallback
         device = "cpu"
-        model_size = "tiny.en"  # Use a smaller model for CPU performance
+        # CPU時も同様に 'en' だけサフィックスを付与
+        suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+        model_size = f"tiny{suffix}"
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
 else:
@@ -108,15 +113,31 @@ character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 
 # Initialize TTS model
 tts = None
+# 日本語系キーワードでフィルタ
+models = TTS.list_models()
+#jp_models = [m for m in models if "/ja/" in m.lower()]
+#print("All models:", models)
+#print("Japanese-related models:", jp_models)
+
 if TTS_PROVIDER == 'xtts':
     print("Initializing XTTS model (may download on first run)...")
     try:
-        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
-        print("XTTS model loaded successfully.")
+        #tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+        # 日本語なら専用モデル、それ以外は多言語 XTTS-v2
+        model_name = (
+#            "litagin/Style-Bert-VITS2-2.0-base-JP-Extra" if LANGUAGE == "ja"
+            "tts_models/ja/kokoro/tacotron2-DDC" if LANGUAGE == "ja"
+            else "tts_models/multilingual/multi-dataset/xtts_v2"
+        )
+        print("Loading XTTS model:", model_name)
+        tts = TTS(model_name).to(device)
+        print(f"XTTS model loaded successfully: {model_name}")
     except Exception as e:
         print(f"Failed to load XTTS model: {e}")
-        TTS_PROVIDER = 'openai'  # Fallback to OpenAI
-        print("Switched to default TTS provider: openai")
+        # unpack エラー（expected 4, got 2）の場合は多言語モデルにフォールバック
+        print("Model info unpack failed:", e)
+        print("Falling back to multilingual XTTS-v2")
+        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
 
 # Function to display ElevenLabs quota
 def display_elevenlabs_quota():
@@ -216,12 +237,25 @@ def process_and_play(prompt, audio_file_pth):
     elif TTS_PROVIDER == 'xtts':
         if tts is not None:
             try:
-                wav = tts.tts(
-                    text=prompt,
-                    speaker_wav=audio_file_pth,  # For voice cloning
-                    language="en",
-                    speed=float(VOICE_SPEED)
-                )
+                #wav = tts.tts(
+                #    text=prompt,
+                #    speaker_wav=audio_file_pth,  # For voice cloning
+                #    language=LANGUAGE,
+                #    speed=float(VOICE_SPEED)
+                #)
+                # Build args: omit `language` for monolingual Japanese model
+                tts_kwargs = {
+                    "text":     prompt,
+                    "speaker_wav": audio_file_pth,
+                    "speed":    float(VOICE_SPEED),
+                }
+                # Only pass `language` when not using the ja model
+                if LANGUAGE != "ja":
+                    tts_kwargs["language"] = LANGUAGE
+                wav = tts.tts(**tts_kwargs)
+                
+                
+                
                 src_path = os.path.join(output_dir, 'output.wav')
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
@@ -255,7 +289,8 @@ def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str) -> by
                 "model": model,
                 "voice": voice,
                 "input": input_text,
-                "response_format": 'pcm'
+                "response_format": 'pcm',
+                "language": LANGUAGE
             },
             stream=True,
             timeout=30
@@ -290,7 +325,8 @@ def openai_text_to_speech(prompt, output_path):
                     "voice": OPENAI_TTS_VOICE,
                     "speed": float(VOICE_SPEED),
                     "input": prompt,
-                    "response_format": file_extension
+                    "response_format": file_extension,
+                    "language": LANGUAGE
                 },
                 stream=True,
                 timeout=30
@@ -391,6 +427,7 @@ def sanitize_response(response):
     return response.strip()
 
 def analyze_mood(user_input):
+    #日本語対応できてないが0.0が返るみたいなのでそのまま（ほんとは代替用意が望ましい）
     analysis = TextBlob(user_input)
     polarity = analysis.sentiment.polarity
     print(f"Sentiment polarity: {polarity}")
@@ -754,7 +791,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
 
 # Function to transcribe the recorded audio using faster-whisper
 def transcribe_with_whisper(audio_file):
-    segments, info = whisper_model.transcribe(audio_file, beam_size=5)
+    segments, info = whisper_model.transcribe(audio_file, beam_size=5, language=LANGUAGE)
     transcription = ""
     for segment in segments:
         transcription += segment.text + " "
@@ -945,7 +982,8 @@ def generate_speech(text, temp_audio_path):
             "voice": OPENAI_TTS_VOICE,
             "speed": float(VOICE_SPEED),
             "input": text,
-            "response_format": "wav"
+            "response_format": "wav",
+            "language": LANGUAGE
         }
         response = requests.post(OPENAI_TTS_URL, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
@@ -963,7 +1001,7 @@ def generate_speech(text, temp_audio_path):
                 wav = tts.tts(
                     text=text,
                     speaker_wav=character_audio_file,
-                    language="en",
+                    language=LANGUAGE,
                     speed=float(VOICE_SPEED)
                 )
                 sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
@@ -989,7 +1027,8 @@ def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe"):
             "Authorization": f"Bearer {OPENAI_API_KEY}"
         }
         data = {
-            'model': model
+            'model': model,
+            'language': LANGUAGE
         }
         
         response = requests.post(api_url, headers=headers, files=files, data=data, timeout=30)

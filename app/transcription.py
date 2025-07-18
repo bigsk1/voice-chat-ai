@@ -20,6 +20,7 @@ load_dotenv()
 
 # Get API keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+LANGUAGE = os.getenv("LANGUAGE", "en")
 
 # Debug flag for audio levels
 DEBUG_AUDIO_LEVELS = os.getenv("DEBUG_AUDIO_LEVELS", "false").lower() == "true"
@@ -41,11 +42,14 @@ def initialize_whisper_model():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
     # Default model size (adjust as needed)
-    model_size = "medium.en"
+    # 'en' の場合だけ ".en" を付け、それ以外はベース名のみ
+    suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+    model_size = f"medium{suffix}"
     
     try:
         print(f"Attempting to load Faster-Whisper on {device}...")
-        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        #whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        whisper_model = WhisperModel(model_size, device=device)
         print("Faster-Whisper initialized successfully.")
     except Exception as e:
         print(f"Error initializing Faster-Whisper on {device}: {e}")
@@ -53,7 +57,10 @@ def initialize_whisper_model():
 
         # Force CPU fallback
         device = "cpu"
-        model_size = "tiny.en"  # Use a smaller model for CPU performance
+        # CPU時も 'en' のみサフィックスを付与
+        suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+        model_size = f"tiny{suffix}"
+
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
         
@@ -63,8 +70,8 @@ def transcribe_with_whisper(audio_file):
     """Transcribe audio using local Faster Whisper model"""
     # Lazy load the model only when needed
     model = initialize_whisper_model()
-    
-    segments, info = model.transcribe(audio_file, beam_size=5)
+
+    segments, info = model.transcribe(audio_file, beam_size=5, language=LANGUAGE)
     transcription = ""
     for segment in segments:
         transcription += segment.text + " "
@@ -88,6 +95,7 @@ async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe")
             
             # Use the model directly
             form_data.add_field('model', model)
+            form_data.add_field('language', LANGUAGE)
             
             headers = {
                 "Authorization": f"Bearer {OPENAI_API_KEY}"

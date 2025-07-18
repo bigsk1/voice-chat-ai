@@ -21,6 +21,7 @@ from .app import (
     init_set_provider,
     init_kokoro_tts_voice,
     init_voice_speed,
+    init_language,
     save_conversation_history,
     send_message_to_clients,
 )
@@ -306,6 +307,8 @@ def set_env_variable(key: str, value: str):
         init_kokoro_tts_voice(value)  # Reinitialize Kokoro TTS voice
     if key == "VOICE_SPEED":
         init_voice_speed(value)  # Reinitialize Voice Speed for all TTS providers
+    if key == "LANGUAGE":
+        init_language(value)  # Update language and reset models
     if key == "TTS_PROVIDER":
         init_set_tts(value)      # Reinitialize TTS Providers
     if key == "MODEL_PROVIDER":

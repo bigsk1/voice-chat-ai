@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const ollamaModelSelect = document.getElementById('ollama-model-select');
     const xaiModelSelect = document.getElementById('xai-model-select');
     const voiceSpeedSelect = document.getElementById('voice-speed-select');
+    const languageSelect = document.getElementById('language-select');
     const transcriptionSelect = document.getElementById('transcription-select');
 
     let aiMessageQueue = [];
@@ -420,6 +421,11 @@ document.addEventListener("DOMContentLoaded", () => {
         websocket.send(JSON.stringify({ action: "set_voice_speed", speed: selectedSpeed }));
     }
 
+    function setLanguage() {
+        const selectedLanguage = document.getElementById('language-select').value;
+        websocket.send(JSON.stringify({ action: "set_language", language: selectedLanguage }));
+    }
+
     function setElevenLabsVoice() {
         const selectedVoice = document.getElementById('elevenlabs-voice-select').value;
         websocket.send(JSON.stringify({ action: "set_elevenlabs_voice", voice: selectedVoice }));
@@ -530,6 +536,7 @@ document.addEventListener("DOMContentLoaded", () => {
         anthropicModelSelect.addEventListener('change', setAnthropicModel);
     }
     voiceSpeedSelect.addEventListener('change', setVoiceSpeed);
+    languageSelect.addEventListener('change', setLanguage);
     elevenLabsVoiceSelect.addEventListener('change', setElevenLabsVoice);
     kokoroVoiceSelect.addEventListener('change', setKokoroVoice);
 

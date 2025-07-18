@@ -52,6 +52,7 @@ KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
+LANGUAGE = os.getenv('LANGUAGE', 'en')
 os.environ["COQUI_TOS_AGREED"] = "1"
 
 # ANSI escape codes for colors
@@ -86,12 +87,16 @@ FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "tru
 whisper_model = None
 
 # Default model size (adjust as needed)
-model_size = "medium.en"
+# 'en' の場合だけ ".en" を付与し、それ以外はサフィックス無し
+suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+model_size = f"medium{suffix}"
 
 if FASTER_WHISPER_LOCAL:
     try:
         print(f"Attempting to load Faster-Whisper on {device}...")
-        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        #whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+        whisper_model = WhisperModel(model_size, device=device)
+        #whisper_model = WhisperModel(model_size, device=device, compute_type="float32" if device == "cuda" else "int8")
         print("Faster-Whisper initialized successfully.")
     except Exception as e:
         print(f"Error initializing Faster-Whisper on {device}: {e}")
@@ -99,7 +104,10 @@ if FASTER_WHISPER_LOCAL:
 
         # Force CPU fallback
         device = "cpu"
-        model_size = "tiny.en"  # Use a smaller model for CPU performance
+        # CPU時も 'en' のみサフィックス付与
+        suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+        model_size = f"tiny{suffix}"
+
         whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper initialized on CPU successfully.")
 else:
@@ -118,14 +126,28 @@ tts = None
 if TTS_PROVIDER == 'xtts':
     print("Initializing XTTS model (may download on first run)...")
     try:
-        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
+        #tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
+        # 日本語なら公式の日本語モデルを使い、それ以外は多言語 XTTS-v2
+        if LANGUAGE == "ja":
+            model_name = "tts_models/ja/kokoro/tacotron2-DDC"
+        else:
+            model_name = "tts_models/multilingual/multi-dataset/xtts_v2"
+        print(f"Loading XTTS model: {model_name}")
+        tts = TTS(model_name).to(device)
+
         print("Model downloaded, loading into memory...")
         tts = tts.to(device)  # Move to device after download
         
-        num_chars = XTTS_NUM_CHARS
+        #num_chars = XTTS_NUM_CHARS
         # Set the character limit
-        tts.synthesizer.tts_model.args.num_chars = num_chars  # default is 255 we are overriding it 
-        
+        #tts.synthesizer.tts_model.args.num_chars = num_chars  # default is 255 we are overriding it 
+        # Set the character limit if the model exposes args.num_chars
+        try:
+            tts.synthesizer.tts_model.args.num_chars = XTTS_NUM_CHARS
+        except AttributeError:
+            # Monolingual Tacotron2 models don’t have args.num_chars → skip
+            pass
+
         print("XTTS model loaded successfully.")
     except Exception as e:
         print(f"Failed to load XTTS model: {e}")
@@ -172,6 +194,12 @@ def init_voice_speed(speed_value):
     VOICE_SPEED = speed_value
     print(f"Switched to global voice speed: {speed_value}")
 
+def init_language(language_value):
+    global LANGUAGE, whisper_model
+    LANGUAGE = language_value
+    whisper_model = None  # Reinitialize on next use
+    print(f"Switched language to: {language_value}")
+
 def init_set_tts(set_tts):
     global TTS_PROVIDER, tts
     if set_tts == 'xtts':
@@ -183,6 +211,7 @@ def init_set_tts(set_tts):
             tts = tts.to(device)
             num_chars = XTTS_NUM_CHARS
             tts.synthesizer.tts_model.args.num_chars = num_chars # default is 255 we are overriding it warning on cpu will take much longer
+
             print("XTTS model loaded successfully.")
             TTS_PROVIDER = set_tts
         except Exception as e:
@@ -348,13 +377,22 @@ async def process_and_play(prompt, audio_file_pth):
     elif TTS_PROVIDER == 'xtts':
         if tts is not None:
             try:
-                wav = await asyncio.to_thread(
-                tts.tts,
-                text=prompt,
-                speaker_wav=current_audio_file,  # Use the updated current character audio
-                language="en",
-                speed=float(os.getenv('VOICE_SPEED', '1.0'))
-            )
+                #wav = await asyncio.to_thread(
+                #tts.tts,
+                #text=prompt,
+                #speaker_wav=current_audio_file,  # Use the updated current character audio
+                #language=LANGUAGE,
+                #speed=float(os.getenv('VOICE_SPEED', '1.0'))
+                # Monolingual Japanese model doesn’t accept `language` arg
+                tts_kwargs = {
+                    "text":         prompt,
+                    "speaker_wav":  current_audio_file,
+                    "speed":        float(VOICE_SPEED),
+                }
+                if LANGUAGE != "ja":
+                    tts_kwargs["language"] = LANGUAGE
+                wav = await asyncio.to_thread(tts.tts, **tts_kwargs)
+
                 src_path = os.path.join(output_dir, 'output.wav')
                 sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
@@ -420,7 +458,7 @@ async def openai_text_to_speech(prompt, output_path):
                 async with session.post(
                     url=OPENAI_TTS_URL,
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                    json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension, "speed": voice_speed},
+                    json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension, "speed": voice_speed, "language": LANGUAGE},
                     timeout=30
                 ) as response:
                     response.raise_for_status()
@@ -439,7 +477,7 @@ async def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str,
         async with session.post(
             url=api_url,
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={"model": model, "voice": voice, "input": input_text, "response_format": 'pcm'},
+            json={"model": model, "voice": voice, "input": input_text, "response_format": 'pcm', "language": LANGUAGE},
             timeout=30
         ) as response:
             response.raise_for_status()
@@ -528,6 +566,7 @@ def sanitize_response(response):
     return response.strip()
 
 def analyze_mood(user_input):
+    #日本語対応できてないが0.0が返るみたいなのでそのまま（ほんとは代替用意が望ましい）
     analysis = TextBlob(user_input)
     polarity = analysis.sentiment.polarity
     print(f"Sentiment polarity: {polarity}")
@@ -939,11 +978,19 @@ def transcribe_with_whisper(audio_file):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         
         # Default model size (adjust as needed)
-        model_size = "medium.en" if device == "cuda" else "tiny.en"
-        
+        # サフィックス付け分け ('en' のみ)
+        suffix = f".{LANGUAGE}" if LANGUAGE == 'en' else ""
+        if device == "cuda":
+            model_size = f"medium{suffix}"
+        else:
+            model_size = f"tiny{suffix}"        
+
         try:
             print(f"Lazy-loading Faster-Whisper on {device}...")
-            whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+            #うちのグラボはfloat16なんて対応してなかった
+            #whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+            whisper_model = WhisperModel(model_size, device=device)
+            #whisper_model = WhisperModel(model_size, device=device, compute_type="float32" if device == "cuda" else "int8")
             print("Faster-Whisper initialized successfully.")
         except Exception as e:
             print(f"Error initializing Faster-Whisper on {device}: {e}")
@@ -951,11 +998,11 @@ def transcribe_with_whisper(audio_file):
             
             # Force CPU fallback
             device = "cpu"
-            model_size = "tiny.en"
+            model_size = f"tiny.{LANGUAGE}"
             whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
             print("Faster-Whisper initialized on CPU successfully.")
     
-    segments, info = whisper_model.transcribe(audio_file, beam_size=5)
+    segments, info = whisper_model.transcribe(audio_file, beam_size=5, language=LANGUAGE)
     transcription = ""
     for segment in segments:
         transcription += segment.text + " "
@@ -1193,13 +1240,24 @@ async def generate_speech(text, temp_audio_path):
     else:  # XTTS
         if tts is not None:
             try:
-                wav = await asyncio.to_thread(
-                    tts.tts,
-                    text=text,
-                    speaker_wav=character_audio_file,
-                    language="en",
-                    speed=float(os.getenv('VOICE_SPEED', '1.0'))
-                )
+                #wav = await asyncio.to_thread(
+                #    tts.tts,
+                #    text=text,
+                #    speaker_wav=character_audio_file,
+                #    language=LANGUAGE,
+                #    speed=float(os.getenv('VOICE_SPEED', '1.0'))
+                #)
+                # Build TTS kwargs; omit `language` for monolingual Japanese model
+                tts_kwargs = {
+                    "text":        text,
+                    "speaker_wav": character_audio_file,
+                    "speed":       float(os.getenv('VOICE_SPEED', '1.0')),
+                }
+                if LANGUAGE != "ja":
+                    tts_kwargs["language"] = LANGUAGE
+        
+                wav = await asyncio.to_thread(tts.tts, **tts_kwargs)
+
                 sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
                 print("Audio generated successfully with XTTS.")
             except Exception as e:

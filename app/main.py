@@ -74,6 +74,7 @@ async def get_index(request: Request):
     voice_speed = os.getenv("VOICE_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
     kokoro_voice = os.getenv("KOKORO_TTS_VOICE")
+    language = os.getenv("LANGUAGE", "en")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 
     return templates.TemplateResponse("index.html", {
@@ -87,6 +88,7 @@ async def get_index(request: Request):
         "voice_speed": voice_speed,
         "elevenlabs_voice": elevenlabs_voice,
         "kokoro_voice": kokoro_voice,
+        "language": language,
         "faster_whisper_local": faster_whisper_local,
     })
 
@@ -493,6 +495,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("ANTHROPIC_MODEL", message["model"])
             elif message["action"] == "set_voice_speed":
                 set_env_variable("VOICE_SPEED", message["speed"])
+            elif message["action"] == "set_language":
+                set_env_variable("LANGUAGE", message["language"])
             elif message["action"] == "set_elevenlabs_voice":
                 set_env_variable("ELEVENLABS_TTS_VOICE", message["voice"])
             elif message["action"] == "set_kokoro_voice":
