@@ -77,9 +77,10 @@ def transcribe_with_whisper(audio_file):
         transcription += segment.text + " "
     return transcription.strip()
 
-async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe"):
+async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe", api_key: str | None = None):
     """Transcribe audio using OpenAI's API"""
-    if not OPENAI_API_KEY:
+    key = api_key or OPENAI_API_KEY
+    if not key:
         raise ValueError("API key missing. Please set OPENAI_API_KEY in your environment.")
     
     # Make the API call to OpenAI
@@ -98,7 +99,7 @@ async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe")
             form_data.add_field('language', LANGUAGE)
             
             headers = {
-                "Authorization": f"Bearer {OPENAI_API_KEY}"
+                "Authorization": f"Bearer {key}"
             }
             
             async with session.post(api_url, data=form_data, headers=headers) as response:

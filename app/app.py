@@ -444,20 +444,20 @@ def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, c
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(pcm_data)
 
-async def openai_text_to_speech(prompt, output_path):
+async def openai_text_to_speech(prompt, output_path, api_key=None):
     file_extension = Path(output_path).suffix.lstrip('.').lower()
 
     voice_speed = float(os.getenv("VOICE_SPEED", "1.0"))
 
     async with aiohttp.ClientSession() as session:
         if file_extension == 'wav':
-            pcm_data = await fetch_pcm_audio(OPENAI_MODEL_TTS, OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL, session)
+            pcm_data = await fetch_pcm_audio(OPENAI_MODEL_TTS, OPENAI_TTS_VOICE, prompt, OPENAI_TTS_URL, session, api_key)
             save_pcm_as_wav(pcm_data, output_path)
         else:
             try:
                 async with session.post(
                     url=OPENAI_TTS_URL,
-                    headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                    headers={"Authorization": f"Bearer {api_key or OPENAI_API_KEY}", "Content-Type": "application/json"},
                     json={"model": OPENAI_MODEL_TTS, "voice": OPENAI_TTS_VOICE, "input": prompt, "response_format": file_extension, "speed": voice_speed, "language": LANGUAGE},
                     timeout=30
                 ) as response:
@@ -470,13 +470,13 @@ async def openai_text_to_speech(prompt, output_path):
             except aiohttp.ClientError as e:
                 print(f"Error during OpenAI TTS: {e}")
 
-async def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str, session: aiohttp.ClientSession) -> bytes:
+async def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str, session: aiohttp.ClientSession, api_key=None) -> bytes:
     pcm_data = io.BytesIO()
     
     try:
         async with session.post(
             url=api_url,
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {api_key or OPENAI_API_KEY}", "Content-Type": "application/json"},
             json={"model": model, "voice": voice, "input": input_text, "response_format": 'pcm', "language": LANGUAGE},
             timeout=30
         ) as response:
@@ -740,7 +740,7 @@ def analyze_mood(user_input):
         
     return mood
 
-def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_history):
+def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_history, api_key=None):
     full_response = ""
     print(f"Debug: streamed started. MODEL_PROVIDER: {MODEL_PROVIDER}")
 
@@ -836,7 +836,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
 
     elif MODEL_PROVIDER == 'openai':
         messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
-        headers = {'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}
+        headers = {'Authorization': f'Bearer {api_key or OPENAI_API_KEY}', 'Content-Type': 'application/json'}
         payload = {
             "model": OPENAI_MODEL,
             "messages": messages,

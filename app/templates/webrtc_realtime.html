@@ -596,6 +596,16 @@
         .header-controls #theme-toggle {
             margin-top: 10px;
         }
+
+        .api-key-input {
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .api-key-input input {
+            padding: 4px;
+            width: 200px;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -620,7 +630,13 @@
             </nav>
         </div>
     </header>
-    
+
+    <div class="api-key-input">
+        <label>OpenAI API キー（任意）:
+            <input type="password" id="openai-api-key" placeholder="sk-...">
+        </label>
+    </div>
+
     <main>
         <div class="container">
             <h2>OpenAI Realtime webRTC</h2>

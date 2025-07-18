@@ -19,6 +19,11 @@ document.addEventListener("DOMContentLoaded", function() {
     const aiVoiceVisualization = document.getElementById('aiVoiceVisualization');
     const waitingIndicator = document.getElementById('waitingIndicator');
     const themeToggle = document.getElementById('theme-toggle');
+    const apiKeyInput = document.getElementById('openai-api-key');
+
+    function getApiKey() {
+        return apiKeyInput ? apiKeyInput.value.trim() : '';
+    }
     
     // Global state
     let peerConnection = null;
@@ -278,7 +283,11 @@ document.addEventListener("DOMContentLoaded", function() {
             
             console.log("Fetching ephemeral key...");
             // Get ephemeral key from server
-            const response = await fetch('/openai_ephemeral_key');
+            const response = await fetch('/openai_ephemeral_key', {
+                headers: {
+                    'Authorization': `Bearer ${getApiKey()}`
+                }
+            });
             console.log("Ephemeral key response status:", response.status);
             if (!response.ok) {
                 throw new Error(`Failed to get ephemeral key: ${response.status} - ${response.statusText}`);
@@ -410,7 +419,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     method: "POST",
                     body: sdp,
                     headers: {
-                        "Content-Type": "application/sdp"
+                        "Content-Type": "application/sdp",
+                        "Authorization": `Bearer ${getApiKey()}`
                     }
                 });
                 
@@ -766,7 +776,11 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Fetch available characters
     function fetchCharacters() {
-        fetch('/characters')
+        fetch('/characters', {
+            headers: {
+                'Authorization': `Bearer ${getApiKey()}`
+            }
+        })
             .then(response => response.json())
             .then(data => {
                 characterSelect.innerHTML = '';
@@ -793,7 +807,11 @@ document.addEventListener("DOMContentLoaded", function() {
     async function fetchCharacterPrompt(characterName) {
         debugLog(`Fetching character prompt for: ${characterName}`, "info");
         try {
-            const response = await fetch(`/api/character/${characterName}`);
+            const response = await fetch(`/api/character/${characterName}`, {
+                headers: {
+                    'Authorization': `Bearer ${getApiKey()}`
+                }
+            });
             if (!response.ok) {
                 throw new Error(`Failed to fetch character prompt: ${response.status} ${response.statusText}`);
             }
