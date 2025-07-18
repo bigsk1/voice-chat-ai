@@ -120,9 +120,9 @@ async def record_enhanced_audio_and_transcribe():
     return await transcribe_audio(
         transcription_model=enhanced_transcription_model,
         use_local=False,  # Enhanced always uses OpenAI API
-        send_status_callback=send_message_to_enhanced_clients
+        send_status_callback=send_message_to_enhanced_clients,
+        api_key=get_session_api_key()
     )
-
 async def enhanced_text_to_speech(text, detected_mood=None):
     """Convert text to speech using the enhanced TTS model with emotional voice instructions."""
     try:

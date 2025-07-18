@@ -328,7 +328,10 @@ async def send_status_message(callback, message):
     if callback:
         await callback(message)
 
-async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None):
+#async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None):
+async def transcribe_audio(
+    transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None, api_key: str | None = None
+):
     """Main function to record audio and transcribe it
     
     Args:
@@ -362,8 +365,9 @@ async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_loc
             transcription = transcribe_with_whisper(temp_filename)
         else:
             # Use OpenAI API
-            transcription = await transcribe_with_openai_api(temp_filename, transcription_model)
-            
+            #transcription = await transcribe_with_openai_api(temp_filename, transcription_model)
+            # Use OpenAI API (api_key を渡す)
+            transcription = await transcribe_with_openai_api(temp_filename, transcription_model, api_key)            
         # Clean up temp file
         try:
             os.unlink(temp_filename)

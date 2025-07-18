@@ -336,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${getApiKey()}`
             },
-            body: JSON.stringify({ ...settings, api_key: getApiKey() || undefined })
+            body: JSON.stringify({ ...settings, api_key: getApiKey() })
         })
         .then(response => response.json())
         .then(data => {
