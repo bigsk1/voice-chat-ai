@@ -3,13 +3,13 @@ import os
 import signal
 import uvicorn
 import asyncio
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Depends, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from starlette.background import BackgroundTask
-from .shared import clients, set_current_character, conversation_history, add_client, remove_client
+from .shared import clients, set_current_character, conversation_history, add_client, remove_client, set_client_api_key, get_client_api_key
 from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 from .services.audio import transcribe_audio_bytes, generate_response_text, synthesize_text
@@ -48,6 +48,14 @@ logger = logging.getLogger(__name__)
 
 # Display banner
 display_banner()
+
+
+def get_api_key(authorization: str = Header(None), api_key: str = Header(None)):
+    if api_key:
+        return api_key
+    if authorization and authorization.startswith("Bearer "):
+        return authorization.split(" ", 1)[1]
+    return os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
 
@@ -200,7 +208,7 @@ async def stop_conversation_route():
     return {"status": "stopped"}
 
 @app.post("/start_enhanced_conversation")
-async def start_enhanced_conversation_route(request: Request):
+async def start_enhanced_conversation_route(request: Request, api_key: str = Depends(get_api_key)):
     data = await request.json()
     character = data.get("character")
     speed = data.get("speed")
@@ -215,7 +223,8 @@ async def start_enhanced_conversation_route(request: Request):
         model=model,
         voice=voice,
         ttsModel=tts_model,
-        transcriptionModel=transcription_model
+        transcriptionModel=transcription_model,
+        api_key=api_key
     ))
     
     return {"status": "started"}
@@ -353,7 +362,7 @@ async def get_ollama_models():
     return await fetch_ollama_models()
 
 @app.get("/openai_ephemeral_key")
-async def get_openai_ephemeral_key():
+async def get_openai_ephemeral_key(api_key: str = Depends(get_api_key)):
     """
     Generate an ephemeral key for OpenAI API access from the browser
     
@@ -362,8 +371,6 @@ async def get_openai_ephemeral_key():
     """
     try:
         # Get the API key from environment
-        api_key = os.getenv("OPENAI_API_KEY")
-        
         if not api_key:
             logger.error("OPENAI_API_KEY not set in environment")
             return {"error": "API key not configured"}
@@ -386,14 +393,13 @@ async def get_openai_ephemeral_key():
         return {"error": str(e)}
 
 @app.post("/openai_realtime_proxy")
-async def proxy_openai_realtime(request: Request):
+async def proxy_openai_realtime(request: Request, api_key: str = Depends(get_api_key)):
     """
     Proxy endpoint to relay WebRTC connection to OpenAI API.
     This avoids CORS issues when connecting directly from the browser.
     """
     try:
         # Get the API key
-        api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             return HTTPException(status_code=500, detail="OpenAI API key not configured")
         
@@ -440,24 +446,24 @@ class TextInput(BaseModel):
 
 
 @app.post("/api/transcribe")
-async def api_transcribe(file: UploadFile = File(...)):
+async def api_transcribe(file: UploadFile = File(...), api_key: str = Depends(get_api_key)):
     """Transcribe uploaded audio file and return text."""
     data = await file.read()
-    text = await transcribe_audio_bytes(data)
+    text = await transcribe_audio_bytes(data, api_key)
     return {"text": text}
 
 
 @app.post("/api/chat")
-async def api_chat(payload: TextInput):
+async def api_chat(payload: TextInput, api_key: str = Depends(get_api_key)):
     """Generate chat response for given text."""
-    response_text = await generate_response_text(payload.text)
+    response_text = await generate_response_text(payload.text, api_key)
     return {"text": response_text}
 
 
 @app.post("/api/synthesize")
-async def api_synthesize(payload: TextInput):
+async def api_synthesize(payload: TextInput, api_key: str = Depends(get_api_key)):
     """Synthesize speech for provided text and return audio."""
-    audio_bytes = await synthesize_text(payload.text)
+    audio_bytes = await synthesize_text(payload.text, api_key)
     return Response(content=audio_bytes, media_type="audio/wav")
 
 
@@ -534,8 +540,9 @@ async def websocket_enhanced_endpoint(websocket: WebSocket):
             try:
                 message = json.loads(data)
                 if message.get("action") == "ping":
-                    # Respond to heartbeats
                     await websocket.send_json({"action": "pong"})
+                elif message.get("action") == "set_api_key":
+                    set_client_api_key(websocket, message.get("api_key"))
             except json.JSONDecodeError:
                 # Not a JSON message
                 pass

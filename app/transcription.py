@@ -77,9 +77,10 @@ def transcribe_with_whisper(audio_file):
         transcription += segment.text + " "
     return transcription.strip()
 
-async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe"):
+async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe", api_key: str | None = None):
     """Transcribe audio using OpenAI's API"""
-    if not OPENAI_API_KEY:
+    key = api_key or OPENAI_API_KEY
+    if not key:
         raise ValueError("API key missing. Please set OPENAI_API_KEY in your environment.")
     
     # Make the API call to OpenAI
@@ -98,7 +99,7 @@ async def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe")
             form_data.add_field('language', LANGUAGE)
             
             headers = {
-                "Authorization": f"Bearer {OPENAI_API_KEY}"
+                "Authorization": f"Bearer {key}"
             }
             
             async with session.post(api_url, data=form_data, headers=headers) as response:
@@ -327,7 +328,10 @@ async def send_status_message(callback, message):
     if callback:
         await callback(message)
 
-async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None):
+#async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None):
+async def transcribe_audio(
+    transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None, api_key: str | None = None
+):
     """Main function to record audio and transcribe it
     
     Args:
@@ -361,8 +365,9 @@ async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_loc
             transcription = transcribe_with_whisper(temp_filename)
         else:
             # Use OpenAI API
-            transcription = await transcribe_with_openai_api(temp_filename, transcription_model)
-            
+            #transcription = await transcribe_with_openai_api(temp_filename, transcription_model)
+            # Use OpenAI API (api_key を渡す)
+            transcription = await transcribe_with_openai_api(temp_filename, transcription_model, api_key)            
         # Clean up temp file
         try:
             os.unlink(temp_filename)

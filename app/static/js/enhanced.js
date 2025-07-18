@@ -16,6 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const modelSelect = document.getElementById('modelSelect');
     const ttsModelSelect = document.getElementById('ttsModelSelect');
     const transcriptionModelSelect = document.getElementById('transcriptionModelSelect');
+    const apiKeyInput = document.getElementById('openai-api-key');
+
+    function getApiKey() {
+        return apiKeyInput ? apiKeyInput.value.trim() : '';
+    }
 
     // Default speed value (since we removed the speedSelect dropdown)
     const defaultSpeed = "1.0";
@@ -42,6 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
             startBtn.disabled = false;
             reconnectAttempts = 0; // Reset reconnect counter on successful connection
             displayMessage("Connected to server", "system-message");
+            const key = getApiKey();
+            if (key) {
+                websocket.send(JSON.stringify({ action: 'set_api_key', api_key: key }));
+            }
         };
         
         websocket.onmessage = function(event) {
@@ -325,8 +334,9 @@ document.addEventListener("DOMContentLoaded", () => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getApiKey()}`
             },
-            body: JSON.stringify(settings)
+            body: JSON.stringify({ ...settings, api_key: getApiKey() })
         })
         .then(response => response.json())
         .then(data => {

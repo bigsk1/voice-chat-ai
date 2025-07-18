@@ -10,6 +10,7 @@ load_dotenv()
 # WebSocket clients
 clients = set()
 active_client_status = {}  # Track status of websocket clients
+client_api_keys = {}
 
 # Shared state variables
 current_character = os.getenv("CHARACTER_NAME")  # Get from .env
@@ -48,6 +49,8 @@ def remove_client(client):
     clients.discard(client)
     if client in active_client_status:
         del active_client_status[client]
+    if client in client_api_keys:
+        del client_api_keys[client]
 
 def is_client_active(client):
     """Check if a client is active."""
@@ -56,6 +59,12 @@ def is_client_active(client):
 def set_client_inactive(client):
     """Mark a client as inactive."""
     active_client_status[client] = False
+
+def set_client_api_key(client, api_key):
+    client_api_keys[client] = api_key
+
+def get_client_api_key(client):
+    return client_api_keys.get(client)
 
 def clear_conversation_history():
     """Clear the conversation history."""

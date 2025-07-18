@@ -34,6 +34,15 @@ enhanced_transcription_model = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-m
 DEBUG_AUDIO_LEVELS = False  # Set to True to see audio level output in the console
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"  # Control detailed debug output
 
+current_api_key = None
+
+def set_session_api_key(key):
+    global current_api_key
+    current_api_key = key
+
+def get_session_api_key():
+    return current_api_key or os.getenv("OPENAI_API_KEY")
+
 # Quit phrases that will stop the conversation when detected
 QUIT_PHRASES = ["quit", "exit"]
 
@@ -111,9 +120,9 @@ async def record_enhanced_audio_and_transcribe():
     return await transcribe_audio(
         transcription_model=enhanced_transcription_model,
         use_local=False,  # Enhanced always uses OpenAI API
-        send_status_callback=send_message_to_enhanced_clients
+        send_status_callback=send_message_to_enhanced_clients,
+        api_key=get_session_api_key()
     )
-
 async def enhanced_text_to_speech(text, detected_mood=None):
     """Convert text to speech using the enhanced TTS model with emotional voice instructions."""
     try:
@@ -136,7 +145,7 @@ async def enhanced_text_to_speech(text, detected_mood=None):
         enhanced_audio_filename = os.path.join(outputs_dir, "output_enhanced.wav")
         
         # Get OpenAI API key
-        openai_api_key = os.getenv("OPENAI_API_KEY")
+        openai_api_key = get_session_api_key()
         if not openai_api_key:
             print("API key missing. Please set OPENAI_API_KEY in your environment.")
             return
@@ -653,7 +662,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         import json
         
         # Get API key
-        openai_api_key = os.getenv("OPENAI_API_KEY")
+        openai_api_key = get_session_api_key()
         if not openai_api_key:
             return "API key missing. Please set OPENAI_API_KEY in your environment."
         
@@ -774,10 +783,13 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
         print(f"Error in enhanced chat completion: {e}")
         return f"Error: {str(e)}"
 
-async def start_enhanced_conversation(character=None, speed=None, model=None, voice=None, ttsModel=None, transcriptionModel=None):
+async def start_enhanced_conversation(character=None, speed=None, model=None, voice=None, ttsModel=None, transcriptionModel=None, api_key=None):
     """Start a new enhanced conversation."""
     global enhanced_conversation_active, enhanced_conversation_thread, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model, conversation_history
     
+    # Set API key for this session
+    set_session_api_key(api_key)
+
     # Import get_current_character at the top level to avoid shadowing
     from .shared import get_current_character as get_character
     

@@ -14,7 +14,13 @@
         .control-button {
             margin: 0 8px;
         }
-        
+        /* 警告文スタイル */
+        .api-key-warning {
+            margin: 8px 0;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #d9534f;
+        }
         /* Match button size with main page */
         .controls {
             display: flex;
@@ -198,6 +204,16 @@
         .header-controls #download-button {
             margin-top: 12px;
         }
+
+        .api-key-input {
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .api-key-input input {
+            padding: 4px;
+            width: 200px;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -232,6 +248,14 @@
         </div>
     </header>
 
+    <div class="api-key-input">
+        <label>OpenAI API キー（任意）:
+            <input type="password" id="openai-api-key" placeholder="sk-...">
+        </label>
+    </div>
+    <div class="api-key-warning">
+        <p>This screen is provided for evaluation purposes only and is not strictly managed. There is a risk of API key leakage or misuse. Please generate a new API key before use and delete it after use.</p>
+    </div>
     <main>
         <div id="conversation" class="conversation-container">
             <div id="messages"></div>

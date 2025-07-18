@@ -17,7 +17,13 @@
             margin: 15px 0;
             gap: 6px;
         }
-        
+        /* 警告文スタイル */
+        .api-key-warning {
+            margin: 8px 0;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #d9534f;
+        }        
         .voice-bar {
             width: 6px;
             height: 5px; /* Default height when not active */
@@ -596,6 +602,16 @@
         .header-controls #theme-toggle {
             margin-top: 10px;
         }
+
+        .api-key-input {
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .api-key-input input {
+            padding: 4px;
+            width: 200px;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -620,7 +636,15 @@
             </nav>
         </div>
     </header>
-    
+
+    <div class="api-key-input">
+        <label>OpenAI API キー（任意）:
+            <input type="password" id="openai-api-key" placeholder="sk-...">
+        </label>
+    </div>
+    <div class="api-key-warning">
+        <p>This screen is provided for evaluation purposes only and is not strictly managed. There is a risk of API key leakage or misuse. Please generate a new API key before use and delete it after use.</p>
+    </div>
     <main>
         <div class="container">
             <h2>OpenAI Realtime webRTC</h2>
