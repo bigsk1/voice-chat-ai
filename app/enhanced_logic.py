@@ -132,7 +132,10 @@ async def enhanced_text_to_speech(text, detected_mood=None):
         import os
         import asyncio
         import wave
-        import pyaudio
+        try:
+            import pyaudio
+        except Exception:  # pragma: no cover - optional dependency
+            pyaudio = None
         
         # Import get_current_character at the top to avoid shadowing
         from .shared import get_current_character as get_character
@@ -429,9 +432,11 @@ async def enhanced_text_to_speech(text, detected_mood=None):
                     # Signal that audio is about to play (for animation synchronization)
                     await send_message_to_enhanced_clients({"action": "audio_actually_playing"})
                     
-                    # Play audio using PyAudio - similar to the main page implementation
+                    # Play audio using PyAudio when available
                     try:
                         wf = wave.open(enhanced_audio_filename, 'rb')
+                        if pyaudio is None:
+                            raise RuntimeError("PyAudio is not available")
                         p = pyaudio.PyAudio()
                         
                         # Set up a buffered stream for lower latency

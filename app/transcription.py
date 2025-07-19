@@ -1,5 +1,8 @@
 import os
-import pyaudio
+try:
+    import pyaudio
+except Exception:  # pragma: no cover - optional dependency
+    pyaudio = None
 import wave
 import numpy as np
 import aiohttp
@@ -131,6 +134,8 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, c
         chunk_size: Size of audio chunks
         send_status_callback: Callback to send status updates (optional)
     """
+    if pyaudio is None:
+        raise RuntimeError("PyAudio is not available")
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=chunk_size)
     frames = []
@@ -192,12 +197,16 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     temp_file.close()
     
     # Recording parameters
+    if pyaudio is None:
+        raise RuntimeError("PyAudio is not available")
     FORMAT = pyaudio.paInt16
     CHANNELS = 1
     RATE = 16000
     CHUNK = 1024
     
     # Recording logic
+    if pyaudio is None:
+        raise RuntimeError("PyAudio is not available")
     p = pyaudio.PyAudio()
     
     # Debug info about audio devices - only show once

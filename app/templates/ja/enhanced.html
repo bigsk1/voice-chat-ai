@@ -282,7 +282,30 @@
                 <label for="characterSelect">キャラクター:</label>
                 <select id="characterSelect"></select>
             </div>
-            
+            <div class="setting-group">
+                <label for="transcriptionModelSelect">音声認識（STT）:</label>
+                <select id="transcriptionModelSelect">
+                    <option value="whisper-1">OpenAI Whisper-1</option>
+                    <option value="web-speech">Web Speech API (クライアント)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="modelSelect">チャットモデル(LLM):</label>
+                <select id="modelSelect">
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-4">GPT-4</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="ttsModelSelect">音声合成（TTS）:</label>
+                <select id="ttsModelSelect">
+                    <option value="gpt-4o-mini-tts" selected>GPT-4o Mini TTS</option>
+                    <option value="tts-1">TTS-1</option>
+                    <option value="tts-1-hd">TTS-1 HD</option>
+                    <option value="web-speech">Web Speech API (クライアント)</option>
+                </select>
+            </div>
             <div class="setting-group">
                 <label for="voiceSelect">ボイス:</label>
                 <select id="voiceSelect">
@@ -300,32 +323,6 @@
                 </select>
             </div>
             
-            <div class="setting-group">
-                <label for="modelSelect">チャットモデル:</label>
-                <select id="modelSelect">
-                    <option value="gpt-4o">GPT-4o</option>
-                    <option value="gpt-4o-mini">GPT-4o Mini</option>
-                    <option value="gpt-4">GPT-4</option>
-                </select>
-            </div>
-            
-            <div class="setting-group">
-                <label for="ttsModelSelect">TTSモデル:</label>
-                <select id="ttsModelSelect">
-                    <option value="gpt-4o-mini-tts" selected>GPT-4o Mini TTS</option>
-                    <option value="tts-1">TTS-1</option>
-                    <option value="tts-1-hd">TTS-1 HD</option>
-                </select>
-            </div>
-            
-            <div class="setting-group">
-                <label for="transcriptionModelSelect">文字起こし:</label>
-                <select id="transcriptionModelSelect">
-                    <option value="gpt-4o-transcribe" selected>GPT-4o Transcribe</option>
-                    <option value="gpt-4o-mini-transcribe">GPT-4o Mini Transcribe</option>
-                    <option value="whisper-1">OpenAI Whisper-1</option>
-                </select>
-            </div>
         </div>
     </main>
 
