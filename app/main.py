@@ -1,9 +1,11 @@
+
+from typing import Optional
 import json
 import os
 import signal
 import uvicorn
 import asyncio
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Depends, Header
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Depends, Header,Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
@@ -63,6 +65,14 @@ def get_api_key(authorization: str = Header(None), api_key: str = Header(None)):
     return os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
+
+#ログ出力
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"→ Incoming: {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"← Outgoing: {response.status_code} {request.url.path}")
+    return response
 
 # Mount static files and templates
 app.mount("/app/static", StaticFiles(directory="app/static"), name="static")
@@ -458,12 +468,21 @@ class TextInput(BaseModel):
 
 
 @app.post("/api/transcribe")
-async def api_transcribe(file: UploadFile = File(...), api_key: str = Depends(get_api_key)):
-    """Transcribe uploaded audio file and return text."""
-    data = await file.read()
-    text = await transcribe_audio_bytes(data, api_key)
-    return {"text": text}
+async def api_transcribe(
+    file: UploadFile = File(...),
+    model: Optional[str] = Form(None),
+    api_key: str = Depends(get_api_key),
+):
+    # ファイル読み込み
+    audio_bytes = await file.read()
 
+    # モデル決定（フォーム値 or .env 設定 or デフォルト）
+    model_name = model or os.getenv("OPENAI_TRANSCRIPTION_MODEL", "whisper-1")
+    logger.info(f"[api_transcribe] 受信モデル: {model_name}, filename: {file.filename}")
+
+    # 文字起こし呼び出し
+    text = await transcribe_audio_bytes(audio_bytes, api_key, model=model_name)
+    return {"text": text}
 
 @app.post("/api/chat")
 async def api_chat(payload: TextInput, api_key: str = Depends(get_api_key)):

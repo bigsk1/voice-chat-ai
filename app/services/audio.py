@@ -1,7 +1,7 @@
 import os
 import tempfile
 from typing import Optional
-
+from fastapi.logger import logger
 from ..transcription import transcribe_with_whisper, transcribe_with_openai_api
 from ..app_logic import current_transcription_model, use_local_whisper, characters_folder, adjust_prompt
 from ..app import (
@@ -18,7 +18,8 @@ from ..app_logic import (
 )
 from ..shared import conversation_history, get_current_character
 
-async def transcribe_audio_bytes(audio_bytes: bytes, api_key: str | None = None) -> str:
+async def transcribe_audio_bytes(audio_bytes: bytes, api_key: str | None = None, model: str = None) -> str:
+    logger.info(f"[transcribe_audio_bytes] モデル: {current_transcription_model}, use_local: {use_local_whisper}, model: {model}")
     """Transcribe uploaded audio bytes using the configured method."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
         tmp.write(audio_bytes)
@@ -27,7 +28,8 @@ async def transcribe_audio_bytes(audio_bytes: bytes, api_key: str | None = None)
         if use_local_whisper:
             text = transcribe_with_whisper(tmp_path)
         else:
-            text = await transcribe_with_openai_api(tmp_path, current_transcription_model, api_key)
+            #text = await transcribe_with_openai_api(tmp_path, current_transcription_model, api_key)
+            text = await transcribe_with_openai_api(tmp_path, model or current_transcription_model, api_key)
     finally:
         try:
             os.unlink(tmp_path)
