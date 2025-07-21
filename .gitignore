@@ -89,6 +89,7 @@ Pipfile.lock
 .venv
 env/
 venv/
+venv_mini/
 ENV/
 env.bak/
 venv.bak/
