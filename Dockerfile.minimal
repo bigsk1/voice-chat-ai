@@ -1,0 +1,66 @@
+# Use a lighter base image (Python 3.10 slim version)
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/root/.local/bin:$PATH"
+ENV COQUI_TOS_AGREED=1
+
+# Create a working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libsndfile1 \
+    portaudio19-dev \
+    wget \
+    curl \
+    pulseaudio \
+    libsdl2-dev \
+    dbus \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
+# Configure dbus
+RUN dbus-uuidgen > /etc/machine-id
+
+# Create a simple ALSA configuration - redirect to null device
+RUN mkdir -p /etc/alsa && \
+    echo "pcm.!default { type null }" > /etc/asound.conf && \
+    echo "ctl.!default { type null }" >> /etc/asound.conf
+
+# Set environment variables to reduce audio errors
+ENV ALSA_CARD=none
+ENV AUDIODEV=null
+ENV SDL_AUDIODRIVER=dummy
+# Disable JACK to prevent those errors
+ENV JACK_NO_START_SERVER=1
+ENV JACK_NO_AUDIO_RESERVATION=1
+
+# Copy only necessary files (EXCLUDING large checkpoint and XTTS-v2)
+COPY requirements-minimal.txt /app/requirements.txt
+COPY app /app/app
+COPY characters /app/characters
+COPY outputs /app/outputs
+COPY cli.py /app/cli.py
+COPY elevenlabs_voices.json.example /app/elevenlabs_voices.json.example
+COPY .env.sample /app/.env.sample
+COPY README.md /app/README.md
+COPY LICENSE /app/LICENSE
+COPY docs /app/docs
+
+# Install Python dependencies (without cache to reduce image size)
+RUN pip install --upgrade pip && pip install --no-cache-dir -r /app/requirements.txt
+
+# Expose the port that the app runs on
+EXPOSE 8000
+
+# Add a wrapper script to redirect stderr when running the application
+RUN echo '#!/bin/bash\nexec uvicorn app.minimal_app:app --host 0.0.0.0 --port 8000 2> >(grep -v "ALSA\|snd_\|JACK\|jack\|JackShmReadWritePtr" >&2)' > /app/start.sh && \
+    chmod +x /app/start.sh
+
+# Command to run the application
+CMD ["/app/start.sh"]
