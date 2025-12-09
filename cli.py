@@ -14,13 +14,23 @@ from dotenv import load_dotenv
 from openai import OpenAI, OpenAIError
 import anthropic
 from faster_whisper import WhisperModel
-from TTS.api import TTS
 import soundfile as sf
 from textblob import TextBlob
 from pathlib import Path
 import re
 import io
 from pydub import AudioSegment
+import warnings
+
+# Import Spark-TTS
+try:
+    import sys
+    sys.path.insert(0, os.path.dirname(__file__))
+    from cli.SparkTTS import SparkTTS
+    SPARKTTS_AVAILABLE = True
+except ImportError as e:
+    print(f"Spark-TTS import failed: {e}")
+    SPARKTTS_AVAILABLE = False
 
 # Load environment variables
 load_dotenv()
@@ -49,8 +59,11 @@ KOKORO_BASE_URL = os.getenv('KOKORO_BASE_URL', 'http://localhost:8880/v1')
 KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
-XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
-os.environ["COQUI_TOS_AGREED"] = "1"
+SPARKTTS_MODEL_DIR = os.getenv('SPARKTTS_MODEL_DIR', 'pretrained_models/Spark-TTS-0.5B')
+SPARKTTS_MAX_CHARS = int(os.getenv('SPARKTTS_MAX_CHARS', 1000))
+
+# Suppress warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.utils.weight_norm")
 
 
 # ANSI escape codes for colors
@@ -106,17 +119,24 @@ characters_folder = os.path.join(project_dir, 'characters', CHARACTER_NAME)
 character_prompt_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.txt")
 character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 
-# Initialize TTS model
-tts = None
-if TTS_PROVIDER == 'xtts':
-    print("Initializing XTTS model (may download on first run)...")
-    try:
-        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
-        print("XTTS model loaded successfully.")
-    except Exception as e:
-        print(f"Failed to load XTTS model: {e}")
-        TTS_PROVIDER = 'openai'  # Fallback to OpenAI
+# Initialize Spark-TTS model
+sparktts_model = None
+if TTS_PROVIDER == 'sparktts':
+    if not SPARKTTS_AVAILABLE:
+        print("Spark-TTS is not available. Please ensure it's properly installed.")
+        TTS_PROVIDER = 'openai'
         print("Switched to default TTS provider: openai")
+    else:
+        print(f"Initializing Spark-TTS model from {SPARKTTS_MODEL_DIR}...")
+        try:
+            torch_device = torch.device(device)
+            print(f"Using device: {torch_device} (CUDA available: {torch.cuda.is_available()})")
+            sparktts_model = SparkTTS(model_dir=Path(SPARKTTS_MODEL_DIR), device=torch_device)
+            print(f"Spark-TTS model loaded successfully on {torch_device}.")
+        except Exception as e:
+            print(f"Failed to load Spark-TTS model: {e}")
+            TTS_PROVIDER = 'openai'
+            print("Switched to default TTS provider: openai")
 
 # Function to display ElevenLabs quota
 def display_elevenlabs_quota():
@@ -178,10 +198,10 @@ print(f"Model provider: {MODEL_PROVIDER}")
 print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
-print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'local' if TTS_PROVIDER == 'xtts' else 'Unknown'}")
+print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else 'Unknown'}")
 print("To stop chatting say Quit or Exit. One moment please loading...")
 
-# Function to synthesize speech using XTTS
+# Function to synthesize speech
 def process_and_play(prompt, audio_file_pth):
     if TTS_PROVIDER == 'openai':
         output_path = os.path.join(output_dir, 'output.wav')
@@ -213,23 +233,25 @@ def process_and_play(prompt, audio_file_pth):
             play_audio(output_path)
         else:
             print("Error: Audio file not found.")
-    elif TTS_PROVIDER == 'xtts':
-        if tts is not None:
+    elif TTS_PROVIDER == 'sparktts':
+        if sparktts_model is not None:
             try:
-                wav = tts.tts(
+                wav_np = sparktts_model.inference(
                     text=prompt,
-                    speaker_wav=audio_file_pth,  # For voice cloning
-                    language="en",
-                    speed=float(VOICE_SPEED)
+                    prompt_speech_path=Path(audio_file_pth),
+                    prompt_text=None,
+                    temperature=0.8,
+                    top_k=50,
+                    top_p=0.95
                 )
                 src_path = os.path.join(output_dir, 'output.wav')
-                sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
-                print("Audio generated successfully with XTTS.")
+                sf.write(src_path, wav_np, sparktts_model.sample_rate)
+                print("Audio generated successfully with Spark-TTS.")
                 play_audio(src_path)
             except Exception as e:
-                print(f"Error during XTTS audio generation: {e}")
+                print(f"Error during Spark-TTS audio generation: {e}")
         else:
-            print("XTTS model is not loaded. Please ensure initialization succeeded.")
+            print("Spark-TTS model is not loaded. Please ensure initialization succeeded.")
 
 def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2):
     """ Saves PCM data as a WAV file. """
@@ -957,21 +979,23 @@ def generate_speech(text, temp_audio_path):
         elevenlabs_text_to_speech(text, temp_audio_path)
     elif TTS_PROVIDER == 'kokoro':
         kokoro_text_to_speech(text, temp_audio_path)
-    else:  # XTTS
-        if tts is not None:
+    else:  # Spark-TTS
+        if sparktts_model is not None:
             try:
-                wav = tts.tts(
+                wav_np = sparktts_model.inference(
                     text=text,
-                    speaker_wav=character_audio_file,
-                    language="en",
-                    speed=float(VOICE_SPEED)
+                    prompt_speech_path=Path(character_audio_file),
+                    prompt_text=None,
+                    temperature=0.8,
+                    top_k=50,
+                    top_p=0.95
                 )
-                sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
-                print("Audio generated successfully with XTTS.")
+                sf.write(temp_audio_path, wav_np, sparktts_model.sample_rate)
+                print("Audio generated successfully with Spark-TTS.")
             except Exception as e:
-                print(f"Error during XTTS audio generation: {e}")
+                print(f"Error during Spark-TTS audio generation: {e}")
         else:
-            print("XTTS model is not loaded.")
+            print("Spark-TTS model is not loaded.")
 
 def transcribe_with_openai_api(audio_file, model="gpt-4o-mini-transcribe"):
     """Transcribe audio using OpenAI's API"""

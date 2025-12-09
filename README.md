@@ -1,4 +1,3 @@
-[![Python application](https://github.com/bigsk1/voice-chat-ai/actions/workflows/python-app.yml/badge.svg)](https://github.com/bigsk1/voice-chat-ai/actions/workflows/python-app.yml)
 ![Docker support](https://img.shields.io/badge/docker-supported-blue)
 [![License](https://img.shields.io/github/license/bigsk1/voice-chat-ai)](https://github.com/bigsk1/voice-chat-ai/blob/main/LICENSE)
 
@@ -18,7 +17,8 @@ Check out the game and story documentation:
 
 Get up and running fast with Voice Chat AI! 🔊
 
-- [**Install Locally**](#installation): Set up with Python 3.10 on Windows, Linux or MacOS.
+- [**Install Locally**](#installation): Set up with Python 3.11+ on Windows, Linux or MacOS.
+- [**Detailed Install Guide**](INSTALL.md): Step-by-step installation with pip, uv, or conda.
 - [**Run with Docker**](#install-with-docker): Use Docker run or Docker Compose
 - [**Configure Settings**](#configuration): Customize AI models, voices, and characters via `.env` on startup.
 - [**OpenAI Enhanced**](#openai-enhanced): Use OpenAI Enhanced Mode to speak with the AI in a more human like way with emotions.
@@ -32,7 +32,7 @@ Get up and running fast with Voice Chat AI! 🔊
 ## Features
 
 - **Supports OpenAI, xAI, Anthropic or Ollama language models**: Choose the model that best fits your needs.
-- **Provides text-to-speech synthesis using XTTS or OpenAI TTS or ElevenLabs or Kokoro TTS**: Enjoy natural and expressive voices.
+- **Provides text-to-speech synthesis using Spark-TTS or OpenAI TTS or ElevenLabs or Kokoro TTS**: Enjoy natural and expressive voices with optional local voice cloning.
 - **Provides speech to speech using OpenAI Realtime API**: Have a real time conversation with AI characters, interrupt the AI and have instant responses.
 - **OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
 - **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper.
@@ -49,11 +49,10 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 ### Requirements
 
 - Windows, Linux or MacOS
-- Python 3.10
+- Python 3.11+
 - ffmpeg
 - Ollama models or OpenAI or xAI or Anthropic for chat
-- Local XTTS, Openai API or ElevenLabs API or Kokoro TTS for speech
-- Microsoft C++ Build Tools on windows
+- Spark-TTS (local), OpenAI API, ElevenLabs API, or Kokoro TTS for speech
 - Microphone
 - A sense of humor
 
@@ -75,44 +74,66 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
     On Windows use `venv\Scripts\Activate`
 
-   or use `conda` just make it python 3.10
+   or use `conda` just make it python 3.11
 
    ```bash
-   conda create --name voice-chat-ai python=3.10
+   conda create --name voice-chat-ai python=3.11
    conda activate voice-chat-ai
    ```
 
 3. Install dependencies:
 
-    Windows Only if using XTTS: Need to have Microsoft C++ 14.0 or greater Build Tools on windows.
-    [Microsoft Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+   **Step A: Install PyTorch (choose based on your hardware)**
+   
+   CPU only:
+   ```bash
+   pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cpu
+   ```
+   
+   OR CUDA 12.4 (GPU):
+   ```bash
+   pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu124
+   ```
 
-   For GPU (CUDA) version:
-
-    Install CUDA-enabled PyTorch and other dependencies.
-
+   **Step B: Install core dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-   For CPU only RECOMMENDED:
+   **Step C: Install ffmpeg**
+   
+   Windows: `winget install ffmpeg`
+   
+   Linux: `sudo apt install ffmpeg`
+   
+   Mac: `brew install ffmpeg`
+   
+   Restart your terminal after installing, then verify: `ffmpeg -version`
 
-    ```bash
-    pip install -r requirements_cpu.txt
-    ```
+   Note: The app uses OpenAI transcription by default. If you select Local Faster Whisper in the UI, it will automatically download the model (about 1GB) on first use. The model is stored in your user's cache directory and shared across environments.
 
-    Make sure you have ffmpeg downloaded, on windows terminal ( winget install ffmpeg ) or checkout https://ffmpeg.org/download.html then restart shell or vscode, type ffmpeg -version to see if installed correctly
+### Spark-TTS for local voice cloning - Optional
 
-    Note: The app uses OpenAI transcription by default. If you select Local Faster Whisper in the UI, it will automatically download the model (about 1GB) on first use. The model is stored in your user's cache directory and shared across environments.
+If you're only using speech with OpenAI, ElevenLabs, or Kokoro TTS, you don't need this. Spark-TTS provides local zero-shot voice cloning using the character `.wav` files.
 
-    Local XTTS can run on cpu but is slow, if using a enabled cuda gpu you also might need cuDNN for using nvidia GPU https://developer.nvidia.com/cudnn  and make sure `C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6`
-is in system PATH or whatever version you downloaded, you can also disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` to `"cudnn_enable": false`, if you don't want to use it.
+**Quick Setup:**
 
-### XTTS for local voices - Optional
+```bash
+# Automated setup (GPU with CUDA)
+python setup_sparktts.py
 
-If you are only using speech with Openai or Elevenlabs then you don't need this. To use the local TTS the first time you select XTTS the model will download and be ready to use, if your device is cuda enabled it will load into cuda if not will fall back to cpu.
+# Or CPU-only
+python setup_sparktts.py --cpu-only
+```
 
-> Note: the sample .wav files in the characters folder are not the greatest quality, you can provide your own to replace them.
+For detailed setup instructions, requirements, and troubleshooting, see [Spark-TTS Documentation](docs/SPARKTTS.md).
+
+**Requirements:**
+- Python 3.11+ recommended (for full CUDA support)
+- ~5GB disk space for model
+- CUDA-capable GPU (optional, works on CPU)
+
+> Note: The sample `.wav` files in the characters folder are used for voice cloning. You can provide your own high-quality samples to improve voice quality.
 
 ### Kokoro TTS for local voices - Optional
 
@@ -248,7 +269,7 @@ docker run -d -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v /mnt/wslg/:/mnt/wslg/ -
 <details>
 <summary>Click to expand docker with cuda</summary>
 
-This image is huge when built because of all the checkpoints, cuda base image, build tools and audio tools - So there is no need to download the checkpoints and XTTS as they are in the image. This is all setup to use XTTS with cuda in an nvidia cudnn base image.
+This image is large when built because of the CUDA base image, build tools and audio tools.
 
  Ensure you have Docker installed and that your `.env` file is placed in the same directory as the commands are run. If you get cuda errors make sure to install nvidia toolkit for docker and cudnn is installed in your path.
 
@@ -363,7 +384,7 @@ MODEL_PROVIDER=openai
 CHARACTER_NAME=bigfoot
 
 # Text-to-Speech (TTS) Configuration:
-# TTS Provider - Options: xtts (local uses the custom character .wav) or openai (uses OpenAI TTS voice) or elevenlabs or kokoro (your own selfhosted tts)
+# TTS Provider - Options: sparktts (local zero-shot voice cloning) or openai (uses OpenAI TTS voice) or elevenlabs or kokoro (selfhosted tts)
 TTS_PROVIDER=openai
 
 # Voice Speed for all TTS providers - 0.7 to 1.2, default is 1.0
@@ -400,11 +421,10 @@ KOKORO_TTS_VOICE=af_bella
 # Maximum character length for audio generation - set to 2000+ for stories and games, 3000 for assassin story, 4000 for mars encounter interactive
 # MAX_CHAR_LENGTH is used for openai, elevenlabs and kokoro, is also used for max tokens for chat response, if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 max tokens is sent to provider
 MAX_CHAR_LENGTH=1000
-# XTTS Max Number of characters to generate audio, default is 255 but we are overriding that
-XTTS_NUM_CHARS=1000
 
-# XTTS Configuration:
-COQUI_TOS_AGREED=1
+# Spark-TTS Configuration (optional - only needed if using Spark-TTS):
+# SPARKTTS_MODEL_DIR=pretrained_models/Spark-TTS-0.5B
+# SPARKTTS_MAX_CHARS=1000
 
 # OpenAI Configuration:
 # gpt-4, gpt-4o-mini- gpt-4o
@@ -632,55 +652,12 @@ This is for sentiment analysis, based on what you say, you can guide the AI to r
 
 </details>
 
-> For XTTS find a .wav voice and add it to the wizard folder and name it as wizard.wav , the voice only needs to be 6 seconds long. Running the app will automatically find the .wav when it has the characters name and use it. If only using Openai Speech or ElevenLabs a .wav isn't needed
+> For Spark-TTS, add a `.wav` voice file to the character folder (e.g., `wizard.wav`). The voice should be 6-10 seconds of clear speech. Running the app will automatically find and use the `.wav` file for voice cloning when using Spark-TTS. If only using OpenAI, ElevenLabs, or Kokoro TTS, a `.wav` file isn't needed.
 
 ## Troubleshooting
 
 <details>
 <summary>Click to expand</summary>
-
-### Could not locate cudnn_ops64_9.dll or Unable to load any of libcudnn_ops.so.9.1.0
-
-```bash
-Could not locate cudnn_ops64_9.dll. Please make sure it is in your library path!
-Invalid handle. Cannot load symbol cudnnCreateTensorDescriptor
-```
-
-To resolve this:
-
-Option 1
-
-You can disable cudnn in the `"C:\Users\Your-Name\AppData\Local\tts\tts_models--multilingual--multi-dataset--xtts_v2\config.json"` or `equivalent ~/.cache/tts/ on Linux/Mac` and set to "cudnn_enable": false,
-
-Option 2
-
-Install cuDNN: Download cuDNN from the NVIDIA cuDNN page https://developer.nvidia.com/cudnn
-
-Here's how to add it to the PATH:
-
-Open System Environment Variables:
-
-Press Win + R, type sysdm.cpl, and hit Enter.
-Go to the Advanced tab, and click on Environment Variables.
-Edit the System PATH Variable:
-
-In the System variables section, find the Path variable, select it, and click Edit.
-Click New and add the path to the bin directory where cudnn_ops64_9.dll is located. Based on your setup, you would add:
-
-```bash
-C:\Program Files\NVIDIA\CUDNN\v9.5\bin\12.6
-```
-
-Apply and Restart:
-
-Click OK to close all dialog boxes, then restart your terminal (or any running applications) to apply the changes.
-Verify the Change:
-
-Open a new terminal and run
-
-```bash
-where cudnn_ops64_9.dll
-```
 
 ### Unanticipated host error OSError 9999
 
@@ -730,28 +707,6 @@ conda remove libstdcxx-ng --force
 
 This will let it use the system's /usr/lib/x86_64-linux-gnu/libstdc++.so.6 instead — which has GLIBCXX_3.4.32
 
-### ImportError: Coqpit module not found
-
-If you update to coqui-tts 0.26.0 (which supports transformers 4.48.0+) and encounter an error related to importing Coqpit, this is because of a package dependency change. The newer version of coqui-tts uses a forked version of coqpit called `coqpit-config` instead of the original `coqpit` package.
-
-To fix this issue:
-
-1. Uninstall the old package:
-
-   ```bash
-   pip uninstall coqpit
-   ```
-
-2. Install the new forked package:
-
-   ```bash
-   pip install coqpit-config
-   ```
-
-3. Restart your Python session or application
-
-If you continue to have issues after these steps, creating a fresh virtual environment and reinstalling all dependencies is the most reliable solution.
-
 </details>
 
 ## Watch the Demos
@@ -765,16 +720,6 @@ https://github.com/user-attachments/assets/d6ed3c62-fe07-418c-9708-673f21fcf5c2
 OpenAI Enhanced
 
 [![Watch the video](https://img.youtube.com/vi/TjHwVwzUUvM/maxresdefault.jpg)](https://youtu.be/TjHwVwzUUvM)
-
-Click on the thumbnail to open the video☝️
-
----
-
-GPU Only mode CLI
-
-100% local - ollama llama3, xtts-v2
-
-[![Watch the video](https://img.youtube.com/vi/WsWbYnITdCo/maxresdefault.jpg)](https://youtu.be/WsWbYnITdCo)
 
 Click on the thumbnail to open the video☝️
 

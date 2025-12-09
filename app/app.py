@@ -11,7 +11,6 @@ from PIL import ImageGrab
 from dotenv import load_dotenv
 from openai import OpenAI
 from faster_whisper import WhisperModel
-from TTS.api import TTS
 import soundfile as sf
 from textblob import TextBlob
 from pathlib import Path
@@ -22,8 +21,20 @@ import torch
 from pydub import AudioSegment
 from .shared import clients, get_current_character
 
+# Import Spark-TTS
+try:
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from cli.SparkTTS import SparkTTS
+    SPARKTTS_AVAILABLE = True
+except ImportError as e:
+    print(f"Spark-TTS import failed: {e}")
+    SPARKTTS_AVAILABLE = False
+
 import logging
+import warnings
 logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
+warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.utils.weight_norm")
 
 # Load environment variables
 load_dotenv()
@@ -51,8 +62,8 @@ KOKORO_BASE_URL = os.getenv('KOKORO_BASE_URL', 'http://localhost:8880/v1')
 KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
-XTTS_NUM_CHARS = int(os.getenv('XTTS_NUM_CHARS', 255))
-os.environ["COQUI_TOS_AGREED"] = "1"
+SPARKTTS_MODEL_DIR = os.getenv('SPARKTTS_MODEL_DIR', 'pretrained_models/Spark-TTS-0.5B')
+SPARKTTS_MAX_CHARS = int(os.getenv('SPARKTTS_MAX_CHARS', 1000))
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -75,9 +86,6 @@ character_display_name = CHARACTER_NAME.capitalize()
 
 # Check for CUDA availability
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# Disable CuDNN explicitly - enable this if you get cudnn errors or change in xtts-v2/config.json
-# torch.backends.cudnn.enabled = False
 
 # Check if Faster Whisper should be loaded at startup
 FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
@@ -111,26 +119,26 @@ characters_folder = os.path.join(project_dir, 'characters', CHARACTER_NAME)
 character_prompt_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.txt")
 character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 
-# Load XTTS configuration
-tts = None
+# Load Spark-TTS configuration
+sparktts_model = None
 
-# Initialize TTS model with automatic downloading
-if TTS_PROVIDER == 'xtts':
-    print("Initializing XTTS model (may download on first run)...")
-    try:
-        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
-        print("Model downloaded, loading into memory...")
-        tts = tts.to(device)  # Move to device after download
-        
-        num_chars = XTTS_NUM_CHARS
-        # Set the character limit
-        tts.synthesizer.tts_model.args.num_chars = num_chars  # default is 255 we are overriding it 
-        
-        print("XTTS model loaded successfully.")
-    except Exception as e:
-        print(f"Failed to load XTTS model: {e}")
+# Initialize Spark-TTS model
+if TTS_PROVIDER == 'sparktts':
+    if not SPARKTTS_AVAILABLE:
+        print("Spark-TTS is not available. Please ensure it's properly installed.")
         TTS_PROVIDER = 'openai'
         print("Switched to default TTS provider: openai")
+    else:
+        print(f"Initializing Spark-TTS model from {SPARKTTS_MODEL_DIR}...")
+        try:
+            torch_device = torch.device(device)
+            print(f"Using device: {torch_device} (CUDA available: {torch.cuda.is_available()})")
+            sparktts_model = SparkTTS(model_dir=Path(SPARKTTS_MODEL_DIR), device=torch_device)
+            print(f"Spark-TTS model loaded successfully on {torch_device}.")
+        except Exception as e:
+            print(f"Failed to load Spark-TTS model: {e}")
+            TTS_PROVIDER = 'openai'
+            print("Switched to default TTS provider: openai")
 
 def init_ollama_model(model_name):
     global OLLAMA_MODEL
@@ -173,28 +181,34 @@ def init_voice_speed(speed_value):
     print(f"Switched to global voice speed: {speed_value}")
 
 def init_set_tts(set_tts):
-    global TTS_PROVIDER, tts
-    if set_tts == 'xtts':
-        print("Initializing XTTS model (may download on first run)...")
-        try:
-            os.environ["COQUI_TOS_AGREED"] = "1"  # Auto-agree to terms
-            tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
-            print("Model downloaded, loading into memory...")
-            tts = tts.to(device)
-            num_chars = XTTS_NUM_CHARS
-            tts.synthesizer.tts_model.args.num_chars = num_chars # default is 255 we are overriding it warning on cpu will take much longer
-            print("XTTS model loaded successfully.")
-            TTS_PROVIDER = set_tts
-        except Exception as e:
-            print(f"Failed to load XTTS model: {e}")
+    global TTS_PROVIDER, sparktts_model
+    if set_tts == 'sparktts':
+        if not SPARKTTS_AVAILABLE:
+            print("Spark-TTS is not available. Please ensure it's properly installed.")
             loop = asyncio.get_running_loop()
             loop.create_task(send_message_to_clients(json.dumps({
                 "action": "error",
-                "message": "Failed to load XTTS model. Please check your internet connection or model availability."
+                "message": "Spark-TTS is not available."
+            })))
+            return
+        
+        print(f"Initializing Spark-TTS model from {SPARKTTS_MODEL_DIR}...")
+        try:
+            torch_device = torch.device(device)
+            print(f"Using device: {torch_device} (CUDA available: {torch.cuda.is_available()})")
+            sparktts_model = SparkTTS(model_dir=Path(SPARKTTS_MODEL_DIR), device=torch_device)
+            print(f"Spark-TTS model loaded successfully on {torch_device}.")
+            TTS_PROVIDER = set_tts
+        except Exception as e:
+            print(f"Failed to load Spark-TTS model: {e}")
+            loop = asyncio.get_running_loop()
+            loop.create_task(send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": f"Failed to load Spark-TTS model: {str(e)}"
             })))
     else:
         TTS_PROVIDER = set_tts
-        tts = None
+        sparktts_model = None
         print(f"Switched to TTS Provider: {set_tts}")
 
 def init_set_provider(set_provider):
@@ -345,33 +359,37 @@ async def process_and_play(prompt, audio_file_pth):
                 "action": "error",
                 "message": "Kokoro audio file not found after generation"
             }))
-    elif TTS_PROVIDER == 'xtts':
-        if tts is not None:
+    elif TTS_PROVIDER == 'sparktts':
+        if sparktts_model is not None:
             try:
-                wav = await asyncio.to_thread(
-                tts.tts,
-                text=prompt,
-                speaker_wav=current_audio_file,  # Use the updated current character audio
-                language="en",
-                speed=float(os.getenv('VOICE_SPEED', '1.0'))
-            )
+                # Spark-TTS inference
+                wav_np = await asyncio.to_thread(
+                    sparktts_model.inference,
+                    text=prompt,
+                    prompt_speech_path=Path(current_audio_file),
+                    prompt_text=None,  # Will auto-transcribe if needed
+                    temperature=0.8,
+                    top_k=50,
+                    top_p=0.95
+                )
                 src_path = os.path.join(output_dir, 'output.wav')
-                sf.write(src_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
-                print("Audio generated successfully with XTTS.")
+                # Spark-TTS already returns numpy array
+                sf.write(src_path, wav_np, sparktts_model.sample_rate)
+                print("Audio generated successfully with Spark-TTS.")
                 await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
                 await play_audio(src_path)
                 await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
             except Exception as e:
-                print(f"Error during XTTS audio generation: {e}")
+                print(f"Error during Spark-TTS audio generation: {e}")
                 await send_message_to_clients(json.dumps({
                     "action": "error",
-                    "message": f"XTTS error: {str(e)}"
+                    "message": f"Spark-TTS error: {str(e)}"
                 }))
         else:
-            print("XTTS model is not loaded. Please ensure initialization succeeded.")
+            print("Spark-TTS model is not loaded. Please ensure initialization succeeded.")
             await send_message_to_clients(json.dumps({
                 "action": "error",
-                "message": "XTTS model is not loaded"
+                "message": "Spark-TTS model is not loaded"
             }))
     else:
         print(f"Unknown TTS provider: {TTS_PROVIDER}")
@@ -1011,8 +1029,8 @@ async def execute_once(question_prompt):
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for OpenAI
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
     else:
-        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for XTTS
-        max_char_length = XTTS_NUM_CHARS  # Set a lower limit for XTTS , default is 255 testing 1000+, on 4090 taking 90 secs for 2000 chars quality is bad
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for Spark-TTS
+        max_char_length = SPARKTTS_MAX_CHARS  # Spark-TTS character limit
 
     image_path = await take_screenshot(temp_image_path)
     response = await analyze_image(image_path, question_prompt)
@@ -1190,22 +1208,25 @@ async def generate_speech(text, temp_audio_path):
     elif TTS_PROVIDER == 'kokoro':
         await kokoro_text_to_speech(text, temp_audio_path)
 
-    else:  # XTTS
-        if tts is not None:
+    else:  # Spark-TTS
+        if sparktts_model is not None:
             try:
-                wav = await asyncio.to_thread(
-                    tts.tts,
+                wav_np = await asyncio.to_thread(
+                    sparktts_model.inference,
                     text=text,
-                    speaker_wav=character_audio_file,
-                    language="en",
-                    speed=float(os.getenv('VOICE_SPEED', '1.0'))
+                    prompt_speech_path=Path(character_audio_file),
+                    prompt_text=None,
+                    temperature=0.8,
+                    top_k=50,
+                    top_p=0.95
                 )
-                sf.write(temp_audio_path, wav, tts.synthesizer.tts_config.audio["sample_rate"])
-                print("Audio generated successfully with XTTS.")
+                # Spark-TTS already returns numpy array
+                sf.write(temp_audio_path, wav_np, sparktts_model.sample_rate)
+                print("Audio generated successfully with Spark-TTS.")
             except Exception as e:
-                print(f"Error during XTTS audio generation: {e}")
+                print(f"Error during Spark-TTS audio generation: {e}")
         else:
-            print("XTTS model is not loaded.")
+            print("Spark-TTS model is not loaded.")
 
 async def kokoro_text_to_speech(text, output_path):
     """Convert text to speech using Kokoro TTS API."""

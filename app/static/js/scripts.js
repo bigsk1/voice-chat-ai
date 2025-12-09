@@ -13,6 +13,13 @@ document.addEventListener("DOMContentLoaded", function() {
     const providerSelect = document.getElementById('provider-select');
     const ttsSelect = document.getElementById('tts-select');
     const openaiVoiceSelect = document.getElementById('openai-voice-select');
+    
+    // Set initial TTS provider from server
+    const initialTTS = ttsSelect.dataset.initial;
+    if (initialTTS && initialTTS !== 'None' && initialTTS !== '') {
+        ttsSelect.value = initialTTS;
+    }
+    
     const elevenLabsVoiceSelect = document.getElementById('elevenlabs-voice-select');
     const kokoroVoiceSelect = document.getElementById('kokoro-voice-select');
     const openaiModelSelect = document.getElementById('openai-model-select');

@@ -1,36 +1,56 @@
-# CUDA-enabled PyTorch and related libraries
-torch>=2.6.0,<2.8.0
-torchaudio>=2.6.0,<2.8.0
-torchvision>=0.21.0,<0.23.0
---extra-index-url https://download.pytorch.org/whl/cu118
+# Voice Chat AI - Core Dependencies
+# Python 3.11+ required
+#
+# NOTE: Install PyTorch FIRST based on your hardware:
+#
+# CPU only:
+#   pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cpu
+#
+# CUDA 12.1:
+#   pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu121
+#
+# CUDA 12.4:
+#   pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu124
+#
+# Then install this file:
+#   pip install -r requirements.txt
 
+# Audio processing
 PyAudio==0.2.14
-numpy==1.26.4
-faster-whisper==1.1.1
-soundfile==0.12.1    
-langid==1.1.6
+numpy>=1.21.6,<1.28.0
+soundfile==0.12.1
 librosa==0.10.2.post1
 scipy==1.11.4
-transformers==4.53.0
-pydantic==2.7.4
-pillow==10.3.0
-
 pydub==0.25.1
-openai==1.68.2
-anthropic==0.49.0
+
+# Speech recognition (Faster Whisper for local transcription)
+faster-whisper==1.1.1
+
+# NLP and language
+transformers==4.53.0
+langid==1.1.6
 textblob==0.18.0.post0
-python-dotenv==1.0.1 
-requests==2.32.4 
-fastapi==0.115.11
-uvicorn==0.30.1
-aiohttp==3.12.14
 spacy==3.7.5
 spacy-legacy==3.0.12
 spacy-loggers==1.0.5
-coqui-tts==0.26.0
 
-# WebRTC-specific dependencies
-aiortc==1.10.1
-av==11.0.0
-httpx==0.28.1 
+# API clients
+openai==1.68.2
+anthropic==0.49.0
+aiohttp==3.12.14
+httpx==0.28.1
+requests==2.32.4
+
+# Web framework
+fastapi==0.115.11
+uvicorn==0.30.1
 websockets==15.0.1
+
+# WebRTC (for OpenAI Realtime)
+aiortc>=1.14.0
+av>=14.0.0
+
+# Configuration
+pydantic==2.7.4
+python-dotenv==1.0.1
+pillow==10.3.0

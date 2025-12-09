@@ -175,9 +175,6 @@ target/
 checkpoints/
 checkpoints.zip
 
-# XTTS models
-XTTS-v2/
-
 # Outputs
 outputs/
 
@@ -207,9 +204,8 @@ models/
 # Ignore the downloads directory
 downloads/
 
-XTTS-v2
+
 checkpoints
-XTTS-v2/*
 checkpoints/*
 
 temp_output.wav
@@ -223,3 +219,15 @@ conversation_history.json
 freeze_requirements.txt
 freeze_requiremenets.txt.bak
 elevenlabs_voices.json
+
+# Spark-TTS (optional local TTS)
+sparktts_repo/
+pretrained_models/
+
+# Virtual environments
+.venv-uv/
+.venv-uv-cuda/
+.venv-cuda-py311/
+.venv-test-py311/
+venv/
+.venv/
