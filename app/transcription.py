@@ -4,9 +4,14 @@ import wave
 import numpy as np
 import aiohttp
 import tempfile
-import torch
 from faster_whisper import WhisperModel
 from dotenv import load_dotenv
+
+# Import torch only if available (needed for CUDA detection)
+try:
+    import torch
+except ImportError:
+    torch = None
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -37,8 +42,8 @@ def initialize_whisper_model():
     if whisper_model is not None:
         return whisper_model
         
-    # Check for CUDA availability
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # Check for CUDA availability (only if torch is available)
+    device = "cuda" if (torch and torch.cuda.is_available()) else "cpu"
     
     # Default model size (adjust as needed)
     model_size = "medium.en"

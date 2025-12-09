@@ -17,24 +17,24 @@ from pathlib import Path
 import anthropic
 import re
 import io
-import torch
 from pydub import AudioSegment
 from .shared import clients, get_current_character
 
-# Import Spark-TTS
+# Import Spark-TTS and torch (only needed for Spark-TTS)
 try:
     import sys
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    import torch
     from cli.SparkTTS import SparkTTS
+    import logging
+    import warnings
+    logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
+    warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.utils.weight_norm")
     SPARKTTS_AVAILABLE = True
 except ImportError as e:
     print(f"Spark-TTS import failed: {e}")
     SPARKTTS_AVAILABLE = False
-
-import logging
-import warnings
-logging.getLogger("transformers").setLevel(logging.ERROR)  # transformers 4.48+ warning
-warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.utils.weight_norm")
+    torch = None  # Set torch to None if not available
 
 # Load environment variables
 load_dotenv()
@@ -84,8 +84,8 @@ else:
 # Capitalize the first letter of the character name
 character_display_name = CHARACTER_NAME.capitalize()
 
-# Check for CUDA availability
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# Check for CUDA availability (only if torch is available)
+device = "cuda" if (torch and torch.cuda.is_available()) else "cpu"
 
 # Check if Faster Whisper should be loaded at startup
 FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
@@ -953,22 +953,21 @@ def transcribe_with_whisper(audio_file):
     
     # Lazy load the model only when needed
     if whisper_model is None:
-        # Check for CUDA availability
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Check for CUDA availability (use global device or check torch if available)
+        whisper_device = "cuda" if (torch and torch.cuda.is_available()) else "cpu"
         
         # Default model size (adjust as needed)
-        model_size = "medium.en" if device == "cuda" else "tiny.en"
+        model_size = "medium.en" if whisper_device == "cuda" else "tiny.en"
         
         try:
-            print(f"Lazy-loading Faster-Whisper on {device}...")
-            whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
+            print(f"Lazy-loading Faster-Whisper on {whisper_device}...")
+            whisper_model = WhisperModel(model_size, device=whisper_device, compute_type="float16" if whisper_device == "cuda" else "int8")
             print("Faster-Whisper initialized successfully.")
         except Exception as e:
-            print(f"Error initializing Faster-Whisper on {device}: {e}")
+            print(f"Error initializing Faster-Whisper on {whisper_device}: {e}")
             print("Falling back to CPU mode...")
             
             # Force CPU fallback
-            device = "cpu"
             model_size = "tiny.en"
             whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
             print("Faster-Whisper initialized on CPU successfully.")
