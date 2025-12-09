@@ -3,6 +3,13 @@ name: Docker Build and Publish
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/workflows/**'
+      - '!.github/workflows/docker-publish.yml'
   release:
     types: [ published ]
 

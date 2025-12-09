@@ -62,7 +62,6 @@ python setup_sparktts.py --cpu-only
 
 ## Python Version Notes
 
-- **Python 3.10**: Works, but PyTorch 2.6+ CUDA not available
 - **Python 3.11+**: Recommended - full PyTorch 2.6+ CUDA support
 
 ## Performance
@@ -99,7 +98,7 @@ pip install "numpy>=1.21.6,<1.28.0"
 
 - Check internet connection
 - Ensure ~5GB free disk space
-- Try manual download from [Hugging Face](https://huggingface.co/SparkAudio/Spark-TTS-0.5B)
+- Try manual download from [Hugging Face](https://huggingface.co/bigsk1/Spark-TTS-0.5B)
 
 ## Alternative TTS Options
 

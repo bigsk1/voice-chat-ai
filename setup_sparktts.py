@@ -111,8 +111,9 @@ def download_model():
     try:
         from huggingface_hub import snapshot_download
         
+        # Using forked model for stability
         snapshot_download(
-            repo_id="SparkAudio/Spark-TTS-0.5B",
+            repo_id="bigsk1/Spark-TTS-0.5B",
             local_dir=str(model_dir),
             resume_download=True
         )

@@ -4,10 +4,23 @@ __pycache__
 *.pyo
 
 # Ignore virtual environments
+venv/
 venv
+env/
 env
+ENV/
 ENV
+.venv/
+.venv
+.venv*/
+.venv-*
+*venv/
+*venv
+.conda/
+conda-meta/
+# Exclude .env file (contains secrets)
 .env
+.env.*
 
 # Ignore the .git directory
 .git
@@ -40,4 +53,27 @@ coverage.xml
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints
 
+# Ignore GitHub workflows
 .github
+
+# Ignore large model directories (downloaded at runtime)
+pretrained_models/
+
+# Ignore character history files
+characters/*/history/
+
+# Ignore documentation (not needed in container)
+docs/
+*.md
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore build artifacts
+build/
+dist/
+*.egg-info/

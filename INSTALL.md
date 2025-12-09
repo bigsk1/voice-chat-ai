@@ -1,5 +1,34 @@
 # Installation Guide - Voice Chat AI
 
+## ⚠️ BREAKING CHANGE (Python 3.11+ Required)
+
+**XTTS has been removed** and replaced with **Spark-TTS** as the local voice cloning option.
+
+### If you're upgrading from an older version:
+
+1. **Delete your old virtual environment** (`.venv`, `venv`, or conda environment)
+2. **Install Python 3.11 or 3.12** if you're still on Python 3.10
+3. **Follow one of the installation methods below** to create a fresh environment
+
+### Need to stay on the old XTTS version (Python 3.10)?
+
+If you cannot upgrade, use the last XTTS-compatible commit:
+
+```bash
+git checkout d71540f
+git checkout -b legacy-xtts
+```
+
+This will keep you on Python 3.10 with XTTS, but you won't receive new features or updates.
+
+### What's Changed:
+
+- ❌ **Removed**: Coqui XTTS (slow, outdated)
+- ✅ **Added**: Spark-TTS (faster, better quality, optional)
+- ✅ **Still Available**: OpenAI TTS, ElevenLabs, Kokoro TTS (all work without Spark-TTS)
+
+---
+
 ## Quick Start
 
 ### Option 1: Using pip (Recommended)
@@ -71,6 +100,7 @@ python setup_sparktts.py
 ## What Gets Installed
 
 ### Core (requirements.txt)
+
 - FastAPI web framework
 - Faster-Whisper (local speech-to-text)
 - OpenAI, Anthropic, xAI clients
@@ -78,6 +108,7 @@ python setup_sparktts.py
 - WebRTC support (for OpenAI Realtime)
 
 ### Optional (Spark-TTS)
+
 - Zero-shot voice cloning using character .wav files
 - ~5GB model download
 - Works with CPU or CUDA GPU
@@ -85,6 +116,7 @@ python setup_sparktts.py
 ## TTS Provider Options
 
 You can use ANY of these without Spark-TTS:
+
 - ✅ **OpenAI TTS** - Cloud-based, fast, high quality
 - ✅ **ElevenLabs** - Cloud-based, excellent quality
 - ✅ **Kokoro TTS** - Self-hosted, CPU-friendly, very fast
@@ -94,27 +126,31 @@ Add Spark-TTS only if you want **local voice cloning**.
 ## Python Version
 
 - **Python 3.11+** - Recommended (full PyTorch 2.6+ CUDA support)
-- **Python 3.10** - Works but limited to PyTorch 2.5.x (no Spark-TTS CUDA)
 
 ## Troubleshooting
 
 ### uv installation too slow
+
 Use `--link-mode=copy` to suppress warnings:
+
 ```bash
 uv pip install -r requirements.txt --python .venv --link-mode=copy
 ```
 
 ### numpy version conflicts
+
 The requirements.txt pins numpy to `>=1.21.6,<1.28.0` for scipy compatibility.
 
 ### PyAudio build errors (Windows)
+
 Install Microsoft C++ Build Tools: https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
 ### CUDA not detected
+
 Verify PyTorch installation:
+
 ```bash
 python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
 ```
 
 If False, reinstall PyTorch with correct CUDA index URL.
-

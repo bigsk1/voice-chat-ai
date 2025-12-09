@@ -21,8 +21,9 @@ def download_model():
     print("This may take several minutes depending on your internet connection.")
     
     try:
+        # Using forked model for stability (Apache 2.0 licensed)
         snapshot_download(
-            repo_id="SparkAudio/Spark-TTS-0.5B",
+            repo_id="bigsk1/Spark-TTS-0.5B",
             local_dir=str(model_dir),
             resume_download=True
         )

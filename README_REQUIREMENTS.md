@@ -19,12 +19,6 @@ For users who want everything in one file:
 - **`requirements_cpu_sparktts.txt`** - CPU version with Spark-TTS
 - **`requirements_cuda_sparktts.txt`** - CUDA version with Spark-TTS
 
-## For Legacy Python 3.10
-
-- **`requirements_cpu_legacy_py310.txt`** - Old CPU requirements with XTTS
-  - Use only if you must stay on Python 3.10
-  - Not recommended for new installations
-
 ## Installation Methods
 
 ### Method 1: Modular (Recommended)
@@ -60,7 +54,6 @@ python setup_sparktts.py
 | New user, any TTS provider | `requirements.txt` |
 | Want local voice cloning | `requirements.txt` + `requirements_sparktts.txt` |
 | Simple all-in-one install | `requirements_cuda_sparktts.txt` or `requirements_cpu_sparktts.txt` |
-| Stuck on Python 3.10 | `requirements_cpu_legacy_py310.txt` |
 
 ## Notes
 

@@ -172,6 +172,31 @@ Terminal Usage is also supported, it's a feature rich CLI that allows you to spe
 python3 cli.py
 ```
 
+---
+
+## 💡 Native Installation Recommended
+
+**For the best experience, run this application natively (not in Docker).**
+
+While Docker support is provided, native installation offers significant advantages:
+
+- 🎤 **Direct microphone access** - No complex volume mapping or audio device passthrough
+- 🔊 **Seamless audio playback** - Native system audio integration without PulseAudio configuration
+- ⚡ **Better performance** - Direct GPU access without Docker overhead (especially for Spark-TTS)
+- 🔧 **Easier troubleshooting** - No containerization layers to debug
+- 🚀 **Simpler setup** - Follow the [Installation Guide](INSTALL.md) for a streamlined experience
+
+**Docker is useful for**:
+- Testing the app without modifying your system
+- Server deployments where microphone/audio isn't needed
+- Reproducible environments for development
+
+For interactive voice conversations with real-time audio, **native installation is strongly recommended**.
+
+See the [Detailed Install Guide](INSTALL.md) for step-by-step instructions.
+
+---
+
 ## Install with Docker
 
 ### 📄 Prerequisites
@@ -371,7 +396,7 @@ docker run -d --gpus all -e "PULSE_SERVER=/mnt/wslg/PulseServer" -v \\wsl$\Ubunt
 ```env
 # Conditional API Usage:
 # Depending on the value of MODEL_PROVIDER, the corresponding service will be used when run.
-# You can mix and match; use local Ollama with OpenAI speech or use OpenAI model with local XTTS, etc.
+# You can mix and match; use local Ollama with OpenAI TTS, or use OpenAI model with Spark-TTS, etc.
 
 # Model Provider: openai or ollama or xai or anthropic
 MODEL_PROVIDER=openai
