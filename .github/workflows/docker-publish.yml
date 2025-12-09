@@ -57,7 +57,7 @@ jobs:
             type=sha,prefix={{date 'YYYYMMDD'}}-
           labels: |
             org.opencontainers.image.title=Voice Chat AI
-            org.opencontainers.image.description=Speak with AI - Run locally using Ollama, OpenAI, Anthropic or xAI - Speech uses XTTS, OpenAI or ElevenLabs 
+            org.opencontainers.image.description=Speak with AI - Run locally using Ollama, OpenAI, Anthropic or xAI - TTS options include OpenAI, ElevenLabs, Kokoro, and optional Spark-TTS for local voice cloning
             org.opencontainers.image.vendor=${{ github.repository_owner }}
 
       - name: Build and push

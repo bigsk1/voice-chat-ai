@@ -40,7 +40,7 @@ Get up and running fast with Voice Chat AI! 🔊
 - **WebUI or Terminal usage**: Run with your preferred method , but recommend the ui as you can change characters, model providers, speech providers, voices, ect. on the fly.
 - **HUGE selection of built in Characters**: Talk with the funniest and most insane AI characters! Play escape room games, follow story lines, and more.
 - **Interactive Games & Stories**: Enjoy 15+ different game types (word puzzles, trivia, escape rooms) and interactive storytelling adventures.
-- **Docker Support**: Prebuilt image from dockerhub or build yor own image with or without nvidia cuda. Can run on CPU only.
+- **Docker Support**: Prebuilt image from Docker Hub or build your own image with or without NVIDIA CUDA. Base image runs on CPU with optional Spark-TTS setup.
 
 https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 
@@ -214,7 +214,7 @@ docker-compose up -d
 
 ### 🐳 Docker run
 
-Cuda and cudnn not supported. No gpu is used and slower when using local xtts and faster-whisper. If only using Openai or Elevenlabs for voices is perfect. Still works with xtts but slower. First run it downloads faster whisper model 1gb for transcription.
+**Base CPU image** - includes core app with OpenAI TTS, ElevenLabs, and Kokoro TTS support. Spark-TTS is NOT pre-installed (keeps image lean). You can optionally run `python setup_sparktts.py` inside the container to add Spark-TTS voice cloning. First run downloads the faster-whisper model (1GB) for transcription.
 
 > Remove the elevenlabs_voices.json volume mount if not using ElevenLabs.
 

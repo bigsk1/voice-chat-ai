@@ -1,10 +1,9 @@
-# Use a lighter base image (Python 3.10 slim version)
-FROM python:3.10-slim
+# Use Python 3.11 slim version
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/root/.local/bin:$PATH"
-ENV COQUI_TOS_AGREED=1
 
 # Create a working directory
 WORKDIR /app
@@ -40,8 +39,8 @@ ENV SDL_AUDIODRIVER=dummy
 ENV JACK_NO_START_SERVER=1
 ENV JACK_NO_AUDIO_RESERVATION=1
 
-# Copy only necessary files (EXCLUDING large checkpoint and XTTS-v2)
-COPY requirements_cpu.txt /app/requirements.txt
+# Copy only necessary files (base app without Spark-TTS models)
+COPY requirements.txt /app/requirements.txt
 COPY app /app/app
 COPY characters /app/characters
 COPY outputs /app/outputs
@@ -51,9 +50,18 @@ COPY .env.sample /app/.env.sample
 COPY README.md /app/README.md
 COPY LICENSE /app/LICENSE
 COPY docs /app/docs
+COPY setup_sparktts.py /app/setup_sparktts.py
+COPY download_sparktts_model.py /app/download_sparktts_model.py
+COPY requirements_sparktts.txt /app/requirements_sparktts.txt
+COPY cli /app/cli
+COPY sparktts /app/sparktts
 
 # Install Python dependencies (without cache to reduce image size)
 RUN pip install --upgrade pip && pip install --no-cache-dir -r /app/requirements.txt
+
+# Note: Spark-TTS is NOT pre-installed to keep image lean
+# Users can optionally run: python setup_sparktts.py inside the container
+# or use OpenAI TTS, ElevenLabs, or Kokoro TTS
 
 # Expose the port that the app runs on
 EXPOSE 8000
