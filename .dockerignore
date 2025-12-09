@@ -18,9 +18,11 @@ ENV
 *venv
 .conda/
 conda-meta/
-# Exclude .env file (contains secrets)
+# Exclude .env file (contains secrets) but allow .env.sample
 .env
-.env.*
+.env.local
+.env.*.local
+!.env.sample
 
 # Ignore the .git directory
 .git
