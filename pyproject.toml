@@ -1,0 +1,90 @@
+[project]
+name = "voice-chat-ai"
+version = "1.0.0"
+description = "Voice Chat AI - Speak with AI using Ollama, OpenAI, Anthropic, or xAI with multiple TTS options"
+authors = [
+    {name = "bigsk1", email = "your@email.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+keywords = ["ai", "voice", "chat", "tts", "speech", "ollama", "openai", "whisper"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Audio processing
+    "PyAudio==0.2.14",
+    "numpy>=1.21.6,<1.28.0",
+    "soundfile==0.12.1",
+    "librosa==0.10.2.post1",
+    "scipy==1.11.4",
+    "pydub==0.25.1",
+    
+    # Speech recognition
+    "faster-whisper==1.1.1",
+    
+    # NLP and language
+    "transformers==4.53.0",
+    "langid==1.1.6",
+    "textblob==0.18.0.post0",
+    "spacy==3.7.5",
+    "spacy-legacy==3.0.12",
+    "spacy-loggers==1.0.5",
+    
+    # API clients
+    "openai==1.68.2",
+    "anthropic==0.49.0",
+    "aiohttp==3.12.14",
+    "httpx==0.28.1",
+    "requests==2.32.4",
+    
+    # Web framework
+    "fastapi==0.115.11",
+    "uvicorn==0.30.1",
+    "websockets==15.0.1",
+    
+    # WebRTC (for OpenAI Realtime)
+    "aiortc>=1.14.0",
+    "av>=14.0.0",
+    
+    # Configuration
+    "pydantic==2.7.4",
+    "python-dotenv==1.0.1",
+    "pillow==10.3.0",
+]
+
+[project.optional-dependencies]
+# Spark-TTS dependencies (PyTorch must be installed separately first)
+# See INSTALL.md for PyTorch installation instructions
+sparktts = [
+    "einx>=0.3.0",
+    "einops>=0.8.0",
+    "soxr>=1.0.0",
+    "omegaconf>=2.3.0",
+    "hydra-core>=1.3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bigsk1/voice-chat-ai"
+Documentation = "https://github.com/bigsk1/voice-chat-ai#readme"
+Repository = "https://github.com/bigsk1/voice-chat-ai"
+Issues = "https://github.com/bigsk1/voice-chat-ai/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.uv]
+# Note: PyTorch extras (sparktts-cpu/cuda) will install from PyPI by default
+# For CUDA builds, install PyTorch separately first:
+# uv pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu124
+

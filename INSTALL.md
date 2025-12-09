@@ -82,6 +82,29 @@ python setup_sparktts.py
 
 ### Option 2: Using uv (Faster!)
 
+#### Modern approach with pyproject.toml (Recommended)
+
+```bash
+# 1. Core app only (no Spark-TTS)
+uv sync
+
+# OR with Spark-TTS (install PyTorch first, then sync with extra)
+
+# For CPU:
+uv pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cpu
+uv sync --extra sparktts
+
+# For CUDA 12.4:
+uv pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu124
+uv sync --extra sparktts
+
+# 2. Activate environment
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
+```
+
+#### Alternative: Manual installation
+
 ```bash
 # 1. Create virtual environment
 uv venv .venv --python 3.11

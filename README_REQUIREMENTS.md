@@ -1,5 +1,8 @@
 # Requirements Files Guide
 
+> **💡 Using `uv`?** We now have a `pyproject.toml` for modern dependency management!  
+> Use `uv sync` for the fastest installation. See [INSTALL.md](INSTALL.md) for details.
+
 ## For New Installations (Python 3.11+)
 
 ### Standard Installation

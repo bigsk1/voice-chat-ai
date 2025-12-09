@@ -18,6 +18,11 @@ ENV
 *venv
 .conda/
 conda-meta/
+
+# Ignore uv files (Docker uses pip + requirements.txt)
+uv.lock
+.python-version
+
 # Exclude .env file (contains secrets) but allow .env.sample
 .env
 .env.local
