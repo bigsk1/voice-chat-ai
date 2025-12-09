@@ -3,7 +3,7 @@ name = "voice-chat-ai"
 version = "1.0.0"
 description = "Voice Chat AI - Speak with AI using Ollama, OpenAI, Anthropic, or xAI with multiple TTS options"
 authors = [
-    {name = "bigsk1", email = "your@email.com"}
+    {name = "bigsk1", email = "32640296+bigsk1@users.noreply.github.com"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
