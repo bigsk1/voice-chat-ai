@@ -59,9 +59,6 @@ COPY outputs /app/outputs
 COPY cli.py /app/cli.py
 COPY elevenlabs_voices.json.example /app/elevenlabs_voices.json.example
 COPY .env.sample /app/.env.sample
-COPY README.md /app/README.md
-COPY LICENSE /app/LICENSE
-COPY docs /app/docs
 COPY setup_sparktts.py /app/setup_sparktts.py
 COPY download_sparktts_model.py /app/download_sparktts_model.py
 COPY requirements_sparktts.txt /app/requirements_sparktts.txt
