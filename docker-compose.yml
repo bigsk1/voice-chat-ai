@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   voice-chat-ai:
     image: bigsk1/voice-chat-ai:latest
