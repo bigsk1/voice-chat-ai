@@ -29,6 +29,30 @@ This will keep you on Python 3.10 with XTTS, but you won't receive new features 
 
 ---
 
+## Prerequisites
+
+### Linux (Ubuntu/Debian/WSL2)
+
+Install system audio libraries before proceeding:
+
+```bash
+sudo apt-get update
+sudo apt-get install portaudio19-dev python3-dev build-essential libasound2-dev libjack-dev ffmpeg
+```
+
+### Windows
+
+- Python 3.11 or 3.12 installed
+- FFmpeg in PATH ([download](https://ffmpeg.org/download.html))
+
+### macOS
+
+```bash
+brew install portaudio ffmpeg
+```
+
+---
+
 ## Quick Start
 
 ### Option 1: Using pip (Recommended)
@@ -136,6 +160,18 @@ Use `--link-mode=copy` to suppress warnings:
 ```bash
 uv pip install -r requirements.txt --python .venv --link-mode=copy
 ```
+
+## Usage
+
+Run the application: 🏃
+
+Web UI
+
+```bash
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Find on http://localhost:8000/
 
 ### numpy version conflicts
 
