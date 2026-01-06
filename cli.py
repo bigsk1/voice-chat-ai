@@ -942,7 +942,7 @@ def analyze_image_with_openai(encoded_image, question_prompt):
     }
     payload = {
         "model": OPENAI_MODEL,
-        "temperature": 0.5,
+        "temperature": 1.0,
         "messages": [message],
         "max_tokens": 1000
     }
