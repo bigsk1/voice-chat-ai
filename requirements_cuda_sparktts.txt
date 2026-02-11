@@ -16,7 +16,7 @@ librosa==0.10.2.post1
 scipy==1.11.4
 transformers==4.53.0
 pydantic==2.7.4
-pillow==10.3.0
+pillow==12.1.1
 
 pydub==0.25.1
 openai==1.68.2
