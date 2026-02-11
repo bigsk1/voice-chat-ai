@@ -53,4 +53,4 @@ av>=14.0.0
 # Configuration
 pydantic==2.7.4
 python-dotenv==1.0.1
-pillow==10.3.0
+pillow==12.1.1
