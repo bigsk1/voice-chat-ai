@@ -39,7 +39,7 @@ openai==1.68.2
 anthropic==0.49.0
 aiohttp==3.13.3
 httpx==0.28.1
-requests==2.32.4
+requests==2.33.0
 
 # Web framework
 fastapi==0.115.11
