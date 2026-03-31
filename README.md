@@ -32,7 +32,7 @@ Get up and running fast with Voice Chat AI! 🔊
 ## Features
 
 - **Supports OpenAI, xAI, Anthropic or Ollama language models**: Choose the model that best fits your needs.
-- **Provides text-to-speech synthesis using Spark-TTS or OpenAI TTS or ElevenLabs or Kokoro TTS**: Enjoy natural and expressive voices with optional local voice cloning.
+- **Provides text-to-speech synthesis using Spark-TTS or OpenAI TTS or ElevenLabs or Kokoro TTS or Typecast**: Enjoy natural and expressive voices with optional local voice cloning.
 - **Provides speech to speech using OpenAI Realtime API**: Have a real time conversation with AI characters, interrupt the AI and have instant responses.
 - **OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
 - **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper.
@@ -52,7 +52,7 @@ https://github.com/user-attachments/assets/ea8d401c-83b4-4a45-af2a-0b3a50e1a0be
 - Python 3.11+
 - ffmpeg
 - Ollama models or OpenAI or xAI or Anthropic for chat
-- Spark-TTS (local), OpenAI API, ElevenLabs API, or Kokoro TTS for speech
+- Spark-TTS (local), OpenAI API, ElevenLabs API, Kokoro TTS, or Typecast API for speech
 - Microphone
 - A sense of humor
 
@@ -151,6 +151,21 @@ To use Kokoro TTS:
 2. Start the Voice Chat AI application normally
 
 Kokoro TTS operates locally on your machine or local network, requiring no API key or internet connection once installed. The server supports GPU acceleration for faster processing if you have compatible NVIDIA hardware.
+
+### Typecast TTS - Optional
+
+[Typecast](https://typecast.ai) is a cloud-based TTS service with emotion and prosody control.
+
+To use Typecast TTS:
+
+1. Get your API key and a voice ID from [typecast.ai](https://typecast.ai)
+2. Install the SDK: `pip install typecast-python`
+3. Configure in `.env`:
+   - `TTS_PROVIDER=typecast`
+   - `TYPECAST_API_KEY=your_api_key_here`
+   - `TYPECAST_TTS_VOICE=your_voice_id_here`
+   - `TYPECAST_TTS_MODEL=ssfm-v30` (or `ssfm-v21`)
+   - `TYPECAST_EMOTION_PRESET=normal` (options: `normal`, `happy`, `sad`, `angry`, `whisper`, `toneup`, `tonedown`)
 
 ## Usage
 
