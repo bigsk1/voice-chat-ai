@@ -20,6 +20,7 @@ from .app import (
     init_set_tts,
     init_set_provider,
     init_kokoro_tts_voice,
+    init_typecast_tts_voice,
     init_voice_speed,
     save_conversation_history,
     send_message_to_clients,
@@ -304,6 +305,8 @@ def set_env_variable(key: str, value: str):
         init_elevenlabs_tts_voice(value)  # Reinitialize Elevenlabs TTS voice
     if key == "KOKORO_TTS_VOICE":
         init_kokoro_tts_voice(value)  # Reinitialize Kokoro TTS voice
+    if key == "TYPECAST_TTS_VOICE":
+        init_typecast_tts_voice(value)  # Reinitialize Typecast TTS voice
     if key == "VOICE_SPEED":
         init_voice_speed(value)  # Reinitialize Voice Speed for all TTS providers
     if key == "TTS_PROVIDER":
