@@ -401,6 +401,47 @@ document.addEventListener("DOMContentLoaded", function() {
     function setTTS() {
         const selectedTTS = document.getElementById('tts-select').value;
         websocket.send(JSON.stringify({ action: "set_tts", tts: selectedTTS }));
+        if (selectedTTS === 'typecast') {
+            fetchTypecastVoices();
+        }
+    }
+
+    function typecastVoicePlaceholder() {
+        const voiceSelect = document.getElementById('typecast-voice-select');
+        voiceSelect.innerHTML = '';
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.text = 'Select Typecast TTS to Load';
+        voiceSelect.add(placeholderOption);
+    }
+
+    function fetchTypecastVoices() {
+        fetch('/typecast_voices')
+            .then(response => response.json())
+            .then(data => {
+                const voiceSelect = document.getElementById('typecast-voice-select');
+                voiceSelect.innerHTML = '';
+
+                if (data.voices && data.voices.length > 0) {
+                    data.voices.forEach(voice => {
+                        const option = document.createElement('option');
+                        option.value = voice.id;
+                        option.text = voice.name;
+                        voiceSelect.add(option);
+                    });
+                    const saved = voiceSelect.dataset.initial;
+                    if (saved && saved !== 'None' && saved !== '' &&
+                        [...voiceSelect.options].some(o => o.value === saved)) {
+                        voiceSelect.value = saved;
+                    }
+                } else {
+                    typecastVoicePlaceholder();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching Typecast voices:', error);
+                typecastVoicePlaceholder();
+            });
     }
 
     function setOpenAIVoice() {
@@ -654,40 +695,19 @@ document.addEventListener("DOMContentLoaded", function() {
             voiceSelect.add(placeholderOption);
         });
 
-    // Fetch Typecast voices
-    fetch('/typecast_voices')
-        .then(response => response.json())
-        .then(data => {
-            const voiceSelect = document.getElementById('typecast-voice-select');
-            voiceSelect.innerHTML = '';
-
-            if (data.voices && data.voices.length > 0) {
-                data.voices.forEach(voice => {
-                    const option = document.createElement('option');
-                    option.value = voice.id;
-                    option.text = voice.name;
-                    voiceSelect.add(option);
-                });
-            } else {
-                const placeholderOption = document.createElement('option');
-                placeholderOption.value = '';
-                placeholderOption.text = 'Select Typecast TTS to Load';
-                voiceSelect.add(placeholderOption);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching Typecast voices:', error);
-            const voiceSelect = document.getElementById('typecast-voice-select');
-            voiceSelect.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.text = 'Select Typecast TTS to Load';
-            voiceSelect.add(placeholderOption);
-        });
+    // Typecast: only hit the API when Typecast is the active TTS provider (avoid 403/log spam for OpenAI/etc.)
+    if (ttsSelect.value === 'typecast') {
+        fetchTypecastVoices();
+    } else {
+        typecastVoicePlaceholder();
+    }
 
     window.addEventListener('pageshow', function (ev) {
         if (ev.persisted && providerSelect.value === 'ollama') {
             fetchOllamaModels();
+        }
+        if (ev.persisted && ttsSelect.value === 'typecast') {
+            fetchTypecastVoices();
         }
     });
 });

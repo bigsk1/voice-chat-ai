@@ -161,7 +161,7 @@
             </div>
             <div class="setting-group">
                 <label for="typecast-voice-select">Typecast Voice:</label>
-                <select id="typecast-voice-select"></select>
+                <select id="typecast-voice-select" data-initial="{{ typecast_voice }}"></select>
             </div>
             <div class="setting-group">
                 <label for="openai-model-select">OpenAI Model:</label>
@@ -265,14 +265,6 @@
                     kokoroVoiceSelect.value = "{{ kokoro_voice }}";
                 }
             }, 300); // Short delay to ensure the dropdown is populated
-
-            // Set Typecast voice value
-            setTimeout(() => {
-                const typecastVoiceSelect = document.getElementById('typecast-voice-select');
-                if (typecastVoiceSelect && typecastVoiceSelect.options.length > 0) {
-                    typecastVoiceSelect.value = "{{ typecast_voice }}";
-                }
-            }, 300);
         });
     </script>
 </body>
