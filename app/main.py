@@ -787,14 +787,16 @@ async def get_typecast_voices():
             return {"voices": [], "error": "TYPECAST_API_KEY not set"}
 
         client = Typecast(api_key=api_key)
-        actors = await asyncio.to_thread(client.list_actors)
+        model_filter = os.getenv("TYPECAST_TTS_MODEL")
 
-        voices = []
-        for actor in actors:
-            voices.append({
-                "id": actor.actor_id,
-                "name": f"{actor.name.get('en', actor.name.get('ko', actor.actor_id))}"
-            })
+        def _list_voices():
+            return client.voices(model=model_filter) if model_filter else client.voices()
+
+        voice_list = await asyncio.to_thread(_list_voices)
+        voices = [
+            {"id": v.voice_id, "name": v.voice_name or v.voice_id}
+            for v in voice_list
+        ]
 
         return {"voices": voices}
     except ImportError:
