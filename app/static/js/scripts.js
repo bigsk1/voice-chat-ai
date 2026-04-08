@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     const elevenLabsVoiceSelect = document.getElementById('elevenlabs-voice-select');
     const kokoroVoiceSelect = document.getElementById('kokoro-voice-select');
+    const typecastVoiceSelect = document.getElementById('typecast-voice-select');
     const openaiModelSelect = document.getElementById('openai-model-select');
     const ollamaModelSelect = document.getElementById('ollama-model-select');
     const xaiModelSelect = document.getElementById('xai-model-select');
@@ -442,6 +443,11 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: selectedVoice }));
     }
 
+    function setTypecastVoice() {
+        const selectedVoice = document.getElementById('typecast-voice-select').value;
+        websocket.send(JSON.stringify({ action: "set_typecast_voice", voice: selectedVoice }));
+    }
+
     characterSelect.addEventListener('change', function() {
         const selectedCharacter = this.value;
         console.log(`Character selected: ${selectedCharacter}`);
@@ -544,6 +550,7 @@ document.addEventListener("DOMContentLoaded", function() {
     voiceSpeedSelect.addEventListener('change', setVoiceSpeed);
     elevenLabsVoiceSelect.addEventListener('change', setElevenLabsVoice);
     kokoroVoiceSelect.addEventListener('change', setKokoroVoice);
+    typecastVoiceSelect.addEventListener('change', setTypecastVoice);
 
     transcriptionSelect.addEventListener('change', function() {
         fetch('/set_transcription_model', {
@@ -644,6 +651,37 @@ document.addEventListener("DOMContentLoaded", function() {
             const placeholderOption = document.createElement('option');
             placeholderOption.value = 'af_bella';
             placeholderOption.text = 'Select Kokoro TTS to Load';
+            voiceSelect.add(placeholderOption);
+        });
+
+    // Fetch Typecast voices
+    fetch('/typecast_voices')
+        .then(response => response.json())
+        .then(data => {
+            const voiceSelect = document.getElementById('typecast-voice-select');
+            voiceSelect.innerHTML = '';
+
+            if (data.voices && data.voices.length > 0) {
+                data.voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.id;
+                    option.text = voice.name;
+                    voiceSelect.add(option);
+                });
+            } else {
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.text = 'Select Typecast TTS to Load';
+                voiceSelect.add(placeholderOption);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching Typecast voices:', error);
+            const voiceSelect = document.getElementById('typecast-voice-select');
+            voiceSelect.innerHTML = '';
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.text = 'Select Typecast TTS to Load';
             voiceSelect.add(placeholderOption);
         });
 

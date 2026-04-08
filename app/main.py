@@ -71,6 +71,7 @@ async def get_index(request: Request):
     voice_speed = os.getenv("VOICE_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
     kokoro_voice = os.getenv("KOKORO_TTS_VOICE")
+    typecast_voice = os.getenv("TYPECAST_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 
     return templates.TemplateResponse("index.html", {
@@ -84,6 +85,7 @@ async def get_index(request: Request):
         "voice_speed": voice_speed,
         "elevenlabs_voice": elevenlabs_voice,
         "kokoro_voice": kokoro_voice,
+        "typecast_voice": typecast_voice,
         "faster_whisper_local": faster_whisper_local,
     })
 
@@ -476,6 +478,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("ELEVENLABS_TTS_VOICE", message["voice"])
             elif message["action"] == "set_kokoro_voice":
                 set_env_variable("KOKORO_TTS_VOICE", message["voice"])
+            elif message["action"] == "set_typecast_voice":
+                set_env_variable("TYPECAST_TTS_VOICE", message["voice"])
             elif message["action"] == "clear":
                 conversation_history.clear()
                 await websocket.send_json({"message": "Conversation history cleared."})
@@ -771,6 +775,32 @@ async def get_kokoro_voices():
             
     except Exception as e:
         logger.error(f"Critical error in get_kokoro_voices: {str(e)}")
+        return {"voices": [], "error": str(e)}
+
+@app.get("/typecast_voices")
+async def get_typecast_voices():
+    try:
+        from typecast import Typecast
+
+        api_key = os.getenv("TYPECAST_API_KEY")
+        if not api_key:
+            return {"voices": [], "error": "TYPECAST_API_KEY not set"}
+
+        client = Typecast(api_key=api_key)
+        actors = await asyncio.to_thread(client.list_actors)
+
+        voices = []
+        for actor in actors:
+            voices.append({
+                "id": actor.actor_id,
+                "name": f"{actor.name.get('en', actor.name.get('ko', actor.actor_id))}"
+            })
+
+        return {"voices": voices}
+    except ImportError:
+        return {"voices": [], "error": "typecast-python package is not installed"}
+    except Exception as e:
+        logger.error(f"Error fetching Typecast voices: {str(e)}")
         return {"voices": [], "error": str(e)}
 
 def signal_handler(sig, frame):
