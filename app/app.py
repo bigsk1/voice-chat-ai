@@ -49,7 +49,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/completions')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
-XAI_MODEL = os.getenv('XAI_MODEL', 'grok-2-1212')
+XAI_MODEL = os.getenv('XAI_MODEL', 'grok-4-1-fast-non-reasoning')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
@@ -418,11 +418,16 @@ async def send_message_to_clients(message):
             print(f"Error sending message to client: {e}")
 
 def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2):
-    with wave.open(file_path, 'wb') as wav_file:
+    wav_file = wave.open(file_path, 'wb')
+    try:
+        if not isinstance(wav_file, wave.Wave_write):
+            raise TypeError(f"Expected Wave_write for mode 'wb', got {type(wav_file).__name__}")
         wav_file.setnchannels(channels)
         wav_file.setsampwidth(sample_width)
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(pcm_data)
+    finally:
+        wav_file.close()
 
 async def openai_text_to_speech(prompt, output_path):
     file_extension = Path(output_path).suffix.lstrip('.').lower()
@@ -736,7 +741,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         }
         try:
             print(f"Debug: Sending request to Ollama: {OLLAMA_BASE_URL}/v1/chat/completions")
-            response = requests.post(f'{OLLAMA_BASE_URL}/v1/chat/completions', headers=headers, json=payload, stream=True, timeout=30)
+            response = requests.post(f'{OLLAMA_BASE_URL}/v1/chat/completions', headers=headers, json=payload, stream=True, timeout=45)
             response.raise_for_status()
 
             line_buffer = ""
@@ -1290,6 +1295,8 @@ async def kokoro_text_to_speech(text, output_path):
         return False
 
 async def user_chatbot_conversation():
+    from .app_logic import load_character_specific_history
+
     # Track previous character
     previous_character = os.getenv("PREVIOUS_CHARACTER_NAME", "")
     
@@ -1422,73 +1429,6 @@ async def user_chatbot_conversation():
 
     except KeyboardInterrupt:
         print("Quitting the conversation...")
-
-def load_character_specific_history(character_name):
-    """
-    Load conversation history from a character-specific file for story/game characters.
-    
-    Args:
-        character_name: The name of the character
-        
-    Returns:
-        list: The conversation history or an empty list if not found
-    """
-    try:
-        # Only process for story/game characters
-        if not character_name.startswith("story_") and not character_name.startswith("game_"):
-            print(f"Not a story/game character: {character_name}")
-            return []
-        
-        # Create character-specific history file path
-        character_dir = os.path.join(characters_folder, character_name)
-        history_file = os.path.join(character_dir, "conversation_history.txt")
-        
-        # Check if file exists
-        if not os.path.exists(history_file) or os.path.getsize(history_file) == 0:
-            print(f"No character-specific history found for {character_name}")
-            return []
-        
-        print(f"Loading character-specific history for {character_name}")
-        
-        temp_history = []
-        with open(history_file, "r", encoding="utf-8") as file:
-            current_role = None
-            current_content = ""
-            
-            for line in file:
-                line = line.strip()
-                if not line:  # Skip empty lines
-                    continue
-                
-                if line.startswith("User:"):
-                    # Save previous message if exists
-                    if current_role:
-                        temp_history.append({"role": current_role, "content": current_content.strip()})
-                    
-                    # Start new user message
-                    current_role = "user"
-                    current_content = line[5:].strip()
-                elif line.startswith("Assistant:"):
-                    # Save previous message if exists
-                    if current_role:
-                        temp_history.append({"role": current_role, "content": current_content.strip()})
-                    
-                    # Start new assistant message
-                    current_role = "assistant"
-                    current_content = line[10:].strip()
-                else:
-                    # Continue previous message
-                    current_content += "\n" + line
-            
-            # Add the last message
-            if current_role:
-                temp_history.append({"role": current_role, "content": current_content.strip()})
-        
-        print(f"Loaded {len(temp_history)} messages from character-specific history file")
-        return temp_history
-    except Exception as e:
-        print(f"Error loading character-specific history: {e}")
-        return []
 
 if __name__ == "__main__":
     asyncio.run(user_chatbot_conversation())

@@ -1,7 +1,7 @@
-# use python cli.py to run CLI version
+# use: uv run python cli.py   (or: python cli.py with your venv activated)
+# PyTorch is optional unless TTS_PROVIDER=sparktts (install torch per INSTALL.md).
 
 import os
-import torch
 import time
 import pyaudio
 import numpy as np
@@ -22,16 +22,6 @@ import io
 from pydub import AudioSegment
 import warnings
 
-# Import Spark-TTS
-try:
-    import sys
-    sys.path.insert(0, os.path.dirname(__file__))
-    from cli.SparkTTS import SparkTTS
-    SPARKTTS_AVAILABLE = True
-except ImportError as e:
-    print(f"Spark-TTS import failed: {e}")
-    SPARKTTS_AVAILABLE = False
-
 # Load environment variables
 load_dotenv()
 
@@ -46,7 +36,7 @@ OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/c
 OPENAI_TRANSCRIPTION_MODEL = os.getenv('OPENAI_TRANSCRIPTION_MODEL', 'gpt-4o-mini-transcribe')
 OPENAI_MODEL_TTS = os.getenv('OPENAI_MODEL_TTS', 'gpt-4o-mini-tts')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
-XAI_MODEL = os.getenv('XAI_MODEL', 'grok-2-1212')
+XAI_MODEL = os.getenv('XAI_MODEL', 'grok-4-1-fast-non-reasoning')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
@@ -62,8 +52,13 @@ VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 SPARKTTS_MODEL_DIR = os.getenv('SPARKTTS_MODEL_DIR', 'pretrained_models/Spark-TTS-0.5B')
 SPARKTTS_MAX_CHARS = int(os.getenv('SPARKTTS_MAX_CHARS', 1000))
 
-# Suppress warnings
-warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.utils.weight_norm")
+def _cuda_available() -> bool:
+    try:
+        import torch
+
+        return bool(torch.cuda.is_available())
+    except ImportError:
+        return False
 
 
 # ANSI escape codes for colors
@@ -84,8 +79,8 @@ else:
 # Capitalize the first letter of the character name
 character_display_name = CHARACTER_NAME.capitalize()
 
-# Check for CUDA availability
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# Check for CUDA availability (uses PyTorch if installed; else CPU)
+device = "cuda" if _cuda_available() else "cpu"
 
 # Check if Faster Whisper should be loaded at startup
 FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
@@ -119,19 +114,36 @@ characters_folder = os.path.join(project_dir, 'characters', CHARACTER_NAME)
 character_prompt_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.txt")
 character_audio_file = os.path.join(characters_folder, f"{CHARACTER_NAME}.wav")
 
-# Initialize Spark-TTS model
+# Initialize Spark-TTS only when selected (pulls in PyTorch / cli.SparkTTS)
 sparktts_model = None
 if TTS_PROVIDER == 'sparktts':
-    if not SPARKTTS_AVAILABLE:
-        print("Spark-TTS is not available. Please ensure it's properly installed.")
+    SparkTTS_cls = None
+    try:
+        import sys
+
+        _root = os.path.dirname(os.path.abspath(__file__))
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+        from cli.SparkTTS import SparkTTS as SparkTTS_cls
+    except ImportError as e:
+        print(f"Spark-TTS import failed: {e}")
+    if SparkTTS_cls is None:
+        print("Spark-TTS is not available. Install torch and Spark-TTS extras (see INSTALL.md).")
         TTS_PROVIDER = 'openai'
         print("Switched to default TTS provider: openai")
     else:
         print(f"Initializing Spark-TTS model from {SPARKTTS_MODEL_DIR}...")
         try:
+            import torch
+
+            warnings.filterwarnings(
+                "ignore",
+                category=FutureWarning,
+                module="torch.nn.utils.weight_norm",
+            )
             torch_device = torch.device(device)
             print(f"Using device: {torch_device} (CUDA available: {torch.cuda.is_available()})")
-            sparktts_model = SparkTTS(model_dir=Path(SPARKTTS_MODEL_DIR), device=torch_device)
+            sparktts_model = SparkTTS_cls(model_dir=Path(SPARKTTS_MODEL_DIR), device=torch_device)
             print(f"Spark-TTS model loaded successfully on {torch_device}.")
         except Exception as e:
             print(f"Failed to load Spark-TTS model: {e}")
@@ -255,11 +267,16 @@ def process_and_play(prompt, audio_file_pth):
 
 def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2):
     """ Saves PCM data as a WAV file. """
-    with wave.open(file_path, 'wb') as wav_file:
+    wav_file = wave.open(file_path, 'wb')
+    try:
+        if not isinstance(wav_file, wave.Wave_write):
+            raise TypeError(f"Expected Wave_write for mode 'wb', got {type(wav_file).__name__}")
         wav_file.setnchannels(channels)
         wav_file.setsampwidth(sample_width)
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(pcm_data)
+    finally:
+        wav_file.close()
 
 def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str) -> bytes:
     """ Fetches PCM audio data from the OpenAI API. """

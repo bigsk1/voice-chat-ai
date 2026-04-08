@@ -120,7 +120,7 @@
             </div>
             <div class="setting-group">
                 <label for="provider-select">* Model Provider:</label>
-                <select id="provider-select">
+                <select id="provider-select" data-initial="{{ model_provider }}">
                     <option value="openai">OpenAI</option>
                     <option value="ollama">Ollama</option>
                     <option value="xai">XAI</option>
@@ -176,8 +176,6 @@
             <div class="setting-group">
                 <label for="xai-model-select">XAI Model:</label>
                 <select id="xai-model-select">
-                    <option value="grok-2-1212">Grok 2-1212</option>
-                    <option value="grok-3">Grok 3</option>
                     <option value="grok-4-1-fast-non-reasoning">Grok 4.1 fast non reasoning</option>
                 </select>
             </div>

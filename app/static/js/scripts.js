@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function() {
-    const websocket = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const websocket = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
     const themeToggle = document.getElementById('theme-toggle');
     const downloadButton = document.getElementById('download-button');
     const body = document.body;
@@ -11,6 +12,11 @@ document.addEventListener("DOMContentLoaded", function() {
     const micIcon = document.getElementById('mic-icon');
     const characterSelect = document.getElementById('character-select');
     const providerSelect = document.getElementById('provider-select');
+    // Apply server default before Ollama fetch; DOM default is first option (openai) until inline script runs later.
+    const initialModelProvider = providerSelect.dataset.initial;
+    if (initialModelProvider && initialModelProvider !== 'None' && initialModelProvider !== '') {
+        providerSelect.value = initialModelProvider;
+    }
     const ttsSelect = document.getElementById('tts-select');
     const openaiVoiceSelect = document.getElementById('openai-voice-select');
     
@@ -640,4 +646,10 @@ document.addEventListener("DOMContentLoaded", function() {
             placeholderOption.text = 'Select Kokoro TTS to Load';
             voiceSelect.add(placeholderOption);
         });
+
+    window.addEventListener('pageshow', function (ev) {
+        if (ev.persisted && providerSelect.value === 'ollama') {
+            fetchOllamaModels();
+        }
+    });
 });

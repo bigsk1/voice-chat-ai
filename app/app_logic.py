@@ -1,6 +1,5 @@
 import os
 import asyncio
-from threading import Thread
 from fastapi import APIRouter
 from pydantic import BaseModel
 from .shared import clients, continue_conversation, conversation_history
@@ -223,8 +222,7 @@ async def start_conversation():
     # print("Waiting for speech...")
     await send_message_to_clients({"type": "waiting"})
     
-    # Start conversation thread
-    Thread(target=asyncio.run, args=(conversation_loop(),)).start()
+    asyncio.create_task(conversation_loop(), name="conversation")
     
     return {"status": "started"}
 
@@ -392,25 +390,6 @@ async def fetch_ollama_models():
     except Exception as e:
         logging.error(f"Error fetching Ollama models: {e}")
         return {"models": ["llama3.2"], "error": f"Error connecting to Ollama: {str(e)}"}
-
-# Function to save conversation history to a file
-def save_conversation_history(conversation_history):
-    history_file = "conversation_history.txt"
-    try:
-        with open(history_file, "w", encoding="utf-8") as file:
-            for message in conversation_history:
-                role = message["role"].capitalize()
-                content = message["content"]
-                file.write(f"{role}: {content}\n")
-    except Exception as e:
-        logging.error(f"Error saving conversation history: {e}")
-        return {"status": "error", "message": str(e)}
-    return {"status": "success"}
-
-def is_client_active(client):
-    """Check if a client is still active"""
-    # This is a placeholder - implement connection checking as needed
-    return True
 
 def load_character_prompt(character_name):
     """

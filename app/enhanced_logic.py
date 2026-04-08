@@ -1,7 +1,6 @@
 import os
 import asyncio
 import json
-from threading import Thread
 from fastapi import APIRouter
 from .shared import clients, conversation_history, is_client_active, set_client_inactive
 from .app_logic import (
@@ -23,7 +22,7 @@ router = APIRouter()
 
 # Enhanced-specific variables
 enhanced_conversation_active = False
-enhanced_conversation_thread = None
+enhanced_conversation_task = None
 enhanced_speed = os.getenv('VOICE_SPEED', '1.0')
 enhanced_voice = os.getenv("OPENAI_TTS_VOICE", "coral")
 enhanced_model = os.getenv("OPENAI_MODEL", "gpt-4o")
@@ -36,34 +35,6 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"  # Control detailed debug 
 
 # Quit phrases that will stop the conversation when detected
 QUIT_PHRASES = ["quit", "exit"]
-
-def load_character_prompt(character_name):
-    """
-    Load the character prompt from the character's text file.
-    
-    Args:
-        character_name (str): The name of the character folder.
-        
-    Returns:
-        str: The character prompt text.
-    """
-    try:
-        character_file_path = os.path.join(characters_folder, character_name, f"{character_name}.txt")
-        if not os.path.exists(character_file_path):
-            if DEBUG:
-                print(f"Character file not found: {character_file_path}")
-            return None
-            
-        with open(character_file_path, 'r', encoding='utf-8') as file:
-            character_prompt = file.read()
-            
-        if DEBUG:
-            print(f"Loaded character prompt for {character_name}: {len(character_prompt)} chars")
-            
-        return character_prompt
-    except Exception as e:
-        print(f"Error loading character prompt: {e}")
-        return None
 
 async def send_message_to_enhanced_clients(message):
     """Send message to clients using the enhanced websocket."""
@@ -776,7 +747,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
 
 async def start_enhanced_conversation(character=None, speed=None, model=None, voice=None, ttsModel=None, transcriptionModel=None):
     """Start a new enhanced conversation."""
-    global enhanced_conversation_active, enhanced_conversation_thread, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model, conversation_history
+    global enhanced_conversation_active, enhanced_conversation_task, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model, conversation_history
     
     # Import get_current_character at the top level to avoid shadowing
     from .shared import get_current_character as get_character
@@ -912,18 +883,35 @@ async def start_enhanced_conversation(character=None, speed=None, model=None, vo
             # File doesn't exist or is empty
             conversation_history = []
     
-    # Set active flag
+    # Drop any finished task handle
+    if enhanced_conversation_task and enhanced_conversation_task.done():
+        enhanced_conversation_task = None
+
+    # Run on uvicorn's event loop only. A second asyncio.run() in a thread shares stdout/pipes with
+    # the Proactor loop on Windows and can trigger _ProactorBaseWritePipeTransport assertions.
     enhanced_conversation_active = True
-    
-    # Start the conversation in a separate thread
-    enhanced_conversation_thread = Thread(target=asyncio.run, args=(enhanced_conversation_loop(),))
-    enhanced_conversation_thread.start()
-    
+    enhanced_conversation_task = asyncio.create_task(
+        enhanced_conversation_loop(),
+        name="enhanced-conversation",
+    )
+
+    def _clear_enhanced_task(t: asyncio.Task) -> None:
+        global enhanced_conversation_task
+        if enhanced_conversation_task is t:
+            enhanced_conversation_task = None
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is not None:
+            print(f"Enhanced conversation task error: {exc}")
+
+    enhanced_conversation_task.add_done_callback(_clear_enhanced_task)
+
     return {"status": "started"}
 
 async def stop_enhanced_conversation():
     """Stop the currently running enhanced conversation."""
-    global enhanced_conversation_active, enhanced_conversation_thread
+    global enhanced_conversation_active, enhanced_conversation_task
     
     # Set the flag to stop the conversation loop
     enhanced_conversation_active = False
@@ -936,15 +924,13 @@ async def stop_enhanced_conversation():
         })
     except Exception as e:
         print(f"Error sending stop message: {e}")
-    
-    if enhanced_conversation_thread:
+
+    if enhanced_conversation_task and not enhanced_conversation_task.done():
+        enhanced_conversation_task.cancel()
         try:
-            # Give it a moment to clean up
-            await asyncio.sleep(0.5)
-            # Thread can't be cancelled like a Task, it will stop on its own when enhanced_conversation_active is set to False
-        except Exception as e:
-            print(f"Error stopping enhanced conversation: {e}")
-    
-    # Clear the thread reference
-    enhanced_conversation_thread = None
-    return {"status": "stopped"} 
+            await enhanced_conversation_task
+        except asyncio.CancelledError:
+            pass
+
+    enhanced_conversation_task = None
+    return {"status": "stopped"}

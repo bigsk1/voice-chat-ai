@@ -13,7 +13,6 @@ from .shared import clients, set_current_character, conversation_history, add_cl
 from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
 import logging
-from threading import Thread
 import uuid
 import aiohttp
 import shutil
@@ -187,7 +186,7 @@ async def set_character(request: Request):
 
 @app.post("/start_conversation")
 async def start_conversation_route():
-    Thread(target=lambda: asyncio.run(start_conversation())).start()
+    asyncio.ensure_future(start_conversation())
     return {"status": "started"}
 
 @app.post("/stop_conversation")
@@ -391,7 +390,10 @@ async def proxy_openai_realtime(request: Request):
         # Get the API key
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            return HTTPException(status_code=500, detail="OpenAI API key not configured")
+            raise HTTPException(
+                status_code=503,
+                detail="OpenAI API key not configured",
+            )
         
         # Get the SDP from the request body
         body = await request.body()
@@ -426,9 +428,14 @@ async def proxy_openai_realtime(request: Request):
                 media_type="application/sdp"
             )
     
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error proxying to OpenAI: {e}")
-        return HTTPException(status_code=500, detail=f"Error proxying to OpenAI: {str(e)}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Error proxying to OpenAI: {str(e)}",
+        ) from e
 
 
 @app.websocket("/ws")

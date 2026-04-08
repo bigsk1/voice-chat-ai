@@ -463,8 +463,8 @@ OPENAI_API_KEY=your_api_key_here
 OLLAMA_MODEL=llama3.2
 
 # XAI Configuration:
-# grok-2-1212, grok-beta
-XAI_MODEL=grok-2-1212
+# grok-4-1-fast-non-reasoning
+XAI_MODEL=grok-4-1-fast-non-reasoning
 XAI_API_KEY=your_api_key_here
 
 # Anthropic Configuration:
