@@ -14,7 +14,7 @@ soundfile==0.12.1
 langid==1.1.6
 librosa==0.10.2.post1
 scipy==1.11.4
-transformers==4.53.0
+transformers==5.0.0rc3
 pydantic==2.7.4
 pillow==12.1.1
 
