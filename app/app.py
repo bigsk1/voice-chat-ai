@@ -60,6 +60,10 @@ ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
 KOKORO_BASE_URL = os.getenv('KOKORO_BASE_URL', 'http://localhost:8880/v1')
 KOKORO_TTS_VOICE = os.getenv('KOKORO_TTS_VOICE', 'af_bella')
+TYPECAST_API_KEY = os.getenv('TYPECAST_API_KEY')
+TYPECAST_TTS_VOICE = os.getenv('TYPECAST_TTS_VOICE')
+TYPECAST_TTS_MODEL = os.getenv('TYPECAST_TTS_MODEL', 'ssfm-v30')
+TYPECAST_EMOTION_PRESET = os.getenv('TYPECAST_EMOTION_PRESET', 'normal')
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 SPARKTTS_MODEL_DIR = os.getenv('SPARKTTS_MODEL_DIR', 'pretrained_models/Spark-TTS-0.5B')
@@ -174,6 +178,11 @@ def init_kokoro_tts_voice(voice_name):
     global KOKORO_TTS_VOICE
     KOKORO_TTS_VOICE = voice_name
     print(f"Switched to Kokoro TTS voice: {voice_name}")
+
+def init_typecast_tts_voice(voice_id):
+    global TYPECAST_TTS_VOICE
+    TYPECAST_TTS_VOICE = voice_id
+    print(f"Switched to Typecast TTS voice: {voice_id}")
 
 def init_voice_speed(speed_value):
     global VOICE_SPEED
@@ -391,6 +400,22 @@ async def process_and_play(prompt, audio_file_pth):
                 "action": "error",
                 "message": "Spark-TTS model is not loaded"
             }))
+    elif TTS_PROVIDER == 'typecast':
+        output_path = os.path.join(output_dir, 'output.wav')
+        success = await typecast_text_to_speech(prompt, output_path)
+        if success and os.path.exists(output_path):
+            print("Playing generated audio...")
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+        elif not success:
+            print("Failed to generate Typecast audio.")
+        else:
+            print("Error: Typecast audio file not found after generation.")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "Typecast audio file not found after generation"
+            }))
     else:
         print(f"Unknown TTS provider: {TTS_PROVIDER}")
         await send_message_to_clients(json.dumps({
@@ -538,6 +563,43 @@ async def elevenlabs_text_to_speech(text, output_path):
         await send_message_to_clients(json.dumps({
             "action": "error",
             "message": "Failed to connect to ElevenLabs TTS service"
+        }))
+        return False
+
+async def typecast_text_to_speech(text, output_path):
+    try:
+        from typecast import Typecast
+        from typecast.models import TTSRequest, TTSModel, Output, PresetPrompt
+
+        client = Typecast(api_key=TYPECAST_API_KEY)
+
+        request = TTSRequest(
+            text=text,
+            voice_id=TYPECAST_TTS_VOICE,
+            model=TTSModel(TYPECAST_TTS_MODEL),
+            prompt=PresetPrompt(emotion_preset=TYPECAST_EMOTION_PRESET),
+            output=Output(audio_format="wav"),
+        )
+
+        response = await asyncio.to_thread(client.text_to_speech, request)
+
+        with open(output_path, 'wb') as f:
+            f.write(response.audio_data)
+
+        print("Audio generated successfully with Typecast.")
+        return True
+    except ImportError:
+        print("typecast-python package is not installed. Run: pip install typecast-python")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "typecast-python package is not installed"
+        }))
+        return False
+    except Exception as e:
+        print(f"Error in Typecast TTS: {str(e)}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": f"Typecast TTS error: {str(e)}"
         }))
         return False
 

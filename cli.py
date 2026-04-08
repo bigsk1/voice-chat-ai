@@ -51,6 +51,10 @@ MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 SPARKTTS_MODEL_DIR = os.getenv('SPARKTTS_MODEL_DIR', 'pretrained_models/Spark-TTS-0.5B')
 SPARKTTS_MAX_CHARS = int(os.getenv('SPARKTTS_MAX_CHARS', 1000))
+TYPECAST_API_KEY = os.getenv('TYPECAST_API_KEY')
+TYPECAST_TTS_VOICE = os.getenv('TYPECAST_TTS_VOICE')
+TYPECAST_TTS_MODEL = os.getenv('TYPECAST_TTS_MODEL', 'ssfm-v30')
+TYPECAST_EMOTION_PRESET = os.getenv('TYPECAST_EMOTION_PRESET', 'normal')
 
 def _cuda_available() -> bool:
     try:
@@ -210,7 +214,7 @@ print(f"Model provider: {MODEL_PROVIDER}")
 print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
-print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else 'Unknown'}")
+print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else TYPECAST_TTS_MODEL if TTS_PROVIDER == 'typecast' else 'Unknown'}")
 print("To stop chatting say Quit or Exit. One moment please loading...")
 
 # Function to synthesize speech
@@ -264,6 +268,15 @@ def process_and_play(prompt, audio_file_pth):
                 print(f"Error during Spark-TTS audio generation: {e}")
         else:
             print("Spark-TTS model is not loaded. Please ensure initialization succeeded.")
+    elif TTS_PROVIDER == 'typecast':
+        output_path = os.path.join(output_dir, 'output.wav')
+        typecast_text_to_speech(prompt, output_path)
+        print(f"Generated audio file at: {output_path}")
+        if os.path.exists(output_path):
+            print("Playing generated audio...")
+            play_audio(output_path)
+        else:
+            print("Error: Audio file not found.")
 
 def save_pcm_as_wav(pcm_data: bytes, file_path: str, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2):
     """ Saves PCM data as a WAV file. """
@@ -421,6 +434,36 @@ def kokoro_text_to_speech(text, output_path):
             return False
     except Exception as e:
         print(f"Error during Kokoro TTS generation: {e}")
+        return False
+
+def typecast_text_to_speech(text, output_path):
+    """Convert text to speech using Typecast API."""
+    try:
+        from typecast import Typecast
+        from typecast.models import TTSRequest, TTSModel, Output, PresetPrompt
+
+        client = Typecast(api_key=TYPECAST_API_KEY)
+
+        request = TTSRequest(
+            text=text,
+            voice_id=TYPECAST_TTS_VOICE,
+            model=TTSModel(TYPECAST_TTS_MODEL),
+            prompt=PresetPrompt(emotion_preset=TYPECAST_EMOTION_PRESET),
+            output=Output(audio_format="wav"),
+        )
+
+        response = client.text_to_speech(request)
+
+        with open(output_path, 'wb') as f:
+            f.write(response.audio_data)
+
+        print("Audio generated successfully with Typecast.")
+        return True
+    except ImportError:
+        print("typecast-python package is not installed. Run: pip install typecast-python")
+        return False
+    except Exception as e:
+        print(f"Error during Typecast TTS generation: {e}")
         return False
 
 def sanitize_response(response):
@@ -996,6 +1039,8 @@ def generate_speech(text, temp_audio_path):
         elevenlabs_text_to_speech(text, temp_audio_path)
     elif TTS_PROVIDER == 'kokoro':
         kokoro_text_to_speech(text, temp_audio_path)
+    elif TTS_PROVIDER == 'typecast':
+        typecast_text_to_speech(text, temp_audio_path)
     else:  # Spark-TTS
         if sparktts_model is not None:
             try:

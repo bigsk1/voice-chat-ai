@@ -134,6 +134,7 @@
                     <option value="elevenlabs">ElevenLabs</option>
                     <option value="kokoro">Kokoro-TTS</option>
                     <option value="sparktts">Spark-TTS (Local)</option>
+                    <option value="typecast">Typecast</option>
                 </select>
             </div>
             <div class="setting-group">
@@ -157,6 +158,10 @@
             <div class="setting-group">
                 <label for="kokoro-voice-select">Kokoro Voice:</label>
                 <select id="kokoro-voice-select"></select>
+            </div>
+            <div class="setting-group">
+                <label for="typecast-voice-select">Typecast Voice:</label>
+                <select id="typecast-voice-select" data-initial="{{ typecast_voice }}"></select>
             </div>
             <div class="setting-group">
                 <label for="openai-model-select">OpenAI Model:</label>
