@@ -30,7 +30,7 @@ dependencies = [
     "faster-whisper==1.1.1",
     
     # NLP and language
-    "transformers==4.53.0",
+    "transformers==5.0.0rc3",
     "langid==1.1.6",
     "textblob==0.18.0.post0",
     "spacy==3.7.5",
