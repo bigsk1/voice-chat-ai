@@ -56,4 +56,4 @@ typecast-python>=0.1.0
 # Configuration
 pydantic==2.7.4
 python-dotenv==1.0.1
-pillow==12.1.1
+pillow==12.2.0
