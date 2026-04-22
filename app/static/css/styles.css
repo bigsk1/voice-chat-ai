@@ -367,6 +367,14 @@ a:hover {
     display: none;
 }
 
+#voice-animation.paused #voice-bars rect {
+    animation-play-state: paused;
+}
+
+#voice-animation.paused {
+    opacity: 0.65;
+}
+
 /* Voice animation for Enhanced page */
 #voiceWaveAnimation {
     position: sticky;
@@ -411,6 +419,14 @@ a:hover {
 
 #voiceWaveAnimation.hidden {
     display: none;
+}
+
+#voiceWaveAnimation.paused #voice-bars rect {
+    animation-play-state: paused;
+}
+
+#voiceWaveAnimation.paused {
+    opacity: 0.65;
 }
 
 @media (max-width: 768px) {

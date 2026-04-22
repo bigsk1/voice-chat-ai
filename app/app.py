@@ -1,5 +1,6 @@
 import os
 import asyncio
+import time
 import aiohttp
 import pyaudio
 import wave
@@ -38,6 +39,33 @@ except ImportError as e:
 
 # Load environment variables
 load_dotenv()
+
+audio_playback_stop_requested = False
+audio_playback_pause_requested = False
+
+def request_audio_playback_stop():
+    global audio_playback_stop_requested, audio_playback_pause_requested
+    audio_playback_stop_requested = True
+    audio_playback_pause_requested = False
+
+def reset_audio_playback_stop():
+    global audio_playback_stop_requested, audio_playback_pause_requested
+    audio_playback_stop_requested = False
+    audio_playback_pause_requested = False
+
+def is_audio_playback_stop_requested():
+    return audio_playback_stop_requested
+
+def request_audio_playback_pause():
+    global audio_playback_pause_requested
+    audio_playback_pause_requested = True
+
+def request_audio_playback_resume():
+    global audio_playback_pause_requested
+    audio_playback_pause_requested = False
+
+def is_audio_playback_pause_requested():
+    return audio_playback_pause_requested
 
 MODEL_PROVIDER = os.getenv('MODEL_PROVIDER', 'openai')
 CHARACTER_NAME = os.getenv('CHARACTER_NAME', 'wizard')
@@ -267,6 +295,10 @@ async def play_audio(file_path):
 
 def sync_play_audio(file_path):
     print("Starting audio playback")
+    if is_audio_playback_stop_requested():
+        print("Audio playback skipped because stop was requested.")
+        return
+
     file_extension = Path(file_path).suffix.lstrip('.').lower()
     
     temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
@@ -278,17 +310,30 @@ def sync_play_audio(file_path):
     
     wf = wave.open(file_path, 'rb')
     p = pyaudio.PyAudio()
-    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
-                    channels=wf.getnchannels(),
-                    rate=wf.getframerate(),
-                    output=True)
-    data = wf.readframes(1024)
-    while data:
-        stream.write(data)
+    stream = None
+    try:
+        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                        channels=wf.getnchannels(),
+                        rate=wf.getframerate(),
+                        output=True)
         data = wf.readframes(1024)
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+        while data and not is_audio_playback_stop_requested():
+            while is_audio_playback_pause_requested() and not is_audio_playback_stop_requested():
+                time.sleep(0.05)
+            if is_audio_playback_stop_requested():
+                break
+            stream.write(data)
+            data = wf.readframes(1024)
+            time.sleep(0)
+    finally:
+        if stream is not None:
+            try:
+                stream.stop_stream()
+            except Exception:
+                pass
+            stream.close()
+        wf.close()
+        p.terminate()
     print("Finished audio playback")
 
     pass
@@ -1506,6 +1551,20 @@ async def kokoro_text_to_speech(text, output_path):
 async def user_chatbot_conversation():
     from .app_logic import load_character_specific_history
 
+    def local_adjust_prompt(mood):
+        current_character_name = os.getenv("CHARACTER_NAME", "wizard")
+        character_prompts_path = os.path.join(project_dir, "characters", current_character_name, "prompts.json")
+        global_prompts_path = os.path.join(project_dir, "characters", "prompts.json")
+
+        try:
+            prompts_path = character_prompts_path if os.path.exists(character_prompts_path) else global_prompts_path
+            with open(prompts_path, "r", encoding="utf-8") as f:
+                mood_prompts = json.load(f)
+            return mood_prompts.get(mood, mood_prompts.get("neutral", "KEEP RESPONSES SHORT AND NATURAL."))
+        except Exception as e:
+            print(f"Error loading mood prompt: {e}")
+            return "KEEP RESPONSES SHORT AND NATURAL."
+
     # Track previous character
     previous_character = os.getenv("PREVIOUS_CHARACTER_NAME", "")
     
@@ -1617,7 +1676,7 @@ async def user_chatbot_conversation():
                 continue
             
             mood = analyze_mood(user_input)
-            mood_prompt = adjust_prompt(mood)
+            mood_prompt = local_adjust_prompt(mood)
             tag_prompt = xai_speech_tag_prompt()
             if tag_prompt:
                 mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"

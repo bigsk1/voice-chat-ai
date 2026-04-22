@@ -1,6 +1,7 @@
 import os
 import asyncio
 import json
+import time
 from fastapi import APIRouter
 from .shared import clients, conversation_history, is_client_active, set_client_inactive
 from .app_logic import (
@@ -28,6 +29,8 @@ enhanced_voice = os.getenv("OPENAI_TTS_VOICE", "coral")
 enhanced_model = os.getenv("OPENAI_MODEL", "gpt-4o")
 enhanced_tts_model = os.getenv("OPENAI_MODEL_TTS", "gpt-4o-mini-tts")
 enhanced_transcription_model = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
+enhanced_audio_stop_requested = False
+enhanced_audio_pause_requested = False
 
 # Debug flags to control verbose output
 DEBUG_AUDIO_LEVELS = False  # Set to True to see audio level output in the console
@@ -35,6 +38,68 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"  # Control detailed debug 
 
 # Quit phrases that will stop the conversation when detected
 QUIT_PHRASES = ["quit", "exit"]
+
+def request_enhanced_audio_stop():
+    global enhanced_audio_stop_requested, enhanced_audio_pause_requested
+    enhanced_audio_stop_requested = True
+    enhanced_audio_pause_requested = False
+
+def reset_enhanced_audio_controls():
+    global enhanced_audio_stop_requested, enhanced_audio_pause_requested
+    enhanced_audio_stop_requested = False
+    enhanced_audio_pause_requested = False
+
+def request_enhanced_audio_pause():
+    global enhanced_audio_pause_requested
+    enhanced_audio_pause_requested = True
+
+def request_enhanced_audio_resume():
+    global enhanced_audio_pause_requested
+    enhanced_audio_pause_requested = False
+
+def is_enhanced_audio_stop_requested():
+    return enhanced_audio_stop_requested
+
+def is_enhanced_audio_pause_requested():
+    return enhanced_audio_pause_requested
+
+def sync_play_enhanced_audio(file_path):
+    import wave
+    import pyaudio
+
+    if is_enhanced_audio_stop_requested():
+        print("Enhanced audio playback skipped because stop was requested.")
+        return
+
+    wf = wave.open(file_path, 'rb')
+    p = pyaudio.PyAudio()
+    stream = None
+    try:
+        buffer_size = 1024
+        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                        channels=wf.getnchannels(),
+                        rate=wf.getframerate(),
+                        output=True,
+                        frames_per_buffer=buffer_size)
+
+        data = wf.readframes(buffer_size)
+        while data and len(data) > 0 and not is_enhanced_audio_stop_requested():
+            while is_enhanced_audio_pause_requested() and not is_enhanced_audio_stop_requested():
+                time.sleep(0.05)
+            if is_enhanced_audio_stop_requested():
+                break
+            stream.write(data)
+            data = wf.readframes(buffer_size)
+            time.sleep(0)
+    finally:
+        if stream is not None:
+            try:
+                stream.stop_stream()
+            except Exception:
+                pass
+            stream.close()
+        wf.close()
+        p.terminate()
 
 async def send_message_to_enhanced_clients(message):
     """Send message to clients using the enhanced websocket."""
@@ -93,8 +158,6 @@ async def enhanced_text_to_speech(text, detected_mood=None):
         import aiohttp
         import os
         import asyncio
-        import wave
-        import pyaudio
         
         # Import get_current_character at the top to avoid shadowing
         from .shared import get_current_character as get_character
@@ -391,35 +454,9 @@ async def enhanced_text_to_speech(text, detected_mood=None):
                     # Signal that audio is about to play (for animation synchronization)
                     await send_message_to_enhanced_clients({"action": "audio_actually_playing"})
                     
-                    # Play audio using PyAudio - similar to the main page implementation
+                    # Play audio on a worker thread so pause/resume commands can be handled.
                     try:
-                        wf = wave.open(enhanced_audio_filename, 'rb')
-                        p = pyaudio.PyAudio()
-                        
-                        # Set up a buffered stream for lower latency
-                        # Use a smaller buffer size for quicker start (512 instead of 1024)
-                        buffer_size = 1024
-                        
-                        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
-                                        channels=wf.getnchannels(),
-                                        rate=wf.getframerate(),
-                                        output=True,
-                                        frames_per_buffer=buffer_size)
-                        
-                        # Read initial data to start quickly
-                        data = wf.readframes(buffer_size)
-                        
-                        # Stream the audio data
-                        while data and len(data) > 0:
-                            stream.write(data)
-                            data = wf.readframes(buffer_size)
-                            
-                        # Clean up resources
-                        stream.stop_stream()
-                        stream.close()
-                        p.terminate()
-                        wf.close()  # Close the wave file properly
-                        
+                        await asyncio.to_thread(sync_play_enhanced_audio, enhanced_audio_filename)
                     except Exception as e:
                         print(f"Error playing audio: {e}")
                         # Just wait an estimated amount of time if playback fails
@@ -748,6 +785,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
 async def start_enhanced_conversation(character=None, speed=None, model=None, voice=None, ttsModel=None, transcriptionModel=None):
     """Start a new enhanced conversation."""
     global enhanced_conversation_active, enhanced_conversation_task, enhanced_speed, enhanced_voice, enhanced_model, enhanced_tts_model, enhanced_transcription_model, conversation_history
+    reset_enhanced_audio_controls()
     
     # Import get_current_character at the top level to avoid shadowing
     from .shared import get_current_character as get_character
@@ -915,6 +953,7 @@ async def stop_enhanced_conversation():
     
     # Set the flag to stop the conversation loop
     enhanced_conversation_active = False
+    request_enhanced_audio_stop()
     
     # Send a message to clients that conversation is stopping
     try:
@@ -934,3 +973,13 @@ async def stop_enhanced_conversation():
 
     enhanced_conversation_task = None
     return {"status": "stopped"}
+
+async def pause_enhanced_audio_playback():
+    request_enhanced_audio_pause()
+    await send_message_to_enhanced_clients({"action": "audio_paused"})
+    return {"status": "paused"}
+
+async def resume_enhanced_audio_playback():
+    request_enhanced_audio_resume()
+    await send_message_to_enhanced_clients({"action": "audio_resumed"})
+    return {"status": "resumed"}

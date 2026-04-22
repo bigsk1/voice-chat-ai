@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const body = document.body;
     const voiceAnimation = document.getElementById('voice-animation');
     const startButton = document.getElementById('start-conversation-btn');
+    const pauseAudioButton = document.getElementById('pause-audio-btn');
     const stopButton = document.getElementById('stop-conversation-btn');
     const clearButton = document.getElementById('clear-conversation-btn');
     const messages = document.getElementById('messages');
@@ -38,6 +39,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     let aiMessageQueue = [];
     let isAISpeaking = false;
+    let isAudioPaused = false;
 
     // Fetch and populate characters as soon as page loads
     fetchCharacters();
@@ -141,16 +143,19 @@ document.addEventListener("DOMContentLoaded", function() {
     websocket.onopen = function(event) {
         console.log("WebSocket is open now.");
         startButton.disabled = false;
+        pauseAudioButton.disabled = true;
     };
 
     websocket.onclose = function(event) {
         console.log("WebSocket is closed now.");
         startButton.disabled = true;
+        pauseAudioButton.disabled = true;
     };
 
     websocket.onerror = function(event) {
         console.error("WebSocket error observed:", event);
         startButton.disabled = true;
+        pauseAudioButton.disabled = true;
     };
 
     websocket.onmessage = function(event) {
@@ -179,12 +184,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (data.action === "ai_start_speaking") {
             isAISpeaking = true;
+            resetPauseAudioButton(false);
             showVoiceAnimation();
             setTimeout(processQueuedMessages, 100);
         } else if (data.action === "ai_stop_speaking") {
             isAISpeaking = false;
+            resetPauseAudioButton(true);
             hideVoiceAnimation();
             processQueuedMessages();
+        } else if (data.action === "audio_paused") {
+            setPauseAudioState(true);
+        } else if (data.action === "audio_resumed") {
+            setPauseAudioState(false);
         } else if (data.action === "error") {
             console.error("Error from server:", data.message);
             displayMessage(data.message, 'error-message');
@@ -282,11 +293,13 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function showVoiceAnimation() {
+        voiceAnimation.classList.remove('paused');
         voiceAnimation.classList.remove('hidden');
         adjustScrollPosition();
     }
 
     function hideVoiceAnimation() {
+        voiceAnimation.classList.remove('paused');
         voiceAnimation.classList.add('hidden');
         // Only scroll back to bottom with buffer after animation is hidden
         setTimeout(() => {
@@ -355,13 +368,43 @@ document.addEventListener("DOMContentLoaded", function() {
         setTimeout(() => adjustScrollPosition(), 10);
     }
 
+    function setPauseAudioState(paused) {
+        isAudioPaused = paused;
+        pauseAudioButton.textContent = paused ? 'Resume' : 'Pause';
+        pauseAudioButton.disabled = !isAISpeaking;
+        voiceAnimation.classList.toggle('paused', paused);
+    }
+
+    function resetPauseAudioButton(disabled) {
+        isAudioPaused = false;
+        pauseAudioButton.textContent = 'Pause';
+        pauseAudioButton.disabled = disabled;
+        voiceAnimation.classList.remove('paused');
+    }
+
     startButton.addEventListener('click', function() {
         const selectedCharacter = document.getElementById('character-select').value;
+        resetPauseAudioButton(true);
         websocket.send(JSON.stringify({ action: "start", character: selectedCharacter }));
         console.log("Start conversation message sent");
     });
 
+    pauseAudioButton.addEventListener('click', function() {
+        if (!isAISpeaking) {
+            return;
+        }
+
+        if (isAudioPaused) {
+            websocket.send(JSON.stringify({ action: "resume_audio" }));
+            console.log("Resume audio message sent");
+        } else {
+            websocket.send(JSON.stringify({ action: "pause_audio" }));
+            console.log("Pause audio message sent");
+        }
+    });
+
     stopButton.addEventListener('click', function() {
+        resetPauseAudioButton(true);
         websocket.send(JSON.stringify({ action: "stop" }));
         console.log("Stop conversation message sent");
     });

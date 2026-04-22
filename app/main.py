@@ -1,6 +1,7 @@
 import json
 import os
 import signal
+import time
 import uvicorn
 import asyncio
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
@@ -10,8 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
-from .app_logic import start_conversation, stop_conversation, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
-from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation
+from .app_logic import start_conversation, stop_conversation, pause_audio_playback, resume_audio_playback, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
+from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation, pause_enhanced_audio_playback, resume_enhanced_audio_playback
 import logging
 import uuid
 import aiohttp
@@ -223,6 +224,14 @@ async def start_enhanced_conversation_route(request: Request):
 async def stop_enhanced_conversation_route():
     await stop_enhanced_conversation()
     return {"status": "stopped"}
+
+@app.post("/pause_enhanced_audio")
+async def pause_enhanced_audio_route():
+    return await pause_enhanced_audio_playback()
+
+@app.post("/resume_enhanced_audio")
+async def resume_enhanced_audio_route():
+    return await resume_enhanced_audio_playback()
 
 @app.post("/clear_history")
 async def clear_history():
@@ -452,6 +461,10 @@ async def websocket_endpoint(websocket: WebSocket):
             message = json.loads(data)
             if message["action"] == "stop":
                 await stop_conversation()
+            elif message["action"] == "pause_audio":
+                await pause_audio_playback()
+            elif message["action"] == "resume_audio":
+                await resume_audio_playback()
             elif message["action"] == "start":
                 selected_character = message["character"]
                 await stop_conversation()  # Ensure any running conversation stops
@@ -813,6 +826,13 @@ def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')
     
     try:
+        try:
+            from .app import request_audio_playback_stop
+            request_audio_playback_stop()
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"Error stopping audio playback: {e}")
+
         # Stop any active enhanced conversation
         try:
             # For async shutdown in sync context, create a new event loop

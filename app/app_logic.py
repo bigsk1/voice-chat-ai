@@ -10,6 +10,9 @@ from .app import (
     strip_xai_speech_tags,
     xai_speech_tag_prompt,
     process_and_play,
+    request_audio_playback_pause,
+    request_audio_playback_resume,
+    request_audio_playback_stop,
     execute_screenshot_and_analyze,
     open_file,
     init_ollama_model,
@@ -24,6 +27,7 @@ from .app import (
     init_xai_tts_voice,
     init_typecast_tts_voice,
     init_voice_speed,
+    reset_audio_playback_stop,
     save_conversation_history,
     send_message_to_clients,
 )
@@ -114,7 +118,6 @@ async def process_text(user_input):
     if len(sanitized_response) > MAX_CHAR_LENGTH:
         sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
     prompt2 = sanitized_response
-    await process_and_play(prompt2, character_audio_file)
 
     conversation_history.append({"role": "assistant", "content": display_response})
     
@@ -129,7 +132,9 @@ async def process_text(user_input):
         # Save to global history file
         save_conversation_history(conversation_history)
         print(f"Saved global history for {current_character}")
-        
+
+    await process_and_play(prompt2, character_audio_file)
+
     return display_response
 
 quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit"]
@@ -149,6 +154,7 @@ async def start_conversation():
     
     # Set flag to continue conversation
     continue_conversation = True
+    reset_audio_playback_stop()
     
     # Import with alias to avoid potential shadowing issues
     from .shared import conversation_history, get_current_character as get_character, set_conversation_active
@@ -238,7 +244,18 @@ async def start_conversation():
 async def stop_conversation():
     global continue_conversation # noqa: F824
     continue_conversation = False
+    request_audio_playback_stop()
     return {"message": "Conversation stopped"}
+
+async def pause_audio_playback():
+    request_audio_playback_pause()
+    await send_message_to_clients({"action": "audio_paused"})
+    return {"message": "Audio playback paused"}
+
+async def resume_audio_playback():
+    request_audio_playback_resume()
+    await send_message_to_clients({"action": "audio_resumed"})
+    return {"message": "Audio playback resumed"}
 
 async def conversation_loop():
     global continue_conversation # noqa: F824

@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const downloadButton = document.getElementById('download-button');
     const conversation = document.getElementById('conversation');
     const startBtn = document.getElementById('startBtn');
+    const pauseAudioBtn = document.getElementById('pauseAudioBtn');
     const stopBtn = document.getElementById('stopBtn');
     const clearBtn = document.getElementById('clearBtn');
     const characterSelect = document.getElementById('characterSelect');
@@ -27,6 +28,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // For message queue management (like the main page)
     let aiMessageQueue = [];
     let isAISpeaking = false;
+    let isAudioPaused = false;
     
     function connectWebSocket() {
         // Close existing connection if any
@@ -40,6 +42,7 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.onopen = function(event) {
             console.log("WebSocket connection established");
             startBtn.disabled = false;
+            resetPauseAudioButton(true);
             reconnectAttempts = 0; // Reset reconnect counter on successful connection
             displayMessage("Connected to server", "system-message");
         };
@@ -88,6 +91,7 @@ document.addEventListener("DOMContentLoaded", function() {
             } else if (data.action === "audio_actually_playing") {
                 // Set speaking flag and show animation
                 isAISpeaking = true;
+                resetPauseAudioButton(false);
                 showVoiceWaveAnimation();
                 // Process any queued messages after a slight delay
                 setTimeout(processQueuedMessages, 100);
@@ -97,18 +101,25 @@ document.addEventListener("DOMContentLoaded", function() {
             } else if (data.action === "ai_stop_speaking") {
                 // Audio finished playing
                 isAISpeaking = false;
+                resetPauseAudioButton(true);
                 hideVoiceWaveAnimation();
                 // Process any queued messages
                 processQueuedMessages();
+            } else if (data.action === "audio_paused") {
+                setPauseAudioState(true);
+            } else if (data.action === "audio_resumed") {
+                setPauseAudioState(false);
             } else if (data.action === "conversation_stopped") {
                 hasStarted = false;
                 stopBtn.disabled = true;
                 startBtn.disabled = false;
+                resetPauseAudioButton(true);
                 micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
                 micIcon.classList.add('mic-off');
                 hideListeningIndicator();
                 hideVoiceWaveAnimation();
                 isAISpeaking = false;
+                resetPauseAudioButton(true);
                 processQueuedMessages(); // Process any remaining messages
                 console.log("Conversation stopped");
             } else if (data.action === "clear_character_switch") {
@@ -156,6 +167,7 @@ document.addEventListener("DOMContentLoaded", function() {
             console.log("WebSocket connection closed", event);
             startBtn.disabled = true;
             stopBtn.disabled = true;
+            resetPauseAudioButton(true);
             
             // Reset mic icon on disconnect
             micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
@@ -184,6 +196,7 @@ document.addEventListener("DOMContentLoaded", function() {
             micIcon.classList.add('mic-off');
             hideListeningIndicator();
             hideVoiceWaveAnimation(); // Hide voice animation on error
+            resetPauseAudioButton(true);
         };
     }
     
@@ -276,6 +289,7 @@ document.addEventListener("DOMContentLoaded", function() {
     function showVoiceWaveAnimation() {
         const voiceWave = document.getElementById('voiceWaveAnimation');
         if (voiceWave) {
+            voiceWave.classList.remove('paused');
             voiceWave.classList.remove('hidden');
             adjustScrollPosition();
         }
@@ -284,9 +298,30 @@ document.addEventListener("DOMContentLoaded", function() {
     function hideVoiceWaveAnimation() {
         const voiceWave = document.getElementById('voiceWaveAnimation');
         if (voiceWave) {
+            voiceWave.classList.remove('paused');
             voiceWave.classList.add('hidden');
             // Small delay before adjusting scroll
             setTimeout(() => adjustScrollPosition(), 100);
+        }
+    }
+
+    function setPauseAudioState(paused) {
+        const voiceWave = document.getElementById('voiceWaveAnimation');
+        isAudioPaused = paused;
+        pauseAudioBtn.textContent = paused ? 'Resume' : 'Pause';
+        pauseAudioBtn.disabled = !isAISpeaking;
+        if (voiceWave) {
+            voiceWave.classList.toggle('paused', paused);
+        }
+    }
+
+    function resetPauseAudioButton(disabled) {
+        const voiceWave = document.getElementById('voiceWaveAnimation');
+        isAudioPaused = false;
+        pauseAudioBtn.textContent = 'Pause';
+        pauseAudioBtn.disabled = disabled;
+        if (voiceWave) {
+            voiceWave.classList.remove('paused');
         }
     }
     
@@ -301,6 +336,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // Disable start button and enable stop button
         startBtn.disabled = true;
         stopBtn.disabled = false;
+        resetPauseAudioButton(true);
         hasStarted = true;
         
         // Clear any previous state
@@ -341,11 +377,29 @@ document.addEventListener("DOMContentLoaded", function() {
             hasStarted = false;
         });
     });
+
+    pauseAudioBtn.addEventListener('click', function() {
+        if (!isAISpeaking) {
+            return;
+        }
+
+        const endpoint = isAudioPaused ? '/resume_enhanced_audio' : '/pause_enhanced_audio';
+        fetch(endpoint, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Enhanced audio pause/resume response:", data);
+            })
+            .catch(error => {
+                console.error("Error toggling enhanced audio pause:", error);
+                displayMessage("Error pausing or resuming audio.", "error-message");
+            });
+    });
     
     stopBtn.addEventListener('click', function() {
         // Disable stop button and enable start button
         stopBtn.disabled = true;
         startBtn.disabled = false;
+        resetPauseAudioButton(true);
         
         console.log("Stopping enhanced conversation");
         
@@ -620,4 +674,5 @@ document.addEventListener("DOMContentLoaded", function() {
     connectWebSocket();
     startHeartbeat();
     stopBtn.disabled = true;
+    resetPauseAudioButton(true);
 });

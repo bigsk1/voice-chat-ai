@@ -62,6 +62,19 @@ TYPECAST_TTS_VOICE = os.getenv('TYPECAST_TTS_VOICE')
 TYPECAST_TTS_MODEL = os.getenv('TYPECAST_TTS_MODEL', 'ssfm-v30')
 TYPECAST_EMOTION_PRESET = os.getenv('TYPECAST_EMOTION_PRESET', 'normal')
 
+audio_playback_stop_requested = False
+
+def request_audio_playback_stop():
+    global audio_playback_stop_requested
+    audio_playback_stop_requested = True
+
+def reset_audio_playback_stop():
+    global audio_playback_stop_requested
+    audio_playback_stop_requested = False
+
+def is_audio_playback_stop_requested():
+    return audio_playback_stop_requested
+
 def _cuda_available() -> bool:
     try:
         import torch
@@ -187,6 +200,10 @@ def open_file(filepath):
 
 # Function to play audio using PyAudio
 def play_audio(file_path):
+    if is_audio_playback_stop_requested():
+        print("Audio playback skipped because stop was requested.")
+        return
+
     file_extension = Path(file_path).suffix.lstrip('.').lower()
     
     temp_wav_path = os.path.join(output_dir, 'temp_output.wav')
@@ -198,17 +215,26 @@ def play_audio(file_path):
     
     wf = wave.open(file_path, 'rb')
     p = pyaudio.PyAudio()
-    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
-                    channels=wf.getnchannels(),
-                    rate=wf.getframerate(),
-                    output=True)
-    data = wf.readframes(1024)
-    while data:
-        stream.write(data)
+    stream = None
+    try:
+        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                        channels=wf.getnchannels(),
+                        rate=wf.getframerate(),
+                        output=True)
         data = wf.readframes(1024)
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+        while data and not is_audio_playback_stop_requested():
+            stream.write(data)
+            data = wf.readframes(1024)
+            time.sleep(0)
+    finally:
+        if stream is not None:
+            try:
+                stream.stop_stream()
+            except Exception:
+                pass
+            stream.close()
+        wf.close()
+        p.terminate()
 
 # Model and device setup
 # device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -1352,6 +1378,8 @@ def save_global_conversation_history(history):
         return {"status": "error", "message": str(e)}
 
 def user_chatbot_conversation():
+    reset_audio_playback_stop()
+
     # Get current character
     current_character = os.getenv('CHARACTER_NAME', 'wizard')
     is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
@@ -1457,22 +1485,21 @@ def user_chatbot_conversation():
             if is_xai_tts_enabled():
                 print(NEON_GREEN + display_response + RESET_COLOR)
             conversation_history.append({"role": "assistant", "content": display_response})
-            if len(sanitized_response) > MAX_CHAR_LENGTH:  # Limit response length for audio generation
-                sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
-            prompt2 = sanitized_response
-            process_and_play(prompt2, character_audio_file)
             current_character = os.getenv('CHARACTER_NAME', 'wizard')
             if current_character.startswith("story_") or current_character.startswith("game_"):
                 if len(conversation_history) > 100:
                     conversation_history = conversation_history[-100:]
-                # Save to character-specific history
                 save_character_specific_history(conversation_history, current_character)
             else:
                 if len(conversation_history) > 30:
                     conversation_history = conversation_history[-30:]
-                # Save to global history file
                 save_global_conversation_history(conversation_history)
+            if len(sanitized_response) > MAX_CHAR_LENGTH:  # Limit response length for audio generation
+                sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
+            prompt2 = sanitized_response
+            process_and_play(prompt2, character_audio_file)
     except KeyboardInterrupt:
+        request_audio_playback_stop()
         print("Quitting the conversation...")
 
 if __name__ == "__main__":
