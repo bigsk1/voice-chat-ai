@@ -619,6 +619,17 @@ async def get_character_history():
             if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
                 with open(history_file, 'r', encoding='utf-8') as f:
                     history_text = f.read()
+                try:
+                    from .app import format_story_response_text
+                    repaired_lines = []
+                    for line in history_text.splitlines():
+                        if line.startswith("Assistant:"):
+                            repaired_lines.append("Assistant: " + format_story_response_text(line[10:].strip()))
+                        else:
+                            repaired_lines.append(line)
+                    history_text = "\n".join(repaired_lines)
+                except Exception as e:
+                    logger.warning(f"Could not repair character history display text: {e}")
                 return {"status": "success", "history": history_text, "character": current_character}
             else:
                 return {"status": "empty", "history": "", "character": current_character}
@@ -829,6 +840,11 @@ def signal_handler(sig, frame):
         try:
             from .app import request_audio_playback_stop
             request_audio_playback_stop()
+            try:
+                from . import app_logic
+                app_logic.continue_conversation = False
+            except Exception as e:
+                print(f"Error stopping dashboard conversation loop: {e}")
             time.sleep(0.3)
         except Exception as e:
             print(f"Error stopping audio playback: {e}")

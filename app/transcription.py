@@ -1,4 +1,5 @@
 import os
+import asyncio
 import pyaudio
 import wave
 import numpy as np
@@ -117,7 +118,7 @@ def detect_silence(data, threshold=512, chunk_size=1024):
         print(f"Audio level: {level}")
     return level < threshold
 
-async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, chunk_size=1024, send_status_callback=None):
+async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, chunk_size=1024, send_status_callback=None, should_stop_callback=None):
     """Record audio to a file path
     
     Args:
@@ -140,6 +141,9 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, c
     speaking_chunks = 0
     
     while True:
+        if should_stop_callback and should_stop_callback():
+            break
+
         data = stream.read(chunk_size, exception_on_overflow=False)
         frames.append(data)
         
@@ -153,6 +157,8 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, c
             
         if speaking_chunks > silence_duration * (16000 / chunk_size) * 10:
             break
+
+        await asyncio.sleep(0)
             
     print("Recording stopped.")
     
@@ -171,7 +177,7 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, c
     wf.writeframes(b''.join(frames))
     wf.close()
 
-async def record_audio_enhanced(send_status_callback=None, silence_threshold=300, silence_duration=2.0):
+async def record_audio_enhanced(send_status_callback=None, silence_threshold=300, silence_duration=2.0, should_stop_callback=None):
     """Enhanced audio recording with waiting for speech detection
     
     Args:
@@ -195,6 +201,7 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     
     # Recording logic
     p = pyaudio.PyAudio()
+    stream = None
     
     # Debug info about audio devices - only show once
     if DEBUG_AUDIO_LEVELS:
@@ -215,6 +222,15 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     
     # Flush initial buffer
     for _ in range(5):
+        if should_stop_callback and should_stop_callback():
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+            try:
+                os.unlink(temp_filename)
+            except:
+                pass
+            return None
         stream.read(CHUNK)
         
     initial_silent_chunks = 0
@@ -222,6 +238,19 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     
     # Wait for user to start speaking
     while not silence_broken:
+        if should_stop_callback and should_stop_callback():
+            print("Recording cancelled before speech was detected.")
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+            try:
+                os.unlink(temp_filename)
+            except:
+                pass
+            if send_status_callback:
+                await send_status_callback({"action": "recording_stopped"})
+            return None
+
         data = stream.read(CHUNK, exception_on_overflow=False)
         if not detect_silence(data, threshold=silence_threshold):
             silence_broken = True
@@ -253,6 +282,8 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
                 await send_status_callback({
                     "action": "waiting_for_speech"
                 })
+
+        await asyncio.sleep(0)
                 
     # Now begin actual recording
     frames = []
@@ -269,6 +300,19 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
     
     # Continue recording until silence is detected
     while True:
+        if should_stop_callback and should_stop_callback():
+            print("Recording cancelled.")
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+            try:
+                os.unlink(temp_filename)
+            except:
+                pass
+            if send_status_callback:
+                await send_status_callback({"action": "recording_stopped"})
+            return None
+
         data = stream.read(CHUNK, exception_on_overflow=False)
         frames.append(data)
         if detect_silence(data, threshold=silence_threshold):
@@ -280,6 +324,8 @@ async def record_audio_enhanced(send_status_callback=None, silence_threshold=300
             speaking_chunks += 1
         if speaking_chunks > silence_duration * (RATE / CHUNK) * 15:  # Allow longer recordings
             break
+
+        await asyncio.sleep(0)
             
     print("Enhanced recording stopped.")
     if send_status_callback:
@@ -324,7 +370,7 @@ async def send_status_message(callback, message):
     if callback:
         await callback(message)
 
-async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None):
+async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_local=False, send_status_callback=None, should_stop_callback=None):
     """Main function to record audio and transcribe it
     
     Args:
@@ -343,7 +389,8 @@ async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_loc
                 
         # Record audio with enhanced mode
         temp_filename = await record_audio_enhanced(
-            send_status_callback=callback_wrapper
+            send_status_callback=callback_wrapper,
+            should_stop_callback=should_stop_callback
         )
         
         if not temp_filename:

@@ -147,7 +147,8 @@ async def record_enhanced_audio_and_transcribe():
     return await transcribe_audio(
         transcription_model=enhanced_transcription_model,
         use_local=False,  # Enhanced always uses OpenAI API
-        send_status_callback=send_message_to_enhanced_clients
+        send_status_callback=send_message_to_enhanced_clients,
+        should_stop_callback=lambda: not enhanced_conversation_active
     )
 
 async def enhanced_text_to_speech(text, detected_mood=None):
@@ -543,6 +544,9 @@ async def enhanced_conversation_loop():
                 
                 # Wait for user to speak
                 user_input = await record_enhanced_audio_and_transcribe()
+
+                if not enhanced_conversation_active:
+                    break
                 
                 # Check if there was an error in transcription
                 if not user_input or user_input == "ERROR":

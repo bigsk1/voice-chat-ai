@@ -8,6 +8,7 @@ from .app import (
     chatgpt_streamed,
     sanitize_response,
     strip_xai_speech_tags,
+    format_story_response_text,
     xai_speech_tag_prompt,
     process_and_play,
     request_audio_playback_pause,
@@ -82,7 +83,8 @@ async def record_audio_and_transcribe():
     user_input = await transcribe_audio(
         transcription_model=current_transcription_model,
         use_local=use_local_whisper,
-        send_status_callback=status_callback
+        send_status_callback=status_callback,
+        should_stop_callback=lambda: not continue_conversation
     )
     
     return user_input
@@ -114,15 +116,15 @@ async def process_text(user_input):
     chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
     sanitized_response = sanitize_response(chatbot_response)
     display_response = strip_xai_speech_tags(chatbot_response)
+    is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+    if is_story_character:
+        display_response = format_story_response_text(display_response)
     # Limit the response length to the MAX_CHAR_LENGTH for audio generation
     if len(sanitized_response) > MAX_CHAR_LENGTH:
         sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
     prompt2 = sanitized_response
 
     conversation_history.append({"role": "assistant", "content": display_response})
-    
-    # Check if this is a story or game character
-    is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
     
     if is_story_character:
         # Save to character-specific history file
@@ -245,6 +247,7 @@ async def stop_conversation():
     global continue_conversation # noqa: F824
     continue_conversation = False
     request_audio_playback_stop()
+    await send_message_to_clients({"action": "conversation_stopped"})
     return {"message": "Conversation stopped"}
 
 async def pause_audio_playback():
@@ -265,10 +268,14 @@ async def conversation_loop():
     
     while continue_conversation:
         user_input = await record_audio_and_transcribe() 
+
+        if not continue_conversation:
+            break
         
         # Check if user_input is None and handle it
         if user_input is None:
             print("Warning: Received None input from transcription")
+            await asyncio.sleep(0.1)
             continue
             
         conversation_history.append({"role": "user", "content": user_input})

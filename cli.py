@@ -44,6 +44,7 @@ XAI_TTS_LANGUAGE = os.getenv('XAI_TTS_LANGUAGE', 'en')
 XAI_TTS_FORMAT = os.getenv('XAI_TTS_FORMAT', 'mp3')
 XAI_TTS_SAMPLE_RATE = os.getenv('XAI_TTS_SAMPLE_RATE')
 XAI_TTS_BIT_RATE = os.getenv('XAI_TTS_BIT_RATE')
+XAI_TTS_TIMEOUT = int(os.getenv('XAI_TTS_TIMEOUT', '180'))
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
@@ -110,26 +111,6 @@ FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "tru
 
 # Initialize whisper model as None to lazy load
 whisper_model = None
-
-# Default model size (adjust as needed)
-model_size = "medium.en"
-
-if FASTER_WHISPER_LOCAL:
-    try:
-        print(f"Attempting to load Faster-Whisper on {device}...")
-        whisper_model = WhisperModel(model_size, device=device, compute_type="float16" if device == "cuda" else "int8")
-        print("Faster-Whisper initialized successfully.")
-    except Exception as e:
-        print(f"Error initializing Faster-Whisper on {device}: {e}")
-        print("Falling back to CPU mode...")
-
-        # Force CPU fallback
-        device = "cpu"
-        model_size = "tiny.en"  # Use a smaller model for CPU performance
-        whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
-        print("Faster-Whisper initialized on CPU successfully.")
-else:
-    print("Faster-Whisper initialization skipped (FASTER_WHISPER_LOCAL=false). Will use OpenAI API for transcription.")
 
 # Paths for character-specific files
 project_dir = os.path.dirname(os.path.abspath(__file__))
@@ -241,7 +222,8 @@ def play_audio(file_path):
 output_dir = os.path.join(project_dir, 'outputs')
 os.makedirs(output_dir, exist_ok=True)
 
-print(f"Using device: {device}")
+if TTS_PROVIDER == 'sparktts':
+    print(f"Using device: {device}")
 print(f"Model provider: {MODEL_PROVIDER}")
 print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
@@ -440,7 +422,7 @@ def xai_text_to_speech(text, output_path):
             headers=headers,
             json=build_xai_tts_payload(text),
             stream=True,
-            timeout=60,
+            timeout=XAI_TTS_TIMEOUT,
         )
         response.raise_for_status()
 
@@ -567,13 +549,80 @@ def typecast_text_to_speech(text, output_path):
         return False
 
 def sanitize_response(response):
+    # Remove model planning blocks before sending text to TTS.
+    response = remove_response_meta_blocks(response)
+    response = normalize_response_punctuation(response, preserve_xai_tags=TTS_PROVIDER == 'xai')
     # Remove asterisks and emojis
     response = re.sub(r'\*.*?\*', '', response)
     if TTS_PROVIDER == 'xai':
-        response = re.sub(r'[^\w\s,.\'!?\[\]<>\/-]', '', response)
+        response = re.sub(r'[^\w\s,.;:\'!?\[\]<>\/%()&-]', '', response)
     else:
         response = re.sub(r'[^\w\s,.\'!?]', '', response)
     return response.strip()
+
+MOJIBAKE_PATTERN = re.compile(r'[\u00c3\u00c2\u00e2][\u0080-\u00ff]?|[\u0080-\u009f]')
+UNICODE_DASH_PATTERN = re.compile(r'\s*[\u2012\u2013\u2014\u2015]\s*')
+RESPONSE_META_BLOCK_PATTERN = re.compile(
+    r'<(?P<tag>think|policy|analysis|reasoning|scratchpad|internal|planning|plan|voicefilter)\b[^>]*>[\s\S]*?</(?P=tag)\s*>',
+    re.IGNORECASE
+)
+XAI_ALLOWED_WRAPPING_TAGS = {
+    'soft', 'whisper', 'loud', 'build-intensity', 'decrease-intensity',
+    'higher-pitch', 'lower-pitch', 'slow', 'fast', 'sing-song', 'singing',
+    'laugh-speak', 'emphasis', 'pause', 'long-pause'
+}
+XML_TAG_PATTERN = re.compile(r'</?([A-Za-z][\w-]*)(?:\s[^>]*)?>')
+
+def repair_mojibake_text(text):
+    if not text or not MOJIBAKE_PATTERN.search(text):
+        return text
+
+    try:
+        repaired = text.encode('latin-1').decode('utf-8')
+    except UnicodeError:
+        return text
+
+    return repaired if repaired else text
+
+def remove_response_meta_blocks(text):
+    if not text:
+        return text
+    return RESPONSE_META_BLOCK_PATTERN.sub('', text).strip()
+
+def remove_unsupported_xml_tags(text, preserve_xai_tags=False):
+    if not text:
+        return text
+
+    def replace_tag(match):
+        tag_name = match.group(1).lower()
+        if preserve_xai_tags and tag_name in XAI_ALLOWED_WRAPPING_TAGS:
+            return f"</{tag_name}>" if match.group(0).startswith("</") else f"<{tag_name}>"
+        return ""
+
+    return XML_TAG_PATTERN.sub(replace_tag, text)
+
+def normalize_response_punctuation(text, preserve_xai_tags=False):
+    text = remove_response_meta_blocks(text)
+    text = remove_unsupported_xml_tags(text, preserve_xai_tags=preserve_xai_tags)
+    text = repair_mojibake_text(text)
+    text = UNICODE_DASH_PATTERN.sub(', ', text)
+    text = re.sub(r'\s+([,.;:!?])', r'\1', text)
+    text = re.sub(r',\s*,+', ', ', text)
+    return text.strip()
+
+STORY_DECISION_PROMPT_PATTERN = re.compile(
+    r'\s+((?:What(?:[’\']ll| will)|What do|Where do|How do|Which|Choose|Decide|Act|Speak|Continue)\b[^?\n]{0,140}\?)\s*$',
+    re.IGNORECASE
+)
+
+def format_story_response_text(text):
+    text = normalize_response_punctuation(text)
+    text = re.sub(r'(?<=[.!?])\s+(?=\S)', '  ', text)
+    text = re.sub(r'\s*\*\*STATUS\s*-\s*([^*]+)\*\*\s*', r'\n\nSTATUS - \1\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'(?<=[^\s])\s+STATUS\s*-\s*', r'\n\nSTATUS - ', text, flags=re.IGNORECASE)
+    text = STORY_DECISION_PROMPT_PATTERN.sub(r'\n\n\1', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 
 def is_xai_tts_enabled():
     return TTS_PROVIDER == 'xai'
@@ -583,16 +632,18 @@ XAI_INLINE_SPEECH_TAG_PATTERN = re.compile(
     re.IGNORECASE
 )
 XAI_WRAPPING_SPEECH_TAG_PATTERN = re.compile(
-    r'</?(?:soft|whisper|loud|build-intensity|decrease-intensity|higher-pitch|lower-pitch|slow|fast|sing-song|singing|laugh-speak|emphasis)>',
+    r'</?(?:soft|whisper|loud|build-intensity|decrease-intensity|higher-pitch|lower-pitch|slow|fast|sing-song|singing|laugh-speak|emphasis|pause|long-pause)>',
     re.IGNORECASE
 )
 
 def strip_xai_speech_tags(text):
+    text = remove_response_meta_blocks(text)
     if not is_xai_tts_enabled():
-        return text
+        return remove_unsupported_xml_tags(text).strip()
 
     text = XAI_INLINE_SPEECH_TAG_PATTERN.sub('', text)
     text = XAI_WRAPPING_SPEECH_TAG_PATTERN.sub('', text)
+    text = remove_unsupported_xml_tags(text)
     return re.sub(r'\s{2,}', ' ', text).strip()
 
 def xai_speech_tag_prompt():
@@ -600,13 +651,16 @@ def xai_speech_tag_prompt():
         return ""
 
     return """
-When generating the assistant's response, you may include xAI Grok TTS speech tags for natural delivery.
-Use them sparingly and only when they improve emotion, pacing, or character performance.
+When generating the assistant's response, include 1 to 3 xAI Grok TTS speech tags for natural delivery.
+Use tags where they improve emotion, pacing, or character performance, especially in long story/game narration.
 Inline tags go at the moment the sound should happen, for example: "That was unexpected. [laugh] I did not see that coming."
 Wrapping tags must wrap complete phrases, for example: "<whisper>This part is a secret.</whisper> Then continue normally."
 Useful inline tags: [pause], [long-pause], [laugh], [chuckle], [giggle], [sigh], [breath], [inhale], [exhale].
-Useful wrapping tags: <whisper>, <soft>, <loud>, <slow>, <fast>, <higher-pitch>, <lower-pitch>, <emphasis>, <laugh-speak>.
-Do not stack many tags together. Do not explain the tags. Do not use tags unless the active TTS provider is xAI.
+Useful wrapping/control tags: <whisper>, <soft>, <loud>, <slow>, <fast>, <higher-pitch>, <lower-pitch>, <emphasis>, <laugh-speak>, <pause>.
+Good story/game usage: "<slow>The lamp gutters once.</slow> [pause] Then the sea goes flat."
+Never include internal planning or policy blocks such as <policy>, <analysis>, <think>, <reasoning>, or <scratchpad>.
+Do not invent other XML/control tags such as <xai-grok-voice> or <voicefilter>.
+Do not stack many tags together. Do not put tags in status blocks or decision prompts. Do not explain the tags. Do not use tags unless the active TTS provider is xAI.
 """.strip()
 
 def analyze_mood(user_input):
@@ -874,7 +928,8 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
 
         full_response = ""
         print("Starting XAI stream...")
-        for line in response.iter_lines(decode_unicode=True):
+        for raw_line in response.iter_lines(decode_unicode=False):
+            line = raw_line.decode('utf-8', errors='replace').strip()
             if line.startswith("data:"):
                 line = line[5:].strip() 
             if line:
@@ -882,13 +937,13 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                     chunk = json.loads(line)
                     delta_content = chunk['choices'][0]['delta'].get('content', '')
                     if delta_content:
-                        # Clean the weird characters before printing
-                        delta_content = delta_content.replace('â\x80\x99', "'")
+                        delta_content = repair_mojibake_text(delta_content)
                         if not is_xai_tts_enabled():
                             print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
                         full_response += delta_content
                 except json.JSONDecodeError:
                     continue
+        full_response = repair_mojibake_text(full_response)
         print("\nXAI stream complete.")
         return full_response
 
@@ -978,6 +1033,26 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
 
 # Function to transcribe the recorded audio using faster-whisper
 def transcribe_with_whisper(audio_file):
+    global whisper_model
+
+    if whisper_model is None:
+        whisper_device = "cuda" if _cuda_available() else "cpu"
+        model_size = "medium.en" if whisper_device == "cuda" else "tiny.en"
+
+        try:
+            print(f"Lazy-loading Faster-Whisper on {whisper_device}...")
+            whisper_model = WhisperModel(
+                model_size,
+                device=whisper_device,
+                compute_type="float16" if whisper_device == "cuda" else "int8",
+            )
+            print("Faster-Whisper initialized successfully.")
+        except Exception as e:
+            print(f"Error initializing Faster-Whisper on {whisper_device}: {e}")
+            print("Falling back to CPU mode...")
+            whisper_model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
+            print("Faster-Whisper initialized on CPU successfully.")
+
     segments, info = whisper_model.transcribe(audio_file, beam_size=5)
     transcription = ""
     for segment in segments:
@@ -1482,11 +1557,14 @@ def user_chatbot_conversation():
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
             sanitized_response = sanitize_response(chatbot_response)
             display_response = strip_xai_speech_tags(chatbot_response)
+            current_character = os.getenv('CHARACTER_NAME', 'wizard')
+            is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
+            if is_story_character:
+                display_response = format_story_response_text(display_response)
             if is_xai_tts_enabled():
                 print(NEON_GREEN + display_response + RESET_COLOR)
             conversation_history.append({"role": "assistant", "content": display_response})
-            current_character = os.getenv('CHARACTER_NAME', 'wizard')
-            if current_character.startswith("story_") or current_character.startswith("game_"):
+            if is_story_character:
                 if len(conversation_history) > 100:
                     conversation_history = conversation_history[-100:]
                 save_character_specific_history(conversation_history, current_character)
