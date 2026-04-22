@@ -71,6 +71,7 @@ async def get_index(request: Request):
     voice_speed = os.getenv("VOICE_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
     kokoro_voice = os.getenv("KOKORO_TTS_VOICE")
+    xai_tts_voice = os.getenv("XAI_TTS_VOICE", "eve")
     typecast_voice = os.getenv("TYPECAST_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 
@@ -85,6 +86,7 @@ async def get_index(request: Request):
         "voice_speed": voice_speed,
         "elevenlabs_voice": elevenlabs_voice,
         "kokoro_voice": kokoro_voice,
+        "xai_tts_voice": xai_tts_voice,
         "typecast_voice": typecast_voice,
         "faster_whisper_local": faster_whisper_local,
     })
@@ -478,6 +480,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("ELEVENLABS_TTS_VOICE", message["voice"])
             elif message["action"] == "set_kokoro_voice":
                 set_env_variable("KOKORO_TTS_VOICE", message["voice"])
+            elif message["action"] == "set_xai_tts_voice":
+                set_env_variable("XAI_TTS_VOICE", message["voice"])
             elif message["action"] == "set_typecast_voice":
                 set_env_variable("TYPECAST_TTS_VOICE", message["voice"])
             elif message["action"] == "clear":

@@ -51,6 +51,12 @@ OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/c
 XAI_API_KEY = os.getenv('XAI_API_KEY')
 XAI_MODEL = os.getenv('XAI_MODEL', 'grok-4-1-fast-non-reasoning')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
+XAI_TTS_URL = os.getenv('XAI_TTS_URL', 'https://api.x.ai/v1/tts')
+XAI_TTS_VOICE = os.getenv('XAI_TTS_VOICE', 'eve')
+XAI_TTS_LANGUAGE = os.getenv('XAI_TTS_LANGUAGE', 'en')
+XAI_TTS_FORMAT = os.getenv('XAI_TTS_FORMAT', 'mp3')
+XAI_TTS_SAMPLE_RATE = os.getenv('XAI_TTS_SAMPLE_RATE')
+XAI_TTS_BIT_RATE = os.getenv('XAI_TTS_BIT_RATE')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
@@ -178,6 +184,11 @@ def init_kokoro_tts_voice(voice_name):
     global KOKORO_TTS_VOICE
     KOKORO_TTS_VOICE = voice_name
     print(f"Switched to Kokoro TTS voice: {voice_name}")
+
+def init_xai_tts_voice(voice_name):
+    global XAI_TTS_VOICE
+    XAI_TTS_VOICE = voice_name
+    print(f"Switched to xAI TTS voice: {voice_name}")
 
 def init_typecast_tts_voice(voice_id):
     global TYPECAST_TTS_VOICE
@@ -368,6 +379,22 @@ async def process_and_play(prompt, audio_file_pth):
                 "action": "error",
                 "message": "Kokoro audio file not found after generation"
             }))
+    elif TTS_PROVIDER == 'xai':
+        output_path = os.path.join(output_dir, f"output.{xai_tts_file_extension()}")
+        success = await xai_text_to_speech(prompt, output_path)
+        if success and os.path.exists(output_path):
+            print("Playing generated audio...")
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+        elif not success:
+            print("Failed to generate xAI audio.")
+        else:
+            print("Error: xAI audio file not found after generation.")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "xAI audio file not found after generation"
+            }))
     elif TTS_PROVIDER == 'sparktts':
         if sparktts_model is not None:
             try:
@@ -499,6 +526,80 @@ async def fetch_pcm_audio(model: str, voice: str, input_text: str, api_url: str,
 
     return pcm_data.getvalue()
 
+def xai_tts_file_extension():
+    codec = XAI_TTS_FORMAT.lower()
+    return "wav" if codec == "wav" else "mp3"
+
+def build_xai_tts_payload(text):
+    payload = {
+        "text": text,
+        "voice_id": XAI_TTS_VOICE,
+        "language": XAI_TTS_LANGUAGE,
+    }
+
+    codec = XAI_TTS_FORMAT.lower()
+    if codec:
+        output_format = {"codec": codec}
+        if XAI_TTS_SAMPLE_RATE:
+            output_format["sample_rate"] = int(XAI_TTS_SAMPLE_RATE)
+        if XAI_TTS_BIT_RATE and codec == "mp3":
+            output_format["bit_rate"] = int(XAI_TTS_BIT_RATE)
+        payload["output_format"] = output_format
+
+    return payload
+
+async def xai_text_to_speech(text, output_path):
+    if not XAI_API_KEY:
+        print("XAI_API_KEY is not set. Cannot use xAI TTS.")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "XAI_API_KEY is not set"
+        }))
+        return False
+
+    headers = {
+        "Authorization": f"Bearer {XAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                XAI_TTS_URL,
+                headers=headers,
+                json=build_xai_tts_payload(text),
+                timeout=timeout,
+            ) as response:
+                if response.status == 200:
+                    with open(output_path, "wb") as f:
+                        async for chunk in response.content.iter_chunked(8192):
+                            f.write(chunk)
+                    print("Audio generated successfully with xAI TTS.")
+                    return True
+
+                error_text = await response.text()
+                print(f"Error generating xAI speech (HTTP {response.status}): {error_text}")
+                await send_message_to_clients(json.dumps({
+                    "action": "error",
+                    "message": f"xAI TTS error: {response.status}"
+                }))
+                return False
+    except asyncio.TimeoutError:
+        print("xAI TTS request timed out. Try a shorter text or check your connection.")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "xAI TTS request timed out. Text may be too long."
+        }))
+        return False
+    except Exception as e:
+        print(f"Error during xAI TTS generation: {str(e)}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": f"xAI TTS error: {str(e)}"
+        }))
+        return False
+
 async def elevenlabs_text_to_speech(text, output_path):
     CHUNK_SIZE = 1024
     tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_TTS_VOICE}/stream"
@@ -608,7 +709,10 @@ def sanitize_response(response):
     response = re.sub(r'<think>[\s\S]*?<\/think>', '', response)
     # Remove asterisks and other formatting
     response = re.sub(r'\*.*?\*', '', response)
-    response = re.sub(r'[^\w\s,.\'!?]', '', response)
+    if TTS_PROVIDER == 'xai':
+        response = re.sub(r'[^\w\s,.\'!?\[\]<>\/-]', '', response)
+    else:
+        response = re.sub(r'[^\w\s,.\'!?]', '', response)
     # Trim any whitespace
     return response.strip()
 
@@ -1091,6 +1195,9 @@ async def execute_once(question_prompt):
     elif TTS_PROVIDER == 'kokoro':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for Kokoro
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for Kokoro
+    elif TTS_PROVIDER == 'xai':
+        temp_audio_path = os.path.join(output_dir, f"temp_audio.{xai_tts_file_extension()}")  # Use configured xAI format
+        max_char_length = MAX_CHAR_LENGTH  # REST xAI supports up to 15,000 chars; keep app-level limit
     elif TTS_PROVIDER == 'openai':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for OpenAI
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
@@ -1273,6 +1380,12 @@ async def generate_speech(text, temp_audio_path):
     
     elif TTS_PROVIDER == 'kokoro':
         await kokoro_text_to_speech(text, temp_audio_path)
+
+    elif TTS_PROVIDER == 'xai':
+        await xai_text_to_speech(text, temp_audio_path)
+
+    elif TTS_PROVIDER == 'typecast':
+        await typecast_text_to_speech(text, temp_audio_path)
 
     else:  # Spark-TTS
         if sparktts_model is not None:

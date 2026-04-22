@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     const elevenLabsVoiceSelect = document.getElementById('elevenlabs-voice-select');
     const kokoroVoiceSelect = document.getElementById('kokoro-voice-select');
+    const xaiTTSVoiceSelect = document.getElementById('xai-tts-voice-select');
     const typecastVoiceSelect = document.getElementById('typecast-voice-select');
     const openaiModelSelect = document.getElementById('openai-model-select');
     const ollamaModelSelect = document.getElementById('ollama-model-select');
@@ -484,6 +485,11 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: selectedVoice }));
     }
 
+    function setXAITTSVoice() {
+        const selectedVoice = document.getElementById('xai-tts-voice-select').value;
+        websocket.send(JSON.stringify({ action: "set_xai_tts_voice", voice: selectedVoice }));
+    }
+
     function setTypecastVoice() {
         const selectedVoice = document.getElementById('typecast-voice-select').value;
         websocket.send(JSON.stringify({ action: "set_typecast_voice", voice: selectedVoice }));
@@ -591,6 +597,7 @@ document.addEventListener("DOMContentLoaded", function() {
     voiceSpeedSelect.addEventListener('change', setVoiceSpeed);
     elevenLabsVoiceSelect.addEventListener('change', setElevenLabsVoice);
     kokoroVoiceSelect.addEventListener('change', setKokoroVoice);
+    xaiTTSVoiceSelect.addEventListener('change', setXAITTSVoice);
     typecastVoiceSelect.addEventListener('change', setTypecastVoice);
 
     transcriptionSelect.addEventListener('change', function() {

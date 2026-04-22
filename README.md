@@ -152,6 +152,22 @@ To use Kokoro TTS:
 
 Kokoro TTS operates locally on your machine or local network, requiring no API key or internet connection once installed. The server supports GPU acceleration for faster processing if you have compatible NVIDIA hardware.
 
+### xAI Grok TTS - Optional
+
+xAI Grok TTS is available as a standalone text-to-speech API and can be used with any chat model provider in the dashboard or CLI.
+
+To use xAI TTS:
+
+1. Get an API key from xAI and set it in `.env`
+2. Configure:
+   - `TTS_PROVIDER=xai`
+   - `XAI_API_KEY=your_api_key_here`
+   - `XAI_TTS_VOICE=eve` (options: `eve`, `ara`, `rex`, `sal`, `leo`)
+   - `XAI_TTS_LANGUAGE=en` (use `auto` for language detection)
+   - `XAI_TTS_FORMAT=mp3` (use `mp3` or `wav` for dashboard/CLI playback)
+
+xAI speech tags such as `[laugh]`, `[pause]`, `<whisper>...</whisper>`, and `<slow>...</slow>` are preserved when `TTS_PROVIDER=xai`.
+
 ### Typecast TTS - Optional
 
 [Typecast](https://typecast.ai) is a cloud-based TTS service with emotion and prosody control.

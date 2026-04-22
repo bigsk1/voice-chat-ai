@@ -38,6 +38,12 @@ OPENAI_MODEL_TTS = os.getenv('OPENAI_MODEL_TTS', 'gpt-4o-mini-tts')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
 XAI_MODEL = os.getenv('XAI_MODEL', 'grok-4-1-fast-non-reasoning')
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
+XAI_TTS_URL = os.getenv('XAI_TTS_URL', 'https://api.x.ai/v1/tts')
+XAI_TTS_VOICE = os.getenv('XAI_TTS_VOICE', 'eve')
+XAI_TTS_LANGUAGE = os.getenv('XAI_TTS_LANGUAGE', 'en')
+XAI_TTS_FORMAT = os.getenv('XAI_TTS_FORMAT', 'mp3')
+XAI_TTS_SAMPLE_RATE = os.getenv('XAI_TTS_SAMPLE_RATE')
+XAI_TTS_BIT_RATE = os.getenv('XAI_TTS_BIT_RATE')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
@@ -214,7 +220,7 @@ print(f"Model provider: {MODEL_PROVIDER}")
 print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
-print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else TYPECAST_TTS_MODEL if TTS_PROVIDER == 'typecast' else 'Unknown'}")
+print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else 'xai-grok-tts' if TTS_PROVIDER == 'xai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else TYPECAST_TTS_MODEL if TTS_PROVIDER == 'typecast' else 'Unknown'}")
 print("To stop chatting say Quit or Exit. One moment please loading...")
 
 # Function to synthesize speech
@@ -247,6 +253,17 @@ def process_and_play(prompt, audio_file_pth):
         if os.path.exists(output_path):
             print("Playing generated audio...")
             play_audio(output_path)
+        else:
+            print("Error: Audio file not found.")
+    elif TTS_PROVIDER == 'xai':
+        output_path = os.path.join(output_dir, f"output.{xai_tts_file_extension()}")
+        success = xai_text_to_speech(prompt, output_path)
+        print(f"Generated audio file at: {output_path}")
+        if success and os.path.exists(output_path):
+            print("Playing generated audio...")
+            play_audio(output_path)
+        elif not success:
+            print("Failed to generate xAI audio.")
         else:
             print("Error: Audio file not found.")
     elif TTS_PROVIDER == 'sparktts':
@@ -357,6 +374,63 @@ def openai_text_to_speech(prompt, output_path):
             play_audio(output_path)
         except requests.HTTPError as e:
             print(f"Error during OpenAI TTS: {e}")
+
+def xai_tts_file_extension():
+    codec = XAI_TTS_FORMAT.lower()
+    return "wav" if codec == "wav" else "mp3"
+
+def build_xai_tts_payload(text):
+    payload = {
+        "text": text,
+        "voice_id": XAI_TTS_VOICE,
+        "language": XAI_TTS_LANGUAGE,
+    }
+
+    codec = XAI_TTS_FORMAT.lower()
+    if codec:
+        output_format = {"codec": codec}
+        if XAI_TTS_SAMPLE_RATE:
+            output_format["sample_rate"] = int(XAI_TTS_SAMPLE_RATE)
+        if XAI_TTS_BIT_RATE and codec == "mp3":
+            output_format["bit_rate"] = int(XAI_TTS_BIT_RATE)
+        payload["output_format"] = output_format
+
+    return payload
+
+def xai_text_to_speech(text, output_path):
+    """Convert text to speech using xAI Grok TTS."""
+    if not XAI_API_KEY:
+        print("XAI_API_KEY is not set. Cannot use xAI TTS.")
+        return False
+
+    headers = {
+        "Authorization": f"Bearer {XAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        response = requests.post(
+            XAI_TTS_URL,
+            headers=headers,
+            json=build_xai_tts_payload(text),
+            stream=True,
+            timeout=60,
+        )
+        response.raise_for_status()
+
+        with open(output_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        print("Audio generated successfully with xAI TTS.")
+        return True
+    except requests.HTTPError as e:
+        error_text = e.response.text if e.response is not None else str(e)
+        print(f"Error during xAI TTS: {error_text}")
+        return False
+    except requests.RequestException as e:
+        print(f"Error during xAI TTS: {e}")
+        return False
 
 def elevenlabs_text_to_speech(text, output_path):
     CHUNK_SIZE = 1024
@@ -469,7 +543,10 @@ def typecast_text_to_speech(text, output_path):
 def sanitize_response(response):
     # Remove asterisks and emojis
     response = re.sub(r'\*.*?\*', '', response)
-    response = re.sub(r'[^\w\s,.\'!?]', '', response)
+    if TTS_PROVIDER == 'xai':
+        response = re.sub(r'[^\w\s,.\'!?\[\]<>\/-]', '', response)
+    else:
+        response = re.sub(r'[^\w\s,.\'!?]', '', response)
     return response.strip()
 
 def analyze_mood(user_input):
@@ -883,6 +960,8 @@ def execute_once(question_prompt):
     # Determine the audio file format based on the TTS provider
     if TTS_PROVIDER == 'elevenlabs':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.mp3')
+    elif TTS_PROVIDER == 'xai':
+        temp_audio_path = os.path.join(output_dir, f"temp_audio.{xai_tts_file_extension()}")
     else:
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')
 
@@ -1039,6 +1118,8 @@ def generate_speech(text, temp_audio_path):
         elevenlabs_text_to_speech(text, temp_audio_path)
     elif TTS_PROVIDER == 'kokoro':
         kokoro_text_to_speech(text, temp_audio_path)
+    elif TTS_PROVIDER == 'xai':
+        xai_text_to_speech(text, temp_audio_path)
     elif TTS_PROVIDER == 'typecast':
         typecast_text_to_speech(text, temp_audio_path)
     else:  # Spark-TTS
