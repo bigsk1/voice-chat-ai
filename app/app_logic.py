@@ -7,6 +7,8 @@ from .app import (
     analyze_mood,
     chatgpt_streamed,
     sanitize_response,
+    strip_xai_speech_tags,
+    xai_speech_tag_prompt,
     process_and_play,
     execute_screenshot_and_analyze,
     open_file,
@@ -101,16 +103,20 @@ async def process_text(user_input):
     base_system_message = open_file(character_prompt_file)
     mood = analyze_mood(user_input)
     mood_prompt = adjust_prompt(mood)
+    tag_prompt = xai_speech_tag_prompt()
+    if tag_prompt:
+        mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
 
     chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
     sanitized_response = sanitize_response(chatbot_response)
+    display_response = strip_xai_speech_tags(chatbot_response)
     # Limit the response length to the MAX_CHAR_LENGTH for audio generation
     if len(sanitized_response) > MAX_CHAR_LENGTH:
         sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
     prompt2 = sanitized_response
     await process_and_play(prompt2, character_audio_file)
 
-    conversation_history.append({"role": "assistant", "content": chatbot_response})
+    conversation_history.append({"role": "assistant", "content": display_response})
     
     # Check if this is a story or game character
     is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
@@ -124,7 +130,7 @@ async def process_text(user_input):
         save_conversation_history(conversation_history)
         print(f"Saved global history for {current_character}")
         
-    return chatbot_response
+    return display_response
 
 quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit"]
 screenshot_phrases = [

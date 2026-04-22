@@ -549,6 +549,40 @@ def sanitize_response(response):
         response = re.sub(r'[^\w\s,.\'!?]', '', response)
     return response.strip()
 
+def is_xai_tts_enabled():
+    return TTS_PROVIDER == 'xai'
+
+XAI_INLINE_SPEECH_TAG_PATTERN = re.compile(
+    r'\[(?:pause|long-pause|hum-tune|laugh|chuckle|giggle|cry|tsk|tongue-click|lip-smack|breath|inhale|exhale|sigh)\]',
+    re.IGNORECASE
+)
+XAI_WRAPPING_SPEECH_TAG_PATTERN = re.compile(
+    r'</?(?:soft|whisper|loud|build-intensity|decrease-intensity|higher-pitch|lower-pitch|slow|fast|sing-song|singing|laugh-speak|emphasis)>',
+    re.IGNORECASE
+)
+
+def strip_xai_speech_tags(text):
+    if not is_xai_tts_enabled():
+        return text
+
+    text = XAI_INLINE_SPEECH_TAG_PATTERN.sub('', text)
+    text = XAI_WRAPPING_SPEECH_TAG_PATTERN.sub('', text)
+    return re.sub(r'\s{2,}', ' ', text).strip()
+
+def xai_speech_tag_prompt():
+    if not is_xai_tts_enabled():
+        return ""
+
+    return """
+When generating the assistant's response, you may include xAI Grok TTS speech tags for natural delivery.
+Use them sparingly and only when they improve emotion, pacing, or character performance.
+Inline tags go at the moment the sound should happen, for example: "That was unexpected. [laugh] I did not see that coming."
+Wrapping tags must wrap complete phrases, for example: "<whisper>This part is a secret.</whisper> Then continue normally."
+Useful inline tags: [pause], [long-pause], [laugh], [chuckle], [giggle], [sigh], [breath], [inhale], [exhale].
+Useful wrapping tags: <whisper>, <soft>, <loud>, <slow>, <fast>, <higher-pitch>, <lower-pitch>, <emphasis>, <laugh-speak>.
+Do not stack many tags together. Do not explain the tags. Do not use tags unless the active TTS provider is xAI.
+""".strip()
+
 def analyze_mood(user_input):
     analysis = TextBlob(user_input)
     polarity = analysis.sentiment.polarity
@@ -784,13 +818,15 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                         if '\n' in line_buffer:
                             lines = line_buffer.split('\n')
                             for line in lines[:-1]:
-                                print(NEON_GREEN + line + RESET_COLOR)
+                                if not is_xai_tts_enabled():
+                                    print(NEON_GREEN + line + RESET_COLOR)
                                 full_response += line + '\n'
                             line_buffer = lines[-1]
                 except json.JSONDecodeError:
                     continue
         if line_buffer:
-            print(NEON_GREEN + line_buffer + RESET_COLOR)
+            if not is_xai_tts_enabled():
+                print(NEON_GREEN + line_buffer + RESET_COLOR)
             full_response += line_buffer
         return full_response
     
@@ -822,7 +858,8 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                     if delta_content:
                         # Clean the weird characters before printing
                         delta_content = delta_content.replace('â\x80\x99', "'")
-                        print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
+                        if not is_xai_tts_enabled():
+                            print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
                         full_response += delta_content
                 except json.JSONDecodeError:
                     continue
@@ -868,7 +905,8 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                     if event.type == "content_block_delta":
                         delta_content = event.delta.text
                         if delta_content:
-                            print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
+                            if not is_xai_tts_enabled():
+                                print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
                             full_response += delta_content
             
             print("\nAnthropic stream complete.")
@@ -904,7 +942,8 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                     chunk = json.loads(line)
                     delta_content = chunk['choices'][0]['delta'].get('content', '')
                     if delta_content:
-                        print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
+                        if not is_xai_tts_enabled():
+                            print(NEON_GREEN + delta_content + RESET_COLOR, end='', flush=True)
                         full_response += delta_content
                 except json.JSONDecodeError:
                     continue
@@ -1407,11 +1446,17 @@ def user_chatbot_conversation():
             
             mood = analyze_mood(user_input)
             mood_prompt = adjust_prompt(mood)
+            tag_prompt = xai_speech_tag_prompt()
+            if tag_prompt:
+                mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
             
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
-            conversation_history.append({"role": "assistant", "content": chatbot_response})
             sanitized_response = sanitize_response(chatbot_response)
+            display_response = strip_xai_speech_tags(chatbot_response)
+            if is_xai_tts_enabled():
+                print(NEON_GREEN + display_response + RESET_COLOR)
+            conversation_history.append({"role": "assistant", "content": display_response})
             if len(sanitized_response) > MAX_CHAR_LENGTH:  # Limit response length for audio generation
                 sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
             prompt2 = sanitized_response

@@ -716,6 +716,40 @@ def sanitize_response(response):
     # Trim any whitespace
     return response.strip()
 
+def is_xai_tts_enabled():
+    return TTS_PROVIDER == 'xai'
+
+XAI_INLINE_SPEECH_TAG_PATTERN = re.compile(
+    r'\[(?:pause|long-pause|hum-tune|laugh|chuckle|giggle|cry|tsk|tongue-click|lip-smack|breath|inhale|exhale|sigh)\]',
+    re.IGNORECASE
+)
+XAI_WRAPPING_SPEECH_TAG_PATTERN = re.compile(
+    r'</?(?:soft|whisper|loud|build-intensity|decrease-intensity|higher-pitch|lower-pitch|slow|fast|sing-song|singing|laugh-speak|emphasis)>',
+    re.IGNORECASE
+)
+
+def strip_xai_speech_tags(text):
+    if not is_xai_tts_enabled():
+        return text
+
+    text = XAI_INLINE_SPEECH_TAG_PATTERN.sub('', text)
+    text = XAI_WRAPPING_SPEECH_TAG_PATTERN.sub('', text)
+    return re.sub(r'\s{2,}', ' ', text).strip()
+
+def xai_speech_tag_prompt():
+    if not is_xai_tts_enabled():
+        return ""
+
+    return """
+When generating the assistant's response, you may include xAI Grok TTS speech tags for natural delivery.
+Use them sparingly and only when they improve emotion, pacing, or character performance.
+Inline tags go at the moment the sound should happen, for example: "That was unexpected. [laugh] I did not see that coming."
+Wrapping tags must wrap complete phrases, for example: "<whisper>This part is a secret.</whisper> Then continue normally."
+Useful inline tags: [pause], [long-pause], [laugh], [chuckle], [giggle], [sigh], [breath], [inhale], [exhale].
+Useful wrapping tags: <whisper>, <soft>, <loud>, <slow>, <fast>, <higher-pitch>, <lower-pitch>, <emphasis>, <laugh-speak>.
+Do not stack many tags together. Do not explain the tags. Do not use tags unless the active TTS provider is xAI.
+""".strip()
+
 def analyze_mood(user_input):
     analysis = TextBlob(user_input)
     polarity = analysis.sentiment.polarity
@@ -1583,11 +1617,16 @@ async def user_chatbot_conversation():
                 continue
             
             mood = analyze_mood(user_input)
+            mood_prompt = adjust_prompt(mood)
+            tag_prompt = xai_speech_tag_prompt()
+            if tag_prompt:
+                mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
             
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
-            chatbot_response = chatgpt_streamed(user_input, base_system_message, mood, conversation_history)
-            conversation_history.append({"role": "assistant", "content": chatbot_response})
+            chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
             sanitized_response = sanitize_response(chatbot_response)
+            display_response = strip_xai_speech_tags(chatbot_response)
+            conversation_history.append({"role": "assistant", "content": display_response})
             if len(sanitized_response) > 400:
                 sanitized_response = sanitized_response[:400] + "..."
             prompt2 = sanitized_response
