@@ -16,6 +16,7 @@ from .app import (
     request_audio_playback_stop,
     execute_screenshot_and_analyze,
     open_file,
+    render_prompt_template,
     init_ollama_model,
     init_openai_model,
     init_xai_model,
@@ -106,7 +107,7 @@ async def process_text(user_input):
     character_prompt_file = os.path.join(character_folder, f"{current_character}.txt")
     character_audio_file = os.path.join(character_folder, f"{current_character}.wav")
 
-    base_system_message = open_file(character_prompt_file)
+    base_system_message = render_prompt_template(open_file(character_prompt_file))
     mood = analyze_mood(user_input)
     mood_prompt = adjust_prompt(mood)
     tag_prompt = xai_speech_tag_prompt()

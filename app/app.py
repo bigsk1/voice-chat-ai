@@ -18,6 +18,7 @@ from pathlib import Path
 import anthropic
 import re
 import io
+from datetime import datetime
 from pydub import AudioSegment
 from .shared import clients, get_current_character
 
@@ -292,6 +293,22 @@ if TTS_PROVIDER == "elevenlabs":
 def open_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as infile:
         return infile.read()
+
+# Substitute dynamic template variables into a character prompt.
+# Supported placeholders: {current_date_time}, {current_date}, {current_time},
+# {current_weekday}, {current_iso}. Harmless no-op if none are present.
+def render_prompt_template(template):
+    if not template:
+        return template
+    now = datetime.now()
+    return (
+        template
+        .replace("{current_date_time}", now.strftime("%A, %B %d, %Y at %I:%M %p"))
+        .replace("{current_date}", now.strftime("%A, %B %d, %Y"))
+        .replace("{current_time}", now.strftime("%I:%M %p"))
+        .replace("{current_weekday}", now.strftime("%A"))
+        .replace("{current_iso}", now.strftime("%Y-%m-%dT%H:%M:%S"))
+    )
 
 # Function to play audio using PyAudio
 async def play_audio(file_path):
@@ -1718,8 +1735,8 @@ async def user_chatbot_conversation():
     # Debug info about history state
     print(f"Starting conversation with character {current_character}, history size: {len(conversation_history)}")
     
-    base_system_message = open_file(character_prompt_file)
-    
+    base_system_message_template = open_file(character_prompt_file)
+
     quit_phrases = ["quit", "Quit", "Quit.", "Exit.", "exit", "Exit"]
     screenshot_phrases = [
         "what's on my screen", 
@@ -1758,6 +1775,7 @@ async def user_chatbot_conversation():
                 mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
             
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
+            base_system_message = render_prompt_template(base_system_message_template)
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
             sanitized_response = sanitize_response(chatbot_response)
             display_response = strip_xai_speech_tags(chatbot_response)

@@ -7,6 +7,7 @@ from .shared import clients, conversation_history, is_client_active, set_client_
 from .app_logic import (
     save_conversation_history,
     open_file,
+    render_prompt_template,
     analyze_mood,
     sanitize_response,
     characters_folder,
@@ -511,7 +512,7 @@ async def enhanced_conversation_loop():
         character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
         # character_audio_file = os.path.join(characters_folder, character_name, f"{character_name}.wav")
         
-        base_system_message = open_file(character_prompt_file)
+        base_system_message = render_prompt_template(open_file(character_prompt_file))
         
         # Don't automatically show a greeting message
         # Instead, show character selection confirmation similar to main page
