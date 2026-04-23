@@ -10,6 +10,7 @@ from .app_logic import (
     render_prompt_template,
     analyze_mood,
     sanitize_response,
+    apply_tts_filter,
     characters_folder,
     load_character_specific_history,
     save_character_specific_history,
@@ -601,13 +602,19 @@ async def enhanced_conversation_loop():
                     local_conversation_history[:-1] if len(local_conversation_history) > 1 else None
                 )
                 
-                # Clean up the response
-                ai_response = sanitize_response(ai_response)
-                
+                # Keep the raw response for conversation history / UI; build a
+                # separate TTS-bound string that runs through the per-character
+                # tts_filter.json (if any) and then sanitize_response. This way
+                # structured lines like SCENE CLOCK / ARRIVAL remain in LLM
+                # context for continuity but are skipped during speech.
+                ai_response_raw = ai_response
+                tts_source = apply_tts_filter(ai_response_raw, character_name)
+                ai_response_tts = sanitize_response(tts_source)
+
                 # Don't display the AI response in the UI yet - will be displayed after audio finishes
-                
-                # Add to conversation history
-                local_conversation_history.append({"role": "assistant", "content": ai_response})
+
+                # Add to conversation history (use the display/raw form)
+                local_conversation_history.append({"role": "assistant", "content": ai_response_raw})
                 
                 # Manage conversation history size - keep last 30 messages for global history and 100 for stories and games
                 if character_name.startswith("story_") or character_name.startswith("game_"):
@@ -623,12 +630,12 @@ async def enhanced_conversation_loop():
                 # Save history based on character type
                 await save_history()
                 
-                # Convert text to speech and play audio
-                await enhanced_text_to_speech(ai_response, detected_mood)
-                
-                # Now that audio is finished, display the message in the UI
+                # Convert text to speech and play audio (uses filtered+sanitized text)
+                await enhanced_text_to_speech(ai_response_tts, detected_mood)
+
+                # Now that audio is finished, display the full (unfiltered) message in the UI
                 await send_message_to_enhanced_clients({
-                    "message": ai_response
+                    "message": ai_response_raw
                 })
                 
                 # Remove the "processing" animation once response is complete

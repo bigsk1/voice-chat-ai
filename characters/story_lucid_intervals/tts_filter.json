@@ -1,0 +1,21 @@
+{
+    "_comment": "Per-character TTS filter for story_lucid_intervals. Silences the LUCID INTERVAL OPENS timestamp header and the QUICK STATUS block so Nora's inner voice flows uninterrupted. The LLM still sees everything in conversation_history.txt, so time-gap math and state-tracking remain intact. See docs/dynamic_prompts_and_tts_filter.md.",
+
+    "strip_line_patterns": [
+        "^\\s*LUCID INTERVAL OPENS\\b",
+        "^\\s*QUICK STATUS\\b",
+        "^\\s*-\\s+(Body Condition|Mental Clarity|Window Energy|Intel|Trust|Signals|Case Heat)\\b"
+    ],
+
+    "strip_patterns": [],
+
+    "replace": [
+        { "pattern": "\\bIV\\b",      "with": "I V" },
+        { "pattern": "\\bOHSU\\b",    "with": "O H S U" },
+        { "pattern": "\\bPT\\b",      "with": "P T" },
+        { "pattern": "\\bICU\\b",     "with": "I C U" },
+        { "pattern": "\\bER\\b",      "with": "E R" },
+        { "pattern": "\\bPD\\b",      "with": "Police Department" },
+        { "pattern": "\\bMija\\b",    "with": "mee-ha" }
+    ]
+}

@@ -1,0 +1,20 @@
+{
+    "_comment": "Per-character TTS filter. Anything here is stripped from the text sent to TTS, but the full original text is still stored in conversation_history.txt and shown in the WebUI / log. strip_line_patterns: regexes matched against each LINE; matching lines are dropped entirely. strip_patterns: regexes removed as substrings. replace: pronunciation-normalization pairs (e.g. spelling out acronyms).",
+
+    "strip_line_patterns": [
+        "^\\s*SCENE CLOCK\\b",
+        "^\\s*ARRIVAL\\b"
+    ],
+
+    "strip_patterns": [],
+
+    "replace": [
+        { "pattern": "\\bEOD\\b", "with": "E O D" },
+        { "pattern": "\\bK9\\b",  "with": "K-9" },
+        { "pattern": "\\bIED\\b", "with": "I E D" },
+        { "pattern": "\\bUSMC\\b", "with": "U S M C" },
+        { "pattern": "\\bANFO\\b", "with": "an-foe" },
+        { "pattern": "\\bFD\\b",  "with": "Fire Department" },
+        { "pattern": "\\bPD\\b",  "with": "Police Department" }
+    ]
+}

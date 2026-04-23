@@ -549,13 +549,14 @@ The application includes over 15 different game types where AI characters act as
 
 ### Story Adventures
 
-Enjoy immersive storytelling experiences with AI-driven narratives across various settings:
+Immersive AI-driven narratives across wildly different settings and genres — gritty thrillers, cosmic horror, cyberpunk noir, classic survival. A few highlights:
 
-- **Noir Detective**: Solve mysteries in a gritty urban landscape
-- **Space Station**: Navigate challenges on an interstellar vessel
-- **Oregon Trail**: Experience frontier survival adventures
-- **Wilderness**: Explore untamed natural environments
-- **Haunted Mansion**: Brave supernatural challenges in a spooky setting
+- **Bomb Threat: Last Hand**: Real-time EOD defusal — the bomb clock is locked to your wall clock
+- **Lucid Intervals**: Journalist trapped in a coma; stop playing for a week and she stays under for a week
+- **Flux Awakening**: Matrix-inspired hacker thriller in Neo-Seattle — follow the green frog
+- **The Dirge Train**: 1920s graverobber stowed away on a ghost funeral train to the afterlife
+- **Neon Requiem**: Detective jacked into a murdered trillionaire's dying mind for 72 subjective hours
+- **Oregon Trail**: The frontier wagon-party survival classic
 
 [View full stories documentation](docs/stories.md) for all available story adventures.
 

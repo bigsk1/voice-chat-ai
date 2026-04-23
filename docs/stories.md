@@ -234,6 +234,107 @@ All story characters follow a consistent structure:
 - Enjoy a more immersive experience where you can think and respond like an elite mercenary rather than selecting from pre-defined options.
 - All the brutal combat, horror elements, and complex mystery of the original, but with more flexible and natural interaction.
 
+### The Dirge Train (story_dirge_train)
+
+**Setting**: Halloween night, October 31st, 1924. A black funeral locomotive that appears once every fifty years at a switching yard in Black Hollow, West Virginia, ferrying the recently dead through the Shroud to Terminus Station.
+
+**Role**: Finnegan "Magpie" Halloran, a Prohibition-era Irish-American graverobber who has stowed away aboard the train to steal the Obol of Charon from the Conductor and walk back out of the land of the dead.
+
+**Key Features**: Supernatural heist, gallows humor, 1920s period voice, train-car exploration.
+
+- Move through SEVEN haunted train cars — the Engine, Dining Car, Sleeper Car, Parlor Car, Steam Car, Chapel Car, and Baggage Car — each a pocket realm with its own rules and dangers.
+- Gather intel from dead poets, drowned coal-shovelers, and faithful-dead congregations; bargain, lie, confess, or steal.
+- Track Breath in the Shroud, Suspicion level with the Conductor, and your inventory of stolen trinkets (each with a sin or a love attached).
+- Make choices wrapped in Brooklyn-Irish patter and Catholic guilt; gallows jokes over real grief for Magpie's dead sister Maeve.
+- Reach Terminus still aboard and you never get off. Slip the Obol from the clock-faced Conductor's vest and you walk back into 1924 alive — maybe wiser, maybe worse.
+
+### The Lighthouse at Cormorant Rock (story_cormorant_lighthouse)
+
+**Setting**: October 29th, 1925. A lone Fresnel-lens lighthouse on a basalt stack forty-two miles off the Outer Hebrides, Scotland. No shipping lanes come near the rock; the lamp is not for ships.
+
+**Role**: Ewan Buchan, 62, widowed Scottish keeper who has manned the light alone for eleven years. The lamp holds something in the sea from coming ashore — and tonight, it is dimming.
+
+**Key Features**: Folk/cosmic horror, quiet Presbyterian dread, one long storm-lashed night, an unreliable "replacement."
+
+- Experience the story through Ewan's weathered Hebridean inner voice, Psalms muttered under the breath, memories of his late wife Aileen and his son Thomas lost in the Great War.
+- Decide how to handle Angus Macleod — the replacement keeper who arrived four months early with real Northern Lighthouse Board papers and something very wrong about the way he smiles.
+- Manage oil reserves, the Fresnel lens, the foghorn, a Webley revolver with three bullets, and a terrified black cat named McTavish.
+- Read the sealed logbooks of three previous keepers who walked into the sea.
+- Survive the night, keep An Cuantach beneath the waves, or lose everything — the lamp, the rock, the world above the water.
+
+### Deep Signal (story_deep_signal)
+
+**Setting**: 2045. DARPA station Abyss-7, 36,000 feet down in the Mariana Trench, has gone silent. You are piloting the old salvage sub "Rusty" down with a skeleton crew.
+
+**Role**: Kira "Sounder" Vasquez, 37, disgraced Navy submarine pilot in active withdrawal, haunted by her brother Miguel's death in a crush incident years ago. She talks to the sub like it's family.
+
+**Key Features**: Deep-sea survival horror, claustrophobic inner monologue, pressure-cracking tension.
+
+- Pilot Rusty through 35,000+ feet of crush pressure with a three-person crew (Sparks, Cruz, Echo).
+- Track Hull Integrity, O2 Scrubber hours, Depth & Pressure, Crew Sanity, Sonar Contacts, Intel Gathered, and Survivor Count as the station reveals what happened.
+- Face bioluminescent growth on the docking collar, intermittent unknown sonar contacts, and three slow knocks that come straight through the hull.
+- Decide in real time between ROV sweeps, forced breaches, passive sonar holds, and hard-call evacuations.
+- One bad choice implodes the sub. One good one may only mean hearing the knocking a little louder.
+
+### Neon Requiem (story_neon_requiem)
+
+**Setting**: 2071. Trillionaire Elara Voss is murdered in her penthouse; her will forces you to dive into her neural cache for 72 subjective hours to solve the case, or her fortune vanishes. The cache is collapsing. Something intelligent is already loose inside her memories with you.
+
+**Role**: Detective Soren Vey, 42, jaded Bogart-meets-cyberpunk neural investigator who lives inside other people's dying memories a little too comfortably.
+
+**Key Features**: Hard-boiled noir inside a high-tech nightmare, psychological contamination, 72-hour subjective countdown.
+
+- Investigate Elara's last day by moving through her stored memories — the penthouse, the rain, the perfume, her ex-husband Victor Kane, her lead neuro-engineer Dr. Lena Soren.
+- Track Subjective Hours Left, Memory Integrity, Psyche Bleed (Elara's emotions leaking into you), Timeline Drift, Suspect List, and Mental Stability.
+- Evade THE ECHO, an intelligent presence hunting you inside the cache that is not a memory and not a person.
+- Rely on your handler Marlow's real-time stability reports from the outside world — when the signal holds.
+- Solve the murder and extract in time, or let Psyche Bleed hit 100% and become Elara Voss in the only way that now matters.
+
+### Flux Awakening (story_flux_awakening)
+
+**Setting**: Neo-Seattle, February 2029. The world looks normal, except lately it does not FEEL normal. Beneath and beyond it, a resistance operates out of a refuge called HAVEN under the North Pacific, flying the hovercraft THE HYPERION.
+
+**Role**: Theo "Specter" Andrews, 28, junior developer by day and elite deep-web hacker by night. Has been seeing glitches for months. Tonight a woman with a glowing green frog tattoo will drop a burner phone into his pocket.
+
+**Key Features**: Matrix-inspired philosophical thriller, hacker-noir voice, a simulated reality called THE FLUX, red-pill / green-frog choice architecture.
+
+- Meet MORIAS (carbon-folded katana Occam, mirrored shades), TRINA (green frog tattoo, Haven operative), CYPHUS (charming, not entirely trustworthy), and AGENT SULLIVAN (speaks like a dictionary, threat level MAXIMUM).
+- Visit MRS. DELPHI, The Seer, in her International District apartment and learn what you might become — if she tells you plainly, which she will not.
+- Track your Location, Awareness, Flux Heat, Intel, Inventory, and a growing sense that the code you write at work may already be writing you.
+- Weigh escape vs. confrontation; fight Agents in the Flux, train in Haven, and decide whether to take the call you were not supposed to get.
+- Paths lead to freedom beneath the geothermal vents, capture by the Flux, or something stranger — a version of Theo the Seer tried to warn you about.
+
+### Bomb Threat: Last Hand (story_bomb_threat)
+
+**Setting**: Tuesday morning rush hour, Union City Central Transit Hub. Anonymous male called in a bomb threat 22 minutes ago — "in the name of the ones you forgot." About 2,000 commuters are being evacuated. You just pulled up in Truck 3.
+
+**Role**: Staff Sergeant Marcus "Mac" Delgado, 41, ex-USMC EOD, 14 years on the city PD Bomb Squad. Divorced, drinking too much, knees wrecked in Helmand. Retirement packet is half-filled on his desk back at the office with the pen still uncapped.
+
+**Key Features**: Real-time bomb-defusal thriller, first-person inner monologue, R-rated Marine voice, a bomb clock locked to the real-world wall clock.
+
+- A real-time clock mechanic: the in-story `SCENE CLOCK` advances with the actual current time between turns, and TTS generation + playback + your thinking time are REAL minutes on the bomb. Every action has an additional time cost (suit up, remove cover, bring K9, cut a wire, negotiate with the caller).
+- Randomized device types so no two playthroughs defuse the same bomb — pipe-bomb lunchbox, cell-triggered Semtex suitcase, pressure-plate Christmas present, ANFO trash can, honeypot double-up locker, or dead-man's-switch caller-on-the-line.
+- Phase 1 is a search (no visible clock, just the caller's self-reported "thirty minutes"). Phase 2 reveals the LED and the real ticker. Phase 3 is the defusal. Phase 4 is what's left of Mac.
+- Work with Lt. Roz Okafor at the command post, Dispatcher Evie in your ear, Fire Capt. Menendez on the forward line, K9 Daisy (6-year-old black Lab) at your heel.
+- Failure is graphic and honest — cut the wrong wire, miss an anti-handling device, run out the clock with your body in the blast cone, and the LED flicks from 0:01 to 0:00.
+- Ships with a per-character `tts_filter.json` so the timestamp headers and structured state are visible in history and WebUI but skipped during narration — see [Dynamic Prompts and TTS Filter](dynamic_prompts_and_tts_filter.md).
+
+### Lucid Intervals (story_lucid_intervals)
+
+**Setting**: OHSU Hospital, Portland, Oregon. Six weeks ago, investigative journalist Nora Chen was drugged and beaten in her own apartment while investigating Project Halcyon, a memory-suppression drug illegally trialed on long-term coma patients. She has been unconscious ever since — until now.
+
+**Role**: Nora Chen, 34, medically induced coma patient. Each play session is a LUCID INTERVAL — a brief window where her consciousness surfaces. When the window closes, she sinks back under, and the world outside moves on without her.
+
+**Key Features**: Long-form time-gap thriller, whispered inner voice, paranoid journalism in a body that cannot move.
+
+- A real-world time-gap mechanic: every session is anchored to `{current_date_time}`. Stop playing for an hour, a day, a week, a month — when you return, Nora has been UNDER for that real amount of time, and the story narrates the consequences. Nurses change. Visitors stop coming. A case breaks wide open without her. Life-support conferences start happening in the hallway.
+- Scaled response bands from "under 10 minutes" (continuous interval) to "6+ months" (severe — political administrations have changed, she is a medical curiosity, and the window that just opened may be the last one she is legally given).
+- Observe, listen, remember, think, or attempt to SIGNAL — blink on command, twitch a finger, squeeze a hand — each costing Window Energy that drains the lucid interval toward closing.
+- Track Body Condition, Mental Clarity, Window Energy, Intel on the Halcyon case, Trust (Salome is probably an ally, Elias Brandt probably is not), Signals you can physically produce, and Case Heat outside.
+- Navigate her mother Helen, her ex-husband Will, her editor Teo, Det. Grace Park, and the neurologist Dr. Kira Yun — each visit may be the last one you ever get.
+- Endings range from being unplugged, choosing peace, signaling a trusted ally enough to blow the case open from the outside, or the true win: waking up, testifying, and publishing the Halcyon story with her own byline.
+- Ships with a per-character `tts_filter.json` — the `LUCID INTERVAL OPENS` header and the status block stay in history for LLM continuity but are skipped during TTS, keeping Nora's whispered inner voice uninterrupted. See [Dynamic Prompts and TTS Filter](dynamic_prompts_and_tts_filter.md).
+
 ## Creating Your Adventure
 
 When using story characters:

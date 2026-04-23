@@ -848,6 +848,87 @@ def format_story_response_text(text):
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
+# Per-character TTS filter.
+# Each character folder may contain a tts_filter.json of the form:
+#   {
+#     "strip_line_patterns": ["^SCENE CLOCK\\b", "^ARRIVAL\\b"],
+#     "strip_patterns": ["\\[META:.*?\\]"],
+#     "replace": [{"pattern": "\\bHVAC\\b", "with": "H V A C"}]
+#   }
+# strip_line_patterns: any LINE that matches one of these regexes is dropped
+# from the TTS-bound text (but NOT from conversation history or UI display).
+# strip_patterns: substrings (within or across lines) matching these regexes
+# are removed from the TTS-bound text.
+# replace: pronunciation normalization pairs applied to the TTS-bound text.
+# The filter is a no-op if the file is missing or malformed.
+_TTS_FILTER_CACHE = {}
+
+def load_tts_filter(character_name):
+    if not character_name:
+        return None
+    filter_path = os.path.join(project_dir, 'characters', character_name, 'tts_filter.json')
+    if not os.path.exists(filter_path):
+        return None
+    try:
+        mtime = os.path.getmtime(filter_path)
+    except OSError:
+        return None
+    cached = _TTS_FILTER_CACHE.get(filter_path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    try:
+        with open(filter_path, 'r', encoding='utf-8') as f:
+            raw = json.load(f)
+    except Exception as e:
+        print(f"Warning: failed to load TTS filter for {character_name}: {e}")
+        _TTS_FILTER_CACHE[filter_path] = (mtime, None)
+        return None
+    try:
+        compiled = {
+            'strip_line_patterns': [
+                re.compile(p, re.IGNORECASE)
+                for p in raw.get('strip_line_patterns', [])
+                if isinstance(p, str) and p
+            ],
+            'strip_patterns': [
+                re.compile(p, re.IGNORECASE | re.DOTALL)
+                for p in raw.get('strip_patterns', [])
+                if isinstance(p, str) and p
+            ],
+            'replace': [
+                (re.compile(r['pattern'], re.IGNORECASE), r.get('with', ''))
+                for r in raw.get('replace', [])
+                if isinstance(r, dict) and isinstance(r.get('pattern'), str) and r.get('pattern')
+            ],
+        }
+    except re.error as e:
+        print(f"Warning: invalid regex in tts_filter.json for {character_name}: {e}")
+        _TTS_FILTER_CACHE[filter_path] = (mtime, None)
+        return None
+    _TTS_FILTER_CACHE[filter_path] = (mtime, compiled)
+    return compiled
+
+def apply_tts_filter(text, character_name):
+    if not text or not character_name:
+        return text
+    flt = load_tts_filter(character_name)
+    if not flt:
+        return text
+    out = text
+    if flt['strip_line_patterns']:
+        kept_lines = []
+        for line in out.splitlines():
+            if any(p.search(line) for p in flt['strip_line_patterns']):
+                continue
+            kept_lines.append(line)
+        out = "\n".join(kept_lines)
+    for p in flt['strip_patterns']:
+        out = p.sub('', out)
+    for p, repl in flt['replace']:
+        out = p.sub(repl, out)
+    out = re.sub(r'\n{3,}', '\n\n', out).strip()
+    return out
+
 def is_xai_tts_enabled():
     return TTS_PROVIDER == 'xai'
 
@@ -1777,12 +1858,15 @@ async def user_chatbot_conversation():
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
             base_system_message = render_prompt_template(base_system_message_template)
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
-            sanitized_response = sanitize_response(chatbot_response)
             display_response = strip_xai_speech_tags(chatbot_response)
             is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
             if is_story_character:
                 display_response = format_story_response_text(display_response)
             conversation_history.append({"role": "assistant", "content": display_response})
+            # TTS path: apply per-character tts_filter.json BEFORE sanitize_response
+            # so its regex patterns can still see colons, brackets, etc.
+            tts_source = apply_tts_filter(chatbot_response, current_character)
+            sanitized_response = sanitize_response(tts_source)
             if len(sanitized_response) > 400:
                 sanitized_response = sanitized_response[:400] + "..."
             prompt2 = sanitized_response

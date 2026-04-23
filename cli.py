@@ -577,6 +577,80 @@ def sanitize_response(response):
         response = re.sub(r'[^\w\s,.\'!?]', '', response)
     return response.strip()
 
+# Per-character TTS filter. See app/app.py for full format docs. Schema:
+#   {
+#     "strip_line_patterns": ["^SCENE CLOCK\\b", "^ARRIVAL\\b"],
+#     "strip_patterns": ["\\[META:.*?\\]"],
+#     "replace": [{"pattern": "\\bHVAC\\b", "with": "H V A C"}]
+#   }
+_TTS_FILTER_CACHE = {}
+
+def load_tts_filter(character_name):
+    if not character_name:
+        return None
+    filter_path = os.path.join(project_dir, 'characters', character_name, 'tts_filter.json')
+    if not os.path.exists(filter_path):
+        return None
+    try:
+        mtime = os.path.getmtime(filter_path)
+    except OSError:
+        return None
+    cached = _TTS_FILTER_CACHE.get(filter_path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    try:
+        with open(filter_path, 'r', encoding='utf-8') as f:
+            raw = json.load(f)
+    except Exception as e:
+        print(f"Warning: failed to load TTS filter for {character_name}: {e}")
+        _TTS_FILTER_CACHE[filter_path] = (mtime, None)
+        return None
+    try:
+        compiled = {
+            'strip_line_patterns': [
+                re.compile(p, re.IGNORECASE)
+                for p in raw.get('strip_line_patterns', [])
+                if isinstance(p, str) and p
+            ],
+            'strip_patterns': [
+                re.compile(p, re.IGNORECASE | re.DOTALL)
+                for p in raw.get('strip_patterns', [])
+                if isinstance(p, str) and p
+            ],
+            'replace': [
+                (re.compile(r['pattern'], re.IGNORECASE), r.get('with', ''))
+                for r in raw.get('replace', [])
+                if isinstance(r, dict) and isinstance(r.get('pattern'), str) and r.get('pattern')
+            ],
+        }
+    except re.error as e:
+        print(f"Warning: invalid regex in tts_filter.json for {character_name}: {e}")
+        _TTS_FILTER_CACHE[filter_path] = (mtime, None)
+        return None
+    _TTS_FILTER_CACHE[filter_path] = (mtime, compiled)
+    return compiled
+
+def apply_tts_filter(text, character_name):
+    if not text or not character_name:
+        return text
+    flt = load_tts_filter(character_name)
+    if not flt:
+        return text
+    out = text
+    if flt['strip_line_patterns']:
+        kept_lines = []
+        for line in out.splitlines():
+            if any(p.search(line) for p in flt['strip_line_patterns']):
+                continue
+            kept_lines.append(line)
+        out = "\n".join(kept_lines)
+    for p in flt['strip_patterns']:
+        out = p.sub('', out)
+    for p, repl in flt['replace']:
+        out = p.sub(repl, out)
+    out = re.sub(r'\n{3,}', '\n\n', out).strip()
+    return out
+
 MOJIBAKE_PATTERN = re.compile(r'[\u00c3\u00c2\u00e2][\u0080-\u00ff]?|[\u0080-\u009f]')
 UNICODE_DASH_PATTERN = re.compile(r'\s*[\u2012\u2013\u2014\u2015]\s*')
 RESPONSE_META_BLOCK_PATTERN = re.compile(
@@ -1573,7 +1647,6 @@ def user_chatbot_conversation():
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
             base_system_message = render_prompt_template(base_system_message_template)
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
-            sanitized_response = sanitize_response(chatbot_response)
             display_response = strip_xai_speech_tags(chatbot_response)
             current_character = os.getenv('CHARACTER_NAME', 'wizard')
             is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
@@ -1590,6 +1663,10 @@ def user_chatbot_conversation():
                 if len(conversation_history) > 30:
                     conversation_history = conversation_history[-30:]
                 save_global_conversation_history(conversation_history)
+            # TTS path: apply per-character tts_filter.json BEFORE sanitize_response
+            # so its regex patterns can still see colons, brackets, etc.
+            tts_source = apply_tts_filter(chatbot_response, current_character)
+            sanitized_response = sanitize_response(tts_source)
             if len(sanitized_response) > MAX_CHAR_LENGTH:  # Limit response length for audio generation
                 sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
             prompt2 = sanitized_response

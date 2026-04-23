@@ -17,6 +17,7 @@ from .app import (
     execute_screenshot_and_analyze,
     open_file,
     render_prompt_template,
+    apply_tts_filter,
     init_ollama_model,
     init_openai_model,
     init_xai_model,
@@ -115,12 +116,15 @@ async def process_text(user_input):
         mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
 
     chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
-    sanitized_response = sanitize_response(chatbot_response)
     display_response = strip_xai_speech_tags(chatbot_response)
     is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
     if is_story_character:
         display_response = format_story_response_text(display_response)
-    # Limit the response length to the MAX_CHAR_LENGTH for audio generation
+    # TTS path: apply per-character tts_filter.json BEFORE sanitize_response so
+    # its regex patterns can still see colons, brackets, etc. History and UI
+    # still receive the unfiltered display_response above.
+    tts_source = apply_tts_filter(chatbot_response, current_character)
+    sanitized_response = sanitize_response(tts_source)
     if len(sanitized_response) > MAX_CHAR_LENGTH:
         sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
     prompt2 = sanitized_response
