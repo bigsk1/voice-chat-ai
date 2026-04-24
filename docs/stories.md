@@ -350,7 +350,7 @@ When using story characters:
 - Be specific in your responses to get the most relevant outcomes.
 - Ask about your current status if you're unsure of your situation.
 - If you reach a game over, try a different approach on your next attempt.
-- For the richest experience, use GPT-4o or another advanced model with strong context handling.
+- For the richest experience, use advanced models with strong context handling.
 - Read the AI's descriptions carefully for clues about the best course of action.
 
 ---
