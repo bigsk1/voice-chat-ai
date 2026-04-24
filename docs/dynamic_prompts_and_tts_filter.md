@@ -12,6 +12,10 @@ Before every chat call, the character's `story_<name>.txt` (or `<name>.txt`) pro
 
 This means the LLM sees the *actual current moment* at the start of every single turn — not just on first load.
 
+This substitution is still **opt-in**. A character only sees these literal rendered values if its prompt file actually contains placeholders like `{current_date_time}` or `{current_iso}`.
+
+Important distinction: placeholders by themselves give the model **the current moment**. They do not automatically create reliable **elapsed-time gameplay**. If a story should change because 15 minutes, 18 hours, or 3 days passed between turns, give it a consistent timestamp/header pattern to write into every assistant response.
+
 ### Why it exists
 
 A character prompt that is read from disk once at startup quickly becomes stale. The LLM has no built-in clock. Without the renderer, there is no honest way for a story to ask:
@@ -21,7 +25,11 @@ A character prompt that is read from disk once at startup quickly becomes stale.
 - "You've been in a coma for six weeks since the attack on `{current_date}`."
 - "The bomb was called in 22 minutes before you arrived at `{current_date_time}`."
 
-With the renderer, every assistant turn starts with fresh wall-clock values, and stories can compare the **current** timestamp to a **previous** timestamp they themselves wrote into the conversation history on the prior turn. That diff is real elapsed time — the core mechanic behind `story_lucid_intervals` (coma time-gaps in days/weeks/months) and `story_bomb_threat` (bomb countdown in seconds/minutes).
+With the renderer, every assistant turn starts with fresh wall-clock values.
+
+For `story_` and `game_` characters, the app now also adds a hidden **app-computed timing context** on every turn. That context includes the real current wall-clock time, the last assistant turn time, the elapsed gap, and the frozen arrival/session-start time when applicable. This makes long-gap resume behavior much more reliable after restarts and prevents the model from having to guess elapsed time from transcript text alone.
+
+That real elapsed time mechanic is the core of `story_lucid_intervals` (coma time-gaps in days/weeks/months) and `story_bomb_threat` (bomb countdown in seconds/minutes).
 
 ### Supported placeholders
 
@@ -37,6 +45,73 @@ Use any of these directly in a character `.txt` prompt file. They get substitute
 
 Placeholders that are not present in the file are left alone. Placeholders you do not recognize (typos) are passed through as-is.
 
+### Relative time placeholders
+
+Prompts can also ask for simple offsets from the current time:
+
+```
+{current_time_minus_22_minutes}
+{current_date_time_minus_3_hours}
+{current_iso_plus_1_day}
+```
+
+Format:
+
+```
+{current_<field>_<plus|minus>_<number>_<minutes|hours|days>}
+```
+
+Supported fields are the same as the base placeholders: `date_time`, `date`, `time`, `weekday`, and `iso`.
+
+Example for a bomb-threat story where the call happened 22 minutes before arrival:
+
+```
+The caller said thirty minutes. The call came in at {current_time_minus_22_minutes}.
+Mac arrives at {current_time}, leaving roughly eight minutes if the caller told the truth.
+```
+
+### Placeholder behavior vs hidden story timing
+
+- Regular characters only get what you explicitly put in the prompt file. No placeholder in the file means no visible date/time string is injected.
+- `story_` and `game_` characters still only get visible placeholder text if you add placeholders to the prompt file.
+- Separately, `story_` and `game_` characters now receive hidden timing context from the app every turn even if the prompt file contains no placeholders.
+- That hidden context is for model continuity only. It does **not** force every story to print a timestamp header.
+- If you want time gaps to affect gameplay, write that rule into the story prompt. The app supplies the timing facts; the story prompt decides what those facts mean.
+
+### Recommended pattern for elapsed-time stories
+
+For most new `story_` / `game_` characters that should react to real elapsed time, use a visible header at the top of every assistant response:
+
+```
+SCENE CLOCK: {current_date_time}
+```
+
+Then tell the assistant how to use elapsed time:
+
+```
+Every response must begin with "SCENE CLOCK: {current_date_time}".
+On each turn, use the app-computed elapsed time since the previous assistant
+response as real time passed in the story. If the gap is small, continue
+smoothly. If the gap is large, advance the world honestly before presenting
+the next choices.
+```
+
+Use `ARRIVAL:` only when the story needs a frozen start/session time, such as "minutes on scene," "days since admission," or "time since landing":
+
+```
+SCENE CLOCK: {current_date_time}
+ARRIVAL: {current_date_time}
+```
+
+For stories that only need mood or setting awareness, a normal inline placeholder is enough:
+
+```
+It is currently {current_date_time}. Let the time of day affect atmosphere,
+NPC availability, and environmental details when relevant.
+```
+
+That version gives the model current-time awareness, but it is weaker for elapsed-time mechanics because there is no visible per-turn timestamp anchor in the transcript.
+
 ### Where it lives
 
 `render_prompt_template(template)` is defined in both `app/app.py` and `cli.py`. It is called on the raw prompt text **every turn**, inside:
@@ -48,17 +123,18 @@ Placeholders that are not present in the file are left alone. Placeholders you d
 
 All four paths re-read and re-render the template on every turn, so the time stays accurate even in very long sessions.
 
+For story/game continuity, app-computed timing helpers live in `app/story_time.py`. Those helpers are also wired into the same conversation paths so story sessions can recover accurate elapsed time after a pause or full app restart.
+
 ### How to use it in your own character
 
-Just drop a placeholder anywhere in your `story_<name>.txt`:
+For basic current-time awareness, drop a placeholder anywhere in your `story_<name>.txt`:
 
 ```
 It is currently {current_date_time}. This is the real-world time of RIGHT NOW.
-Every time the player speaks to you, compare this timestamp to the previous
-assistant message's timestamp header and narrate the elapsed time honestly.
+Let the time of day affect atmosphere, NPC availability, and environmental details.
 ```
 
-Then have the assistant **echo the timestamp back** in each of its replies, so the next turn has something to compare against. The existing pattern in `story_lucid_intervals` and `story_bomb_threat` is:
+For elapsed-time gameplay, have the assistant **echo the timestamp back** in each of its replies, so the story has a visible header and the history stays readable. The existing pattern in `story_lucid_intervals` and `story_bomb_threat` is:
 
 ```
 LUCID INTERVAL OPENS: {current_date_time}
@@ -76,15 +152,33 @@ ARRIVAL: {current_date_time (frozen from turn one)}
 The assistant is instructed to:
 
 1. Print the current timestamp header as the first line of every reply.
-2. Read the **previous** assistant message from history for its timestamp header.
-3. Compute the delta.
-4. Drive in-story consequences off the delta (coma passage of weeks, bomb ticking down, seasons changing, etc.).
+2. Use the previous turn timing context and/or prior assistant header as continuity anchors.
+3. Drive in-story consequences off the real elapsed delta (coma passage of weeks, bomb ticking down, seasons changing, etc.).
+
+For stricter story prompts like `story_bomb_threat`, the app also normalizes the returned header so the saved transcript reflects the real current time even if the model drifts.
+
+### Do all stories need elapsed-time gameplay?
+
+No. Existing stories can keep working without visible timestamp headers.
+
+Use elapsed-time gameplay when the outside world should keep moving while the player is away:
+
+- Bombs, fires, oxygen leaks, storms, enemies searching, pursuers closing in.
+- Hospital/coma stories, survival stories, colony simulations, investigations with deadlines.
+- Any story where stopping for lunch in the real world should matter in the fiction.
+
+Skip it when time is turn-based or abstract:
+
+- Board-game-like adventures where each player response is one turn.
+- Stories where the scene should wait for the player.
+- Prompts that only need the current date/time for flavor.
 
 ### Gotchas
 
 - The renderer uses local system time (`datetime.now()`), not UTC. Fine for single-user local setups; if you ever run this server-side for multiple users in different timezones, swap it for a tz-aware variant.
-- The LLM can see the current timestamp, but only retains awareness of past timestamps if the **assistant** wrote them into its own replies. User messages are not time-stamped automatically.
+- User messages and assistant messages are now time-stamped internally for `story_` / `game_` continuity, but only assistant headers are intended to be visible in-story.
 - If you use tight time math (like the bomb clock), remember that **TTS generation + playback + user thinking** is real elapsed time between turns. On slow TTS providers this can be 1–3 minutes per turn. Your story prompt should acknowledge that reality rather than fight it.
+- Story/game history is still written to `conversation_history.txt` for readability, and now also to a structured `conversation_history.json` sidecar so real turn timestamps survive app restarts cleanly.
 
 ---
 

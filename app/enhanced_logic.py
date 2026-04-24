@@ -2,6 +2,7 @@ import os
 import asyncio
 import json
 import time
+from datetime import datetime
 from fastapi import APIRouter
 from .shared import clients, conversation_history, is_client_active, set_client_inactive
 from .app_logic import (
@@ -18,6 +19,12 @@ from .app_logic import (
     RESET_COLOR,
     NEON_GREEN,
     MAX_CHAR_LENGTH
+)
+from .story_time import (
+    add_message_timestamp,
+    augment_story_system_message,
+    enforce_story_response_headers,
+    history_for_model,
 )
 from .transcription import transcribe_audio
 
@@ -513,7 +520,7 @@ async def enhanced_conversation_loop():
         character_prompt_file = os.path.join(characters_folder, character_name, f"{character_name}.txt")
         # character_audio_file = os.path.join(characters_folder, character_name, f"{character_name}.wav")
         
-        base_system_message = render_prompt_template(open_file(character_prompt_file))
+        base_system_message_template = open_file(character_prompt_file)
         
         # Don't automatically show a greeting message
         # Instead, show character selection confirmation similar to main page
@@ -571,7 +578,9 @@ async def enhanced_conversation_loop():
                     break
                 
                 # Add user input to conversation history
-                local_conversation_history.append({"role": "user", "content": user_input})
+                local_conversation_history.append(
+                    add_message_timestamp({"role": "user", "content": user_input})
+                )
                 
                 # Detect user mood from input (if enabled)
                 detected_mood = analyze_mood(user_input)
@@ -595,6 +604,17 @@ async def enhanced_conversation_loop():
                         print(f"Error loading character prompts: {str(e)}")
                     
                 # Get response from LLM
+                response_now = datetime.now()
+                base_system_message = render_prompt_template(
+                    base_system_message_template,
+                    now=response_now,
+                )
+                if is_story_character:
+                    base_system_message = augment_story_system_message(
+                        base_system_message,
+                        local_conversation_history,
+                        response_now,
+                    )
                 ai_response = await enhanced_chat_completion(
                     user_input, 
                     base_system_message, 
@@ -608,13 +628,25 @@ async def enhanced_conversation_loop():
                 # structured lines like SCENE CLOCK / ARRIVAL remain in LLM
                 # context for continuity but are skipped during speech.
                 ai_response_raw = ai_response
+                if is_story_character:
+                    ai_response_raw = enforce_story_response_headers(
+                        ai_response_raw,
+                        base_system_message_template,
+                        local_conversation_history,
+                        response_now,
+                    )
                 tts_source = apply_tts_filter(ai_response_raw, character_name)
                 ai_response_tts = sanitize_response(tts_source)
 
                 # Don't display the AI response in the UI yet - will be displayed after audio finishes
 
                 # Add to conversation history (use the display/raw form)
-                local_conversation_history.append({"role": "assistant", "content": ai_response_raw})
+                local_conversation_history.append(
+                    add_message_timestamp(
+                        {"role": "assistant", "content": ai_response_raw},
+                        when=response_now,
+                    )
+                )
                 
                 # Manage conversation history size - keep last 30 messages for global history and 100 for stories and games
                 if character_name.startswith("story_") or character_name.startswith("game_"):
@@ -715,7 +747,7 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
                     print(f"Added user identity context: {name_info[:40]}...")
             
             # Now add all the conversation history
-            messages.extend(conversation_history)
+            messages.extend(history_for_model(conversation_history))
             
         # Add the current user prompt
         messages.append({"role": "user", "content": prompt})

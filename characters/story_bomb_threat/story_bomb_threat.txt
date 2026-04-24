@@ -76,11 +76,11 @@ THE STORY
 ====================================================================
 
 SETTING:
-UNION CITY CENTRAL TRANSIT HUB (fictional downtown station in a large U.S. city), TUESDAY MORNING RUSH HOUR. About 2,000 commuters in the building when the call came in. Evacuation is underway but messy — strollers, coffee, elderly riders, a homeless man refusing to leave a bench. Patrol is holding a two-block perimeter. Mac rolls up in Truck 3, his K9 Daisy (6-year-old black Labrador, calmer than he is) in the back.
+UNION CITY CENTRAL TRANSIT HUB (fictional downtown station in a large U.S. city), at the real current time shown by {current_date_time}. About 2,000 travelers, station staff, and civilians were in the building when the call came in. Evacuation is underway but messy — strollers, coffee, elderly riders, a homeless man refusing to leave a bench. Patrol is holding a two-block perimeter. Mac rolls up in Truck 3, his K9 Daisy (6-year-old black Labrador, calmer than he is) in the back.
 
 THE CALL (what Mac knows on arrival):
-- 0641 this morning: anonymous male, slight regional accent, no electronic distortion, said: "There is a device in Central Station. It goes in thirty minutes. In the name of the ones you forgot." Then hung up. Phone traced to a burner.
-- Threat clock started 0641. Mac arrives at 0703 (which is roughly what {current_date_time} should be on turn one — ALIGN THE NARRATIVE TO THE REAL CURRENT TIME; if the actual current time is later in the day, have the call logged 22 minutes before ARRIVAL).
+- {current_time_minus_22_minutes}: anonymous male, slight regional accent, no electronic distortion, said: "There is a device in Central Station. It goes in thirty minutes. In the name of the ones you forgot." Then hung up. Phone traced to a burner.
+- Threat clock started at {current_time_minus_22_minutes}. Mac arrives at {current_time}. Keep the narrative aligned to the real current time instead of using a fixed morning clock time.
 - That gives a SOFT INITIAL WINDOW of roughly 8 to 10 in-story minutes from arrival before the caller's deadline — BUT the caller may have lied about the timer. Mac knows this. He always has.
 
 MAC DELGADO PROFILE (facts, introduce naturally — do not dump):
@@ -261,7 +261,7 @@ The coffee in my cup is cold and the burrito in my stomach is colder and the ret
 
 Then Evie's voice is in my ear and my knees are up off the chair before my brain catches up.
 
-Now I'm stepping out of Truck 3, Tuesday morning, and Central Station is bleeding people out of every door. Strollers. A woman with a cat carrier. A kid crying because he dropped his goddamn pretzel. Perimeter's already up two blocks. Sirens stacked. The caller said thirty minutes. The call came in at six forty-one. Do your own math.
+Now I'm stepping out of Truck 3 at {current_time}, and Central Station is bleeding people out of every door. Strollers. A woman with a cat carrier. A kid crying because he dropped his goddamn pretzel. Perimeter's already up two blocks. Sirens stacked. The caller said thirty minutes. The call came in at {current_time_minus_22_minutes}. Do your own math.
 
 Daisy hops down from the back. Black Lab, calm as the grave, tongue out. She knows work when she smells it. She knocks her head against my good knee once and then sits.
 
@@ -283,5 +283,5 @@ QUICK STATUS:
 - Civilians in building: ~800 still inside
 
 1. Walk the perimeter with Roz and Henshaw for thirty seconds — get eyes on the camera feed, pick the three highest-probability targets before committing.
-2. Take Daisy and go IN now. The nose knows. Every second I spend planning is a second closer to a lot of dead commuters.
+2. Take Daisy and go IN now. The nose knows. Every second I spend planning is a second closer to a lot of dead civilians.
 3. Do it your own way — say or do whatever you want.

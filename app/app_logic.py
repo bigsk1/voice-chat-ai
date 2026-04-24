@@ -38,6 +38,14 @@ from .transcription import transcribe_audio
 import json
 import logging
 import requests
+from datetime import datetime
+from .story_time import (
+    add_message_timestamp,
+    augment_story_system_message,
+    enforce_story_response_headers,
+    load_story_history,
+    save_story_history,
+)
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -108,17 +116,32 @@ async def process_text(user_input):
     character_prompt_file = os.path.join(character_folder, f"{current_character}.txt")
     character_audio_file = os.path.join(character_folder, f"{current_character}.wav")
 
-    base_system_message = render_prompt_template(open_file(character_prompt_file))
+    response_now = datetime.now()
+    base_system_message_template = open_file(character_prompt_file)
+    base_system_message = render_prompt_template(base_system_message_template, now=response_now)
     mood = analyze_mood(user_input)
     mood_prompt = adjust_prompt(mood)
     tag_prompt = xai_speech_tag_prompt()
     if tag_prompt:
         mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
 
-    chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
-    display_response = strip_xai_speech_tags(chatbot_response)
     is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
     if is_story_character:
+        base_system_message = augment_story_system_message(
+            base_system_message,
+            conversation_history,
+            response_now,
+        )
+
+    chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
+    display_response = strip_xai_speech_tags(chatbot_response)
+    if is_story_character:
+        display_response = enforce_story_response_headers(
+            display_response,
+            base_system_message_template,
+            conversation_history,
+            response_now,
+        )
         display_response = format_story_response_text(display_response)
     # TTS path: apply per-character tts_filter.json BEFORE sanitize_response so
     # its regex patterns can still see colons, brackets, etc. History and UI
@@ -129,7 +152,12 @@ async def process_text(user_input):
         sanitized_response = sanitized_response[:MAX_CHAR_LENGTH] + "..."
     prompt2 = sanitized_response
 
-    conversation_history.append({"role": "assistant", "content": display_response})
+    conversation_history.append(
+        add_message_timestamp(
+            {"role": "assistant", "content": display_response},
+            when=response_now,
+        )
+    )
     
     if is_story_character:
         # Save to character-specific history file
@@ -283,7 +311,7 @@ async def conversation_loop():
             await asyncio.sleep(0.1)
             continue
             
-        conversation_history.append({"role": "user", "content": user_input})
+        conversation_history.append(add_message_timestamp({"role": "user", "content": user_input}))
         
         # Get current character to check if it's a story/game character
         current_character = get_character()
@@ -477,17 +505,8 @@ def save_character_specific_history(history, character_name):
             print(f"Not a story/game character: {character_name}, using global history instead")
             return save_conversation_history(history)
             
-        # Create character-specific history file path
-        character_dir = os.path.join(characters_folder, character_name)
-        history_file = os.path.join(character_dir, "conversation_history.txt")
-        
         print(f"Saving character-specific history for {character_name}")
-        
-        with open(history_file, "w", encoding="utf-8") as file:
-            for message in history:
-                role = message["role"].capitalize()
-                content = message["content"]
-                file.write(f"{role}: {content}\n\n")  # Extra newline for readability
+        save_story_history(history, characters_folder, character_name)
                 
         print(f"Saved {len(history)} messages to character-specific history file")
         return {"status": "success"}
@@ -512,51 +531,12 @@ def load_character_specific_history(character_name):
             print(f"Not a story/game character: {character_name}, using global history instead")
             return []
             
-        # Create character-specific history file path
-        character_dir = os.path.join(characters_folder, character_name)
-        history_file = os.path.join(character_dir, "conversation_history.txt")
-        
-        # Check if file exists
-        if not os.path.exists(history_file) or os.path.getsize(history_file) == 0:
+        print(f"Loading character-specific history for {character_name}")
+        temp_history = load_story_history(characters_folder, character_name)
+        if not temp_history:
             print(f"No character-specific history found for {character_name}")
             return []
-            
-        print(f"Loading character-specific history for {character_name}")
-        
-        temp_history = []
-        with open(history_file, "r", encoding="utf-8") as file:
-            current_role = None
-            current_content = ""
-            
-            for line in file:
-                line = line.strip()
-                if not line:  # Skip empty lines
-                    continue
-                    
-                if line.startswith("User:"):
-                    # Save previous message if exists
-                    if current_role:
-                        temp_history.append({"role": current_role, "content": current_content.strip()})
-                    
-                    # Start new user message
-                    current_role = "user"
-                    current_content = line[5:].strip()
-                elif line.startswith("Assistant:"):
-                    # Save previous message if exists
-                    if current_role:
-                        temp_history.append({"role": current_role, "content": current_content.strip()})
-                    
-                    # Start new assistant message
-                    current_role = "assistant"
-                    current_content = line[10:].strip()
-                else:
-                    # Continue previous message
-                    current_content += "\n" + line
-            
-            # Add the last message
-            if current_role:
-                temp_history.append({"role": current_role, "content": current_content.strip()})
-                
+
         print(f"Loaded {len(temp_history)} messages from character-specific history file")
         return temp_history
     except Exception as e:

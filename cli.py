@@ -22,6 +22,15 @@ import io
 from pydub import AudioSegment
 from datetime import datetime
 import warnings
+from app.story_time import (
+    add_message_timestamp,
+    augment_story_system_message,
+    enforce_story_response_headers,
+    history_for_model,
+    load_story_history,
+    render_dynamic_prompt_template,
+    save_story_history,
+)
 
 # Load environment variables
 load_dotenv()
@@ -181,20 +190,8 @@ def open_file(filepath):
         return infile.read()
 
 # Substitute dynamic template variables into a character prompt.
-# Supported placeholders: {current_date_time}, {current_date}, {current_time},
-# {current_weekday}, {current_iso}. Harmless no-op if none are present.
-def render_prompt_template(template):
-    if not template:
-        return template
-    now = datetime.now()
-    return (
-        template
-        .replace("{current_date_time}", now.strftime("%A, %B %d, %Y at %I:%M %p"))
-        .replace("{current_date}", now.strftime("%A, %B %d, %Y"))
-        .replace("{current_time}", now.strftime("%I:%M %p"))
-        .replace("{current_weekday}", now.strftime("%A"))
-        .replace("{current_iso}", now.strftime("%Y-%m-%dT%H:%M:%S"))
-    )
+def render_prompt_template(template, now=None):
+    return render_dynamic_prompt_template(template, now=now)
 
 # Function to play audio using PyAudio
 def play_audio(file_path):
@@ -958,6 +955,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
     """
     # Calculate token limit based on character limit
     token_limit = min(4000, MAX_CHAR_LENGTH * 4 // 3)
+    model_history = history_for_model(conversation_history)
     
     if MODEL_PROVIDER == 'ollama':
         headers = {
@@ -965,7 +963,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         }
         payload = {
             "model": OLLAMA_MODEL,
-            "messages": [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}],
+            "messages": [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}],
             "stream": True,
             "options": {
                 "num_predict": -2,
@@ -1002,7 +1000,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         return full_response
     
     elif MODEL_PROVIDER == 'xai':
-        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
+        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
         headers = {
             'Authorization': f'Bearer {XAI_API_KEY}',
             'Content-Type': 'application/json'
@@ -1045,7 +1043,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             
         # Format the conversation history for Anthropic
         anthropic_messages = []
-        for msg in conversation_history:
+        for msg in model_history:
             anthropic_messages.append({
                 "role": msg["role"],
                 "content": msg["content"]
@@ -1090,7 +1088,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             return error_message
 
     elif MODEL_PROVIDER == 'openai':
-        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
+        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
         headers = {
             'Authorization': f'Bearer {OPENAI_API_KEY}',
             'Content-Type': 'application/json'
@@ -1426,51 +1424,12 @@ def load_character_specific_history(character_name):
             print(f"Not a story/game character: {character_name}")
             return []
             
-        # Create character-specific history file path
-        character_dir = os.path.join('characters', character_name)
-        history_file = os.path.join(character_dir, "conversation_history.txt")
-        
-        # Check if file exists
-        if not os.path.exists(history_file) or os.path.getsize(history_file) == 0:
+        print(f"Loading character-specific history for {character_name}")
+        temp_history = load_story_history(os.path.join(project_dir, "characters"), character_name)
+        if not temp_history:
             print(f"No character-specific history found for {character_name}")
             return []
-            
-        print(f"Loading character-specific history for {character_name}")
-        
-        temp_history = []
-        with open(history_file, "r", encoding="utf-8") as file:
-            current_role = None
-            current_content = ""
-            
-            for line in file:
-                line = line.strip()
-                if not line:  # Skip empty lines
-                    continue
-                    
-                if line.startswith("User:"):
-                    # Save previous message if exists
-                    if current_role:
-                        temp_history.append({"role": current_role, "content": current_content.strip()})
-                    
-                    # Start new user message
-                    current_role = "user"
-                    current_content = line[5:].strip()
-                elif line.startswith("Assistant:"):
-                    # Save previous message if exists
-                    if current_role:
-                        temp_history.append({"role": current_role, "content": current_content.strip()})
-                    
-                    # Start new assistant message
-                    current_role = "assistant"
-                    current_content = line[10:].strip()
-                else:
-                    # Continue previous message
-                    current_content += "\n" + line
-            
-            # Add the last message
-            if current_role:
-                temp_history.append({"role": current_role, "content": current_content.strip()})
-                
+
         print(f"Loaded {len(temp_history)} messages from character-specific history file")
         return temp_history
     except Exception as e:
@@ -1495,18 +1454,8 @@ def save_character_specific_history(history, character_name):
             print(f"Not a story/game character: {character_name}")
             return {"status": "error", "message": "Not a story/game character"}
             
-        # Create character-specific history file path
-        character_dir = os.path.join('characters', character_name)
-        os.makedirs(character_dir, exist_ok=True)
-        history_file = os.path.join(character_dir, "conversation_history.txt")
-        
         print(f"Saving character-specific history for {character_name}")
-        
-        with open(history_file, "w", encoding="utf-8") as file:
-            for message in history:
-                role = message["role"].capitalize()
-                content = message["content"]
-                file.write(f"{role}: {content}\n\n")  # Extra newline for readability
+        save_story_history(history, os.path.join(project_dir, "characters"), character_name)
                 
         print(f"Saved {len(history)} messages to character-specific history file")
         return {"status": "success"}
@@ -1632,7 +1581,7 @@ def user_chatbot_conversation():
                 print("Quitting the conversation...")
                 break
                 
-            conversation_history.append({"role": "user", "content": user_input})
+            conversation_history.append(add_message_timestamp({"role": "user", "content": user_input}))
             
             if any(phrase in user_input.lower() for phrase in screenshot_phrases):
                 execute_screenshot_and_analyze()
@@ -1645,16 +1594,32 @@ def user_chatbot_conversation():
                 mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
             
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
-            base_system_message = render_prompt_template(base_system_message_template)
+            response_now = datetime.now()
+            base_system_message = render_prompt_template(base_system_message_template, now=response_now)
+            if is_story_character:
+                base_system_message = augment_story_system_message(
+                    base_system_message,
+                    conversation_history,
+                    response_now,
+                )
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
             display_response = strip_xai_speech_tags(chatbot_response)
-            current_character = os.getenv('CHARACTER_NAME', 'wizard')
-            is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
             if is_story_character:
+                display_response = enforce_story_response_headers(
+                    display_response,
+                    base_system_message_template,
+                    conversation_history,
+                    response_now,
+                )
                 display_response = format_story_response_text(display_response)
             if is_xai_tts_enabled():
                 print(NEON_GREEN + display_response + RESET_COLOR)
-            conversation_history.append({"role": "assistant", "content": display_response})
+            conversation_history.append(
+                add_message_timestamp(
+                    {"role": "assistant", "content": display_response},
+                    when=response_now,
+                )
+            )
             if is_story_character:
                 if len(conversation_history) > 100:
                     conversation_history = conversation_history[-100:]

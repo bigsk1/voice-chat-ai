@@ -21,6 +21,14 @@ import io
 from datetime import datetime
 from pydub import AudioSegment
 from .shared import clients, get_current_character
+from .story_time import (
+    add_message_timestamp,
+    augment_story_system_message,
+    enforce_story_response_headers,
+    history_for_model,
+    render_dynamic_prompt_template,
+    save_story_history,
+)
 
 # Load environment variables
 load_dotenv()
@@ -295,20 +303,8 @@ def open_file(filepath):
         return infile.read()
 
 # Substitute dynamic template variables into a character prompt.
-# Supported placeholders: {current_date_time}, {current_date}, {current_time},
-# {current_weekday}, {current_iso}. Harmless no-op if none are present.
-def render_prompt_template(template):
-    if not template:
-        return template
-    now = datetime.now()
-    return (
-        template
-        .replace("{current_date_time}", now.strftime("%A, %B %d, %Y at %I:%M %p"))
-        .replace("{current_date}", now.strftime("%A, %B %d, %Y"))
-        .replace("{current_time}", now.strftime("%I:%M %p"))
-        .replace("{current_weekday}", now.strftime("%A"))
-        .replace("{current_iso}", now.strftime("%Y-%m-%dT%H:%M:%S"))
-    )
+def render_prompt_template(template, now=None):
+    return render_dynamic_prompt_template(template, now=now)
 
 # Function to play audio using PyAudio
 async def play_audio(file_path):
@@ -1145,6 +1141,7 @@ def analyze_mood(user_input):
 def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_history):
     full_response = ""
     print(f"Debug: streamed started. MODEL_PROVIDER: {MODEL_PROVIDER}")
+    model_history = history_for_model(conversation_history)
 
     # Calculate token limit based on character limit Approximate token conversion, So if MAX_CHAR_LENGTH is 500, then 500 * 4 // 3 = 666 tokens
     token_limit = min(4000, MAX_CHAR_LENGTH * 4 // 3)
@@ -1153,7 +1150,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         headers = {'Content-Type': 'application/json'}
         payload = {
             "model": OLLAMA_MODEL,
-            "messages": [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}],
+            "messages": [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}],
             "stream": True,
             "options": {"num_predict": -2, "temperature": 1.0}
         }
@@ -1190,7 +1187,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             print(f"Debug: Ollama error - {e}")
     
     elif MODEL_PROVIDER == 'xai':
-        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
+        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
         headers = {
             'Authorization': f'Bearer {XAI_API_KEY}',
             'Content-Type': 'application/json'
@@ -1238,7 +1235,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             print(f"Debug: XAI error - {e}")
 
     elif MODEL_PROVIDER == 'openai':
-        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + conversation_history + [{"role": "user", "content": user_input}]
+        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
         headers = {'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}
         payload = {
             "model": OPENAI_MODEL,
@@ -1287,7 +1284,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             
         # Convert the conversation history to Anthropic format
         anthropic_messages = []
-        for msg in conversation_history:
+        for msg in model_history:
             anthropic_messages.append({
                 "role": msg["role"],
                 "content": msg["content"]
@@ -1353,10 +1350,12 @@ def save_conversation_history(conversation_history):
         print(f"Saving history for {current_character} ({is_story_character=})")
         
         if is_story_character:
-            # Save to character-specific history file
-            character_dir = os.path.join(characters_folder, current_character)
-            os.makedirs(character_dir, exist_ok=True)
-            history_file = os.path.join(character_dir, "conversation_history.txt")
+            save_story_history(
+                conversation_history,
+                os.path.join(project_dir, "characters"),
+                current_character,
+            )
+            return {"status": "success"}
         else:
             # Save to global history file
             history_file = "conversation_history.txt"
@@ -1492,7 +1491,7 @@ async def execute_screenshot_and_analyze():
     text_response = await execute_once(question_prompt)
     
     # Add the AI's response to the conversation history
-    conversation_history.append({"role": "assistant", "content": text_response})
+    conversation_history.append(add_message_timestamp({"role": "assistant", "content": text_response}))
     
     # Save the updated conversation history
     current_character = get_current_character()
@@ -1843,7 +1842,7 @@ async def user_chatbot_conversation():
                 print("Quitting the conversation...")
                 break
                 
-            conversation_history.append({"role": "user", "content": user_input})
+            conversation_history.append(add_message_timestamp({"role": "user", "content": user_input}))
             
             if any(phrase in user_input.lower() for phrase in screenshot_phrases):
                 await execute_screenshot_and_analyze()  # Note the 'await' here
@@ -1856,13 +1855,30 @@ async def user_chatbot_conversation():
                 mood_prompt = f"{mood_prompt}\n\n{tag_prompt}"
             
             print(PINK + f"{character_display_name}:..." + RESET_COLOR)
-            base_system_message = render_prompt_template(base_system_message_template)
+            response_now = datetime.now()
+            base_system_message = render_prompt_template(base_system_message_template, now=response_now)
+            if is_story_character:
+                base_system_message = augment_story_system_message(
+                    base_system_message,
+                    conversation_history,
+                    response_now,
+                )
             chatbot_response = chatgpt_streamed(user_input, base_system_message, mood_prompt, conversation_history)
             display_response = strip_xai_speech_tags(chatbot_response)
-            is_story_character = current_character.startswith("story_") or current_character.startswith("game_")
             if is_story_character:
+                display_response = enforce_story_response_headers(
+                    display_response,
+                    base_system_message_template,
+                    conversation_history,
+                    response_now,
+                )
                 display_response = format_story_response_text(display_response)
-            conversation_history.append({"role": "assistant", "content": display_response})
+            conversation_history.append(
+                add_message_timestamp(
+                    {"role": "assistant", "content": display_response},
+                    when=response_now,
+                )
+            )
             # TTS path: apply per-character tts_filter.json BEFORE sanitize_response
             # so its regex patterns can still see colons, brackets, etc.
             tts_source = apply_tts_filter(chatbot_response, current_character)

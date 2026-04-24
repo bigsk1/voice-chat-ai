@@ -26,6 +26,22 @@ All story characters follow a consistent structure:
 
 7. **Continuity Between Sessions**: You can stop and resume your adventure later, with the AI picking up where you left off.
 
+### Real-Time and Elapsed-Time Stories
+
+Some stories are turn-based: the world mostly waits for the next player choice. Other stories are real-time: the world keeps moving while TTS plays, while the player thinks, or while the app is closed.
+
+For real-time stories, add a repeated timestamp header such as:
+
+```
+SCENE CLOCK: {current_date_time}
+```
+
+Then tell the story prompt how elapsed real time should affect the world. The app supplies hidden timing context for `story_` and `game_` characters, but the prompt still needs to decide what elapsed time means in that specific fiction.
+
+Use `ARRIVAL: {current_date_time}` only when the story needs a frozen start/session timestamp, such as minutes on scene, days since admission, or time since landing.
+
+For details, see [Dynamic Prompt Templating and Per-Character TTS Filter](dynamic_prompts_and_tts_filter.md).
+
 ## Available Stories
 
 ### The Oregon Trail (story_oregon_trail)
@@ -321,19 +337,19 @@ All story characters follow a consistent structure:
 
 ### Lucid Intervals (story_lucid_intervals)
 
-**Setting**: OHSU Hospital, Portland, Oregon. Six weeks ago, investigative journalist Nora Chen was drugged and beaten in her own apartment while investigating Project Halcyon, a memory-suppression drug illegally trialed on long-term coma patients. She has been unconscious ever since — until now.
+**Setting**: Northstar Medical Center, a fictional private hospital. Six weeks ago, investigative reporter Nora Chen was attacked while investigating the Stillwater Trials, an illegal clinical program hidden behind compassionate brain-injury research. Her chart says "disorder of consciousness." Her mind says otherwise.
 
-**Role**: Nora Chen, 34, medically induced coma patient. Each play session is a LUCID INTERVAL — a brief window where her consciousness surfaces. When the window closes, she sinks back under, and the world outside moves on without her.
+**Role**: Nora Chen, 34, coma patient and investigative reporter for The Ledger. Each play session is a lucid interval: a brief window where her consciousness surfaces, hears pieces of the room, reconstructs the attack, and tries to prove she is still inside.
 
-**Key Features**: Long-form time-gap thriller, whispered inner voice, paranoid journalism in a body that cannot move.
+**Key Features**: Location-neutral coma mystery, long-form time-gap thriller, whispered inner voice, investigative reporting from inside a body that cannot move.
 
-- A real-world time-gap mechanic: every session is anchored to `{current_date_time}`. Stop playing for an hour, a day, a week, a month — when you return, Nora has been UNDER for that real amount of time, and the story narrates the consequences. Nurses change. Visitors stop coming. A case breaks wide open without her. Life-support conferences start happening in the hallway.
-- Scaled response bands from "under 10 minutes" (continuous interval) to "6+ months" (severe — political administrations have changed, she is a medical curiosity, and the window that just opened may be the last one she is legally given).
-- Observe, listen, remember, think, or attempt to SIGNAL — blink on command, twitch a finger, squeeze a hand — each costing Window Energy that drains the lucid interval toward closing.
-- Track Body Condition, Mental Clarity, Window Energy, Intel on the Halcyon case, Trust (Salome is probably an ally, Elias Brandt probably is not), Signals you can physically produce, and Case Heat outside.
-- Navigate her mother Helen, her ex-husband Will, her editor Teo, Det. Grace Park, and the neurologist Dr. Kira Yun — each visit may be the last one you ever get.
-- Endings range from being unplugged, choosing peace, signaling a trusted ally enough to blow the case open from the outside, or the true win: waking up, testifying, and publishing the Halcyon story with her own byline.
-- Ships with a per-character `tts_filter.json` — the `LUCID INTERVAL OPENS` header and the status block stay in history for LLM continuity but are skipped during TTS, keeping Nora's whispered inner voice uninterrupted. See [Dynamic Prompts and TTS Filter](dynamic_prompts_and_tts_filter.md).
+- A real-world time-gap mechanic: every response opens with `LUCID INTERVAL OPENS: {current_date_time}`. Stop playing for minutes, hours, days, weeks, or months, and Nora has been under for that real amount of time when you return.
+- Time gaps change the room and the case: staff shifts, medication changes, visitors come and go, her body weakens or recovers, the Stillwater story cools, spreads, or turns dangerous.
+- Observe, listen, remember, think, signal, or endure. Early signals are tiny and unreliable: a twitch, a breath change, a blink at the right moment.
+- Track Body Condition, Mental Clarity, Window Energy, Signals, Trust, Intel, and Case Heat, reported only as short changes in the status block.
+- Navigate Helen Chen, Sam Chen, Dr. Mira Vale, Nurse Sal Reyes, Nurse Elias Brandt, editor Teo Ramirez, missing source Ruth Kline, and the unidentified after-hours visitor.
+- Endings range from body failure or being moved beyond reach, to choosing peace, to signaling a trusted ally, to the true win: waking enough to expose the Stillwater Trials under Nora's own name.
+- Ships with a per-character `tts_filter.json`: the `LUCID INTERVAL OPENS` header and status block stay in history for continuity but are skipped during TTS, keeping Nora's whispered inner voice uninterrupted. See [Dynamic Prompts and TTS Filter](dynamic_prompts_and_tts_filter.md).
 
 ## Creating Your Adventure
 

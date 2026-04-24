@@ -11,11 +11,8 @@
 
     "replace": [
         { "pattern": "\\bIV\\b",      "with": "I V" },
-        { "pattern": "\\bOHSU\\b",    "with": "O H S U" },
         { "pattern": "\\bPT\\b",      "with": "P T" },
         { "pattern": "\\bICU\\b",     "with": "I C U" },
-        { "pattern": "\\bER\\b",      "with": "E R" },
-        { "pattern": "\\bPD\\b",      "with": "Police Department" },
-        { "pattern": "\\bMija\\b",    "with": "mee-ha" }
+        { "pattern": "\\bER\\b",      "with": "E R" }
     ]
 }
