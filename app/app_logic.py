@@ -168,6 +168,10 @@ async def process_text(user_input):
         save_conversation_history(conversation_history)
         print(f"Saved global history for {current_character}")
 
+    # Dashboard intentionally displays the assistant text before TTS starts so
+    # game/status blocks are readable while audio is still playing.
+    await send_message_to_clients(display_response)
+
     await process_and_play(prompt2, character_audio_file)
 
     return display_response
@@ -341,15 +345,11 @@ async def conversation_loop():
             continue
 
         try:
-            chatbot_response = await process_text(user_input)
+            await process_text(user_input)
         except Exception as e:
             chatbot_response = f"An error occurred: {e}"
             print(chatbot_response)
-
-        current_character = get_character()
-        await send_message_to_clients(chatbot_response)
-        # await send_message_to_clients(f"{current_character.capitalize()}: {chatbot_response}") # to use for character names
-        # print(f"{current_character.capitalize()}: {chatbot_response}")
+            await send_message_to_clients(chatbot_response)
 
 def set_env_variable(key: str, value: str):
     os.environ[key] = value

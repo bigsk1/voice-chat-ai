@@ -196,6 +196,14 @@ document.addEventListener("DOMContentLoaded", function() {
             setPauseAudioState(true);
         } else if (data.action === "audio_resumed") {
             setPauseAudioState(false);
+        } else if (data.action === "conversation_stopped") {
+            aiMessageQueue = [];
+            isAISpeaking = false;
+            resetPauseAudioButton(true);
+            hideVoiceAnimation();
+            hideListeningIndicator();
+            micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
+            micIcon.classList.add('mic-off');
         } else if (data.action === "error") {
             console.error("Error from server:", data.message);
             displayMessage(data.message, 'error-message');
