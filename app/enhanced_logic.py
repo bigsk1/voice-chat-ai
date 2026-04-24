@@ -661,6 +661,14 @@ async def enhanced_conversation_loop():
                 
                 # Save history based on character type
                 await save_history()
+
+                # Let the UI inspect the raw response while TTS is still
+                # speaking. The normal chat bubble remains queued until audio
+                # ends, preserving the existing turn timing.
+                await send_message_to_enhanced_clients({
+                    "action": "live_context",
+                    "message": ai_response_raw
+                })
                 
                 # Convert text to speech and play audio (uses filtered+sanitized text)
                 await enhanced_text_to_speech(ai_response_tts, detected_mood)

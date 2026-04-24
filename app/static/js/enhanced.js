@@ -17,6 +17,10 @@ document.addEventListener("DOMContentLoaded", function() {
     const modelSelect = document.getElementById('modelSelect');
     const ttsModelSelect = document.getElementById('ttsModelSelect');
     const transcriptionModelSelect = document.getElementById('transcriptionModelSelect');
+    const liveContextToggle = document.getElementById('liveContextToggle');
+    const liveContextBody = document.getElementById('liveContextBody');
+    const liveContextContent = document.getElementById('liveContextContent');
+    const liveContextState = document.getElementById('liveContextState');
 
     // Default speed value (since we removed the speedSelect dropdown)
     const defaultSpeed = "1.0";
@@ -98,6 +102,8 @@ document.addEventListener("DOMContentLoaded", function() {
             } else if (data.action === "ai_start_speaking") {
                 // The server is preparing to speak, but audio hasn't started yet
                 console.log("AI preparing to speak");
+            } else if (data.action === "live_context") {
+                setLiveContext(data.message || "");
             } else if (data.action === "ai_stop_speaking") {
                 // Audio finished playing
                 isAISpeaking = false;
@@ -126,6 +132,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Clear the conversation messages when switching characters
                 const messagesContainer = document.getElementById('messages');
                 messagesContainer.innerHTML = '';
+                clearLiveContext();
                 console.log("Cleared conversation due to character switch");
                 
                 // Display the character switch message if provided
@@ -148,6 +155,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (data.message.startsWith("You:")) {
                     // User messages are displayed immediately
                     displayMessage(data.message);
+                    clearLiveContext("Waiting for response...");
                 } else if (data.type === "system-message") {
                     // System messages like character selection are displayed with system styling
                     displayMessage(data.message, "system-message");
@@ -204,6 +212,42 @@ document.addEventListener("DOMContentLoaded", function() {
         while (aiMessageQueue.length > 0 && !isAISpeaking) {
             displayMessage(aiMessageQueue.shift());
         }
+    }
+
+    function setLiveContext(message) {
+        if (!liveContextContent) {
+            return;
+        }
+
+        liveContextContent.classList.remove('live-context-placeholder');
+        liveContextContent.textContent = message || "No live response yet.";
+
+        if (!message) {
+            liveContextContent.classList.add('live-context-placeholder');
+        }
+
+        if (liveContextBody && !liveContextBody.hidden) {
+            liveContextContent.scrollTop = 0;
+        }
+    }
+
+    function clearLiveContext(message = "No live response yet.") {
+        if (!liveContextContent) {
+            return;
+        }
+
+        liveContextContent.textContent = message;
+        liveContextContent.classList.add('live-context-placeholder');
+    }
+
+    function setLiveContextOpen(isOpen) {
+        if (!liveContextToggle || !liveContextBody || !liveContextState) {
+            return;
+        }
+
+        liveContextBody.hidden = !isOpen;
+        liveContextToggle.setAttribute('aria-expanded', String(isOpen));
+        liveContextState.textContent = isOpen ? "Close" : "Open";
     }
     
     function displayMessage(message, className = "") {
@@ -324,6 +368,13 @@ document.addEventListener("DOMContentLoaded", function() {
             voiceWave.classList.remove('paused');
         }
     }
+
+    if (liveContextToggle && liveContextBody) {
+        liveContextToggle.addEventListener('click', function() {
+            setLiveContextOpen(liveContextBody.hidden);
+        });
+        setLiveContextOpen(false);
+    }
     
     startBtn.addEventListener('click', function() {
         // Check if WebSocket is connected
@@ -342,6 +393,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // Clear any previous state
         micIcon.classList.remove('mic-on', 'mic-waiting', 'pulse-animation');
         micIcon.classList.add('mic-off'); // Will be updated by the server
+        clearLiveContext("Waiting for first response...");
         
         // Get all the selected settings
         const settings = {
@@ -425,6 +477,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // (don't remove the div itself)
         const messagesContainer = document.getElementById('messages');
         messagesContainer.innerHTML = '';
+        clearLiveContext();
         
         console.log("Clearing conversation");
         
