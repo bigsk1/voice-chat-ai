@@ -87,6 +87,8 @@ OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-7-sonnet-20250219')
+LITELLM_MODEL = os.getenv('LITELLM_MODEL', 'openai/gpt-4o-mini')
+LITELLM_API_KEY = os.getenv('LITELLM_API_KEY')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
@@ -205,6 +207,11 @@ def init_xai_model(model_name):
     global XAI_MODEL
     XAI_MODEL = model_name
     print(f"Switched to XAI model: {model_name}")
+
+def init_litellm_model(model_name):
+    global LITELLM_MODEL
+    LITELLM_MODEL = model_name
+    print(f"Switched to LiteLLM model: {model_name}")
 
 def init_anthropic_model(model_name):
     global ANTHROPIC_MODEL
@@ -361,7 +368,7 @@ os.makedirs(output_dir, exist_ok=True)
 if TTS_PROVIDER == 'sparktts':
     print(f"{NEON_GREEN}Using device: {device}{RESET_COLOR}")
 print(f"{NEON_GREEN}Model provider: {MODEL_PROVIDER}{RESET_COLOR}")
-print(f"{NEON_GREEN}Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}{RESET_COLOR}")
+print(f"{NEON_GREEN}Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else LITELLM_MODEL if MODEL_PROVIDER == 'litellm' else OLLAMA_MODEL}{RESET_COLOR}")
 print(f"{NEON_GREEN}Character: {character_display_name}{RESET_COLOR}")
 print(f"{NEON_GREEN}Text-to-Speech provider: {TTS_PROVIDER}{RESET_COLOR}")
 print(f"To stop chatting say Quit or Exit. One moment please loading...")
@@ -1333,6 +1340,57 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
         except Exception as e:
             full_response = f"Error connecting to Anthropic model: {e}"
             print(f"Debug: Anthropic error - {e}")
+
+    elif MODEL_PROVIDER == 'litellm':
+        import litellm
+        from litellm.exceptions import AuthenticationError, NotFoundError, RateLimitError, Timeout
+
+        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
+        try:
+            print(f"Debug: Sending request to LiteLLM with model {LITELLM_MODEL}")
+            kwargs = {
+                "model": LITELLM_MODEL,
+                "messages": messages,
+                "stream": True,
+                "max_tokens": token_limit,
+                "drop_params": True,
+            }
+            if LITELLM_API_KEY:
+                kwargs["api_key"] = LITELLM_API_KEY
+
+            response = litellm.completion(**kwargs)
+            print("Starting LiteLLM stream...")
+            line_buffer = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    delta_content = chunk.choices[0].delta.content
+                    line_buffer += delta_content
+                    if '\n' in line_buffer:
+                        lines = line_buffer.split('\n')
+                        for line in lines[:-1]:
+                            print(NEON_GREEN + line + RESET_COLOR)
+                            full_response += line + '\n'
+                        line_buffer = lines[-1]
+            if line_buffer:
+                print(NEON_GREEN + line_buffer + RESET_COLOR)
+                full_response += line_buffer
+            print("\nLiteLLM stream complete.")
+
+        except AuthenticationError as e:
+            full_response = f"LiteLLM authentication failed (check API key): {e}"
+            print(f"Debug: LiteLLM auth error - {e}")
+        except NotFoundError as e:
+            full_response = f"LiteLLM model not found (check model string, e.g. 'openai/gpt-4o'): {e}"
+            print(f"Debug: LiteLLM not found - {e}")
+        except RateLimitError as e:
+            full_response = f"LiteLLM rate limit exceeded: {e}"
+            print(f"Debug: LiteLLM rate limit - {e}")
+        except Timeout as e:
+            full_response = f"LiteLLM request timed out: {e}"
+            print(f"Debug: LiteLLM timeout - {e}")
+        except Exception as e:
+            full_response = f"Error connecting to LiteLLM model: {e}"
+            print(f"Debug: LiteLLM error - {e}")
 
     print(f"streaming complete. Response length: {PINK}{len(full_response)}{RESET_COLOR}")
     return full_response

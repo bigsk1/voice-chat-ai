@@ -53,6 +53,9 @@ av>=14.0.0
 # TTS - Typecast
 typecast-python>=0.1.0
 
+# LiteLLM (100+ LLM providers via unified interface)
+litellm>=1.80.0,<1.87
+
 # Configuration
 pydantic==2.7.4
 python-dotenv==1.2.2

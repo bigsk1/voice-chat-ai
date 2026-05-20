@@ -59,6 +59,8 @@ OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-7-sonnet-20250219')
+LITELLM_MODEL = os.getenv('LITELLM_MODEL', 'openai/gpt-4o-mini')
+LITELLM_API_KEY = os.getenv('LITELLM_API_KEY')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
 ELEVENLABS_TTS_VOICE = os.getenv('ELEVENLABS_TTS_VOICE')
 ELEVENLABS_TTS_MODEL = os.getenv('ELEVENLABS_TTS_MODEL', 'eleven_multilingual_v2')
@@ -239,7 +241,7 @@ os.makedirs(output_dir, exist_ok=True)
 if TTS_PROVIDER == 'sparktts':
     print(f"Using device: {device}")
 print(f"Model provider: {MODEL_PROVIDER}")
-print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
+print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else LITELLM_MODEL if MODEL_PROVIDER == 'litellm' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
 print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else 'xai-grok-tts' if TTS_PROVIDER == 'xai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else TYPECAST_TTS_MODEL if TTS_PROVIDER == 'typecast' else 'Unknown'}")
@@ -1086,6 +1088,55 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             error_message = f"Error connecting to Anthropic model: {e}"
             print(f"Error: {error_message}")
             return error_message
+
+    elif MODEL_PROVIDER == 'litellm':
+        import litellm
+        from litellm.exceptions import AuthenticationError, NotFoundError, RateLimitError, Timeout
+
+        messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
+        try:
+            print(f"Sending request to LiteLLM with model {LITELLM_MODEL}")
+            kwargs = {
+                "model": LITELLM_MODEL,
+                "messages": messages,
+                "stream": True,
+                "max_tokens": token_limit,
+                "drop_params": True,
+            }
+            if LITELLM_API_KEY:
+                kwargs["api_key"] = LITELLM_API_KEY
+
+            response = litellm.completion(**kwargs)
+            line_buffer = ""
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    delta_content = chunk.choices[0].delta.content
+                    line_buffer += delta_content
+                    if '\n' in line_buffer:
+                        lines = line_buffer.split('\n')
+                        for line in lines[:-1]:
+                            print(NEON_GREEN + line + RESET_COLOR)
+                            full_response += line + '\n'
+                        line_buffer = lines[-1]
+            if line_buffer:
+                print(NEON_GREEN + line_buffer + RESET_COLOR)
+                full_response += line_buffer
+
+        except AuthenticationError as e:
+            full_response = f"LiteLLM authentication failed: {e}"
+            print(f"Error: {full_response}")
+        except NotFoundError as e:
+            full_response = f"LiteLLM model not found: {e}"
+            print(f"Error: {full_response}")
+        except RateLimitError as e:
+            full_response = f"LiteLLM rate limit exceeded: {e}"
+            print(f"Error: {full_response}")
+        except Timeout as e:
+            full_response = f"LiteLLM request timed out: {e}"
+            print(f"Error: {full_response}")
+        except Exception as e:
+            full_response = f"Error connecting to LiteLLM model: {e}"
+            print(f"Error: {full_response}")
 
     elif MODEL_PROVIDER == 'openai':
         messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
