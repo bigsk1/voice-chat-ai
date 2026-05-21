@@ -91,3 +91,8 @@ packages = ["app"]
 # For CUDA builds, install PyTorch separately first:
 # uv pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu124
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+
