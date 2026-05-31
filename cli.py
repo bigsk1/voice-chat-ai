@@ -22,6 +22,7 @@ import io
 from pydub import AudioSegment
 from datetime import datetime
 import warnings
+from app.transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
 from app.story_time import (
     add_message_timestamp,
     augment_story_system_message,
@@ -1153,7 +1154,12 @@ def detect_silence(data, threshold=1000, chunk_size=1024):
     return np.mean(np.abs(audio_data)) < threshold
 
 # Function to record audio from the microphone and save to a file
-def record_audio(file_path, silence_threshold=512, silence_duration=4.0, chunk_size=1024):
+def record_audio(
+    file_path,
+    silence_threshold=STT_SILENCE_THRESHOLD,
+    silence_duration=STT_SILENCE_DURATION,
+    chunk_size=1024,
+):
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=chunk_size)
     frames = []

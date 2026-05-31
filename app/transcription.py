@@ -33,6 +33,23 @@ DEBUG_AUDIO_LEVELS = os.getenv("DEBUG_AUDIO_LEVELS", "false").lower() == "true"
 # Check for local Faster Whisper setting
 FASTER_WHISPER_LOCAL = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
 
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or not str(raw).strip():
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        print(f"Warning: invalid {name}={raw!r}, using default {default}")
+        return default
+
+
+# Seconds of continuous silence before STT stops recording; lower = faster cutoff
+STT_SILENCE_DURATION = _env_float("STT_SILENCE_DURATION", 2.0)
+# Mean audio amplitude below this counts as silence; lower = more sensitive
+STT_SILENCE_THRESHOLD = _env_float("STT_SILENCE_THRESHOLD", 300.0)
+
 # Initialize whisper model as None to lazy load
 whisper_model = None
 
@@ -118,7 +135,14 @@ def detect_silence(data, threshold=512, chunk_size=1024):
         print(f"Audio level: {level}")
     return level < threshold
 
-async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, chunk_size=1024, send_status_callback=None, should_stop_callback=None):
+async def record_audio(
+    file_path,
+    silence_threshold=STT_SILENCE_THRESHOLD,
+    silence_duration=STT_SILENCE_DURATION,
+    chunk_size=1024,
+    send_status_callback=None,
+    should_stop_callback=None,
+):
     """Record audio to a file path
     
     Args:
@@ -177,7 +201,12 @@ async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, c
     wf.writeframes(b''.join(frames))
     wf.close()
 
-async def record_audio_enhanced(send_status_callback=None, silence_threshold=300, silence_duration=2.0, should_stop_callback=None):
+async def record_audio_enhanced(
+    send_status_callback=None,
+    silence_threshold=STT_SILENCE_THRESHOLD,
+    silence_duration=STT_SILENCE_DURATION,
+    should_stop_callback=None,
+):
     """Enhanced audio recording with waiting for speech detection
     
     Args:
@@ -390,7 +419,9 @@ async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_loc
         # Record audio with enhanced mode
         temp_filename = await record_audio_enhanced(
             send_status_callback=callback_wrapper,
-            should_stop_callback=should_stop_callback
+            should_stop_callback=should_stop_callback,
+            silence_threshold=STT_SILENCE_THRESHOLD,
+            silence_duration=STT_SILENCE_DURATION,
         )
         
         if not temp_filename:

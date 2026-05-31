@@ -29,6 +29,7 @@ from .story_time import (
     render_dynamic_prompt_template,
     save_story_history,
 )
+from .transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
 
 # Load environment variables
 load_dotenv()
@@ -1405,7 +1406,12 @@ def detect_silence(data, threshold=1000, chunk_size=1024):   # threshold is More
     audio_data = np.frombuffer(data, dtype=np.int16)
     return np.mean(np.abs(audio_data)) < threshold
 
-async def record_audio(file_path, silence_threshold=512, silence_duration=2.5, chunk_size=1024):  # 2.0 seconds of silence adjust as needed, if not picking up your voice increase to 4.0
+async def record_audio(
+    file_path,
+    silence_threshold=STT_SILENCE_THRESHOLD,
+    silence_duration=STT_SILENCE_DURATION,
+    chunk_size=1024,
+):
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=chunk_size)
     frames = []
