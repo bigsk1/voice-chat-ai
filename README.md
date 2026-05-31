@@ -152,6 +152,10 @@ To use Kokoro TTS:
 
 Kokoro TTS operates locally on your machine or local network, requiring no API key or internet connection once installed. The server supports GPU acceleration for faster processing if you have compatible NVIDIA hardware.
 
+### Qwen3 TTS (OpenAI-compatible, local) - Optional
+
+For faster local TTS with many custom cloned voices (alternative to Spark-TTS or Kokoro), run [Qwen3-TTS-Openai-Fastapi](https://github.com/bigsk1/Qwen3-TTS-Openai-Fastapi) and point Voice Chat AI at it with `TTS_PROVIDER=openai` and a custom `OPENAI_TTS_URL`. See [docs/QWEN3_TTS.md](docs/QWEN3_TTS.md) for setup, `.env` values, and UI voice listing.
+
 ### xAI Grok TTS - Optional
 
 xAI Grok TTS is available as a standalone text-to-speech API and can be used with any chat model provider in the dashboard or CLI.

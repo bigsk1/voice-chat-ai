@@ -140,8 +140,8 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="openai-voice-select">OpenAI Voice:</label>
-                <select id="openai-voice-select">
+                <label for="openai-voice-select" id="openai-voice-label">{% if openai_tts_local %}TTS Voice (local){% else %}OpenAI Voice{% endif %}:</label>
+                <select id="openai-voice-select" data-initial="{{ openai_tts_voice }}">
                     <option value="alloy">Alloy - female</option>
                     <option value="echo">Echo - male</option>
                     <option value="fable">Fable - male</option>
@@ -265,7 +265,6 @@
 
             document.getElementById('provider-select').value = "{{ model_provider }}";
             document.getElementById('tts-select').value = "{{ tts_provider }}";
-            document.getElementById('openai-voice-select').value = "{{ openai_tts_voice }}";
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
             document.getElementById('ollama-model-select').value = "{{ ollama_model }}";
             document.getElementById('xai-tts-voice-select').value = "{{ xai_tts_voice }}";

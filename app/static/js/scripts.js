@@ -455,7 +455,84 @@ document.addEventListener("DOMContentLoaded", function() {
         websocket.send(JSON.stringify({ action: "set_tts", tts: selectedTTS }));
         if (selectedTTS === 'typecast') {
             fetchTypecastVoices();
+        } else if (selectedTTS === 'openai') {
+            fetchOpenAITTSVoices();
         }
+    }
+
+    const OPENAI_CLOUD_VOICES = [
+        { id: 'alloy', name: 'Alloy - female' },
+        { id: 'echo', name: 'Echo - male' },
+        { id: 'fable', name: 'Fable - male' },
+        { id: 'onyx', name: 'Onyx - male' },
+        { id: 'nova', name: 'Nova - female' },
+        { id: 'shimmer', name: 'Shimmer - female' },
+        { id: 'sage', name: 'Sage - female' },
+        { id: 'coral', name: 'Coral - female' },
+        { id: 'ash', name: 'Ash - male' },
+    ];
+
+    function restoreDefaultOpenAIVoices() {
+        openaiVoiceSelect.innerHTML = '';
+        OPENAI_CLOUD_VOICES.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.id;
+            option.text = voice.name;
+            openaiVoiceSelect.add(option);
+        });
+    }
+
+    function applyOpenAIVoiceSelection(savedVoice) {
+        const saved = savedVoice || openaiVoiceSelect.dataset.initial || '';
+        if (saved && saved !== 'None' && saved !== '' &&
+            [...openaiVoiceSelect.options].some(o => o.value === saved)) {
+            openaiVoiceSelect.value = saved;
+        }
+    }
+
+    function fetchOpenAITTSVoices() {
+        fetch('/openai_tts_voices')
+            .then(response => response.json())
+            .then(data => {
+                const label = document.getElementById('openai-voice-label');
+                if (!data.local) {
+                    if (label) {
+                        label.textContent = 'OpenAI Voice:';
+                    }
+                    restoreDefaultOpenAIVoices();
+                    applyOpenAIVoiceSelection();
+                    return;
+                }
+
+                if (label) {
+                    label.textContent = 'TTS Voice (local):';
+                }
+
+                if (!data.voices || data.voices.length === 0) {
+                    openaiVoiceSelect.innerHTML = '';
+                    const placeholderOption = document.createElement('option');
+                    placeholderOption.value = '';
+                    placeholderOption.text = data.error
+                        ? 'Local TTS voices unavailable'
+                        : 'No voices returned from server';
+                    openaiVoiceSelect.add(placeholderOption);
+                    applyOpenAIVoiceSelection();
+                    return;
+                }
+
+                openaiVoiceSelect.innerHTML = '';
+                data.voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.id;
+                    option.text = voice.name || voice.id;
+                    openaiVoiceSelect.add(option);
+                });
+                applyOpenAIVoiceSelection();
+            })
+            .catch(error => {
+                console.error('Error fetching local OpenAI TTS voices:', error);
+                applyOpenAIVoiceSelection();
+            });
     }
 
     function typecastVoicePlaceholder() {
@@ -714,6 +791,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     loadThemePreference();
     setDarkModeDefault();
+
+    fetchOpenAITTSVoices();
 
     // Fetch Kokoro voices
     fetch('/kokoro_voices')

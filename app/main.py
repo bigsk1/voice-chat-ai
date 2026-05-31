@@ -75,12 +75,14 @@ async def get_index(request: Request):
     xai_tts_voice = os.getenv("XAI_TTS_VOICE", "eve")
     typecast_voice = os.getenv("TYPECAST_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
+    openai_tts_local = is_custom_openai_tts_url()
 
     return templates.TemplateResponse("index.html", {
         "request": request,
         "model_provider": model_provider,
         "character_name": character_name,
         "tts_provider": tts_provider,
+        "openai_tts_local": openai_tts_local,
         "openai_tts_voice": openai_tts_voice,
         "openai_model": openai_model,
         "ollama_model": ollama_model,
@@ -639,6 +641,103 @@ async def get_character_history():
     except Exception as e:
         print(f"Error getting character history: {e}")
         return {"status": "error", "message": str(e)}
+
+
+DEFAULT_OPENAI_TTS_SPEECH_URL = "https://api.openai.com/v1/audio/speech"
+
+
+def openai_tts_speech_url() -> str:
+    return os.getenv("OPENAI_TTS_URL", DEFAULT_OPENAI_TTS_SPEECH_URL).strip()
+
+
+def is_custom_openai_tts_url(url: str | None = None) -> bool:
+    speech_url = (url or openai_tts_speech_url()).rstrip("/").lower()
+    default_url = DEFAULT_OPENAI_TTS_SPEECH_URL.rstrip("/").lower()
+    return speech_url != default_url
+
+
+def openai_tts_api_base(url: str | None = None) -> str:
+    """Derive API base (…/v1) from OPENAI_TTS_URL."""
+    speech_url = (url or openai_tts_speech_url()).rstrip("/")
+    for suffix in ("/audio/speech", "/v1/audio/speech"):
+        if speech_url.lower().endswith(suffix):
+            return speech_url[: -len(suffix)]
+    if speech_url.lower().endswith("/v1"):
+        return speech_url
+    return speech_url
+
+
+def _parse_openai_compatible_voices(data) -> list[dict]:
+    """Normalize voice list payloads from OpenAI-compatible TTS servers."""
+    voices = []
+    raw = data.get("voices") if isinstance(data, dict) else None
+    if raw is None and isinstance(data, dict):
+        raw = data.get("data")
+    if not isinstance(raw, list):
+        return voices
+
+    for item in raw:
+        if isinstance(item, str):
+            voices.append({"id": item, "name": item})
+        elif isinstance(item, dict):
+            voice_id = (
+                item.get("id")
+                or item.get("voice_id")
+                or item.get("voice")
+                or item.get("name")
+            )
+            if not voice_id:
+                continue
+            voice_id = str(voice_id)
+            name = item.get("name") or item.get("label") or item.get("display_name") or voice_id
+            voices.append({"id": voice_id, "name": str(name)})
+
+    return sorted(voices, key=lambda v: v["name"].lower())
+
+
+@app.get("/openai_tts_voices")
+async def get_openai_tts_voices():
+    """List TTS voices from a custom OPENAI_TTS_URL server (e.g. Qwen3)."""
+    if not is_custom_openai_tts_url():
+        return {"local": False, "voices": []}
+
+    base = openai_tts_api_base()
+    headers = {"Content-Type": "application/json"}
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    candidate_urls = [f"{base}/voices", f"{base}/audio/voices"]
+    connector = aiohttp.TCPConnector(ssl=False)
+
+    try:
+        async with aiohttp.ClientSession(connector=connector) as session:
+            last_error = None
+            for voices_url in candidate_urls:
+                try:
+                    async with session.get(voices_url, headers=headers, timeout=5) as response:
+                        if response.status != 200:
+                            last_error = f"HTTP {response.status} from {voices_url}"
+                            continue
+                        data = await response.json()
+                        voices = _parse_openai_compatible_voices(data)
+                        if voices:
+                            return {"local": True, "voices": voices, "source": voices_url}
+                        last_error = f"No voices in response from {voices_url}"
+                except aiohttp.ClientConnectorError:
+                    last_error = f"Server not reachable at {voices_url}"
+                except asyncio.TimeoutError:
+                    last_error = f"Timeout connecting to {voices_url}"
+
+            logger.info(
+                "Custom OpenAI TTS URL configured but no voices returned (%s)",
+                last_error or "unknown",
+            )
+            return {"local": True, "voices": [], "error": last_error or "No voices found"}
+    except Exception as e:
+        logger.error(f"Error fetching custom OpenAI TTS voices: {e}")
+        return {"local": True, "voices": [], "error": str(e)}
+
 
 @app.get("/kokoro_voices")
 async def get_kokoro_voices():
