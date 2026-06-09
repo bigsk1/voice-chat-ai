@@ -74,6 +74,7 @@ async def get_index(request: Request):
     kokoro_voice = os.getenv("KOKORO_TTS_VOICE")
     xai_tts_voice = os.getenv("XAI_TTS_VOICE", "eve")
     typecast_voice = os.getenv("TYPECAST_TTS_VOICE")
+    sixtydb_voice = os.getenv("SIXTYDB_TTS_VOICE", "fbb75ed2-975a-40c7-9e06-38e30524a9a1")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
     openai_tts_local = is_custom_openai_tts_url()
 
@@ -91,6 +92,7 @@ async def get_index(request: Request):
         "kokoro_voice": kokoro_voice,
         "xai_tts_voice": xai_tts_voice,
         "typecast_voice": typecast_voice,
+        "sixtydb_voice": sixtydb_voice,
         "faster_whisper_local": faster_whisper_local,
     })
 
@@ -499,6 +501,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("XAI_TTS_VOICE", message["voice"])
             elif message["action"] == "set_typecast_voice":
                 set_env_variable("TYPECAST_TTS_VOICE", message["voice"])
+            elif message["action"] == "set_sixtydb_voice":
+                set_env_variable("SIXTYDB_TTS_VOICE", message["voice"])
             elif message["action"] == "clear":
                 conversation_history.clear()
                 await websocket.send_json({"message": "Conversation history cleared."})
@@ -931,6 +935,63 @@ async def get_typecast_voices():
     except Exception as e:
         logger.error(f"Error fetching Typecast voices: {str(e)}")
         return {"voices": [], "error": str(e)}
+
+@app.get("/sixtydb_voices")
+async def get_sixtydb_voices():
+    """Live voice list from 60db.ai — merges the user's cloned voices
+    (GET /myvoices) with the platform defaults (GET /default-voices).
+    Returns the documented Zara default as a safe fallback so the dropdown
+    is never empty (e.g. when SIXTYDB_API_KEY is missing or the API is down)."""
+    base_url = os.getenv("SIXTYDB_BASE_URL", "https://api.60db.ai").rstrip("/")
+    api_key = os.getenv("SIXTYDB_API_KEY")
+    fallback = [{"id": "fbb75ed2-975a-40c7-9e06-38e30524a9a1", "name": "Zara — Hindi female (60db default)"}]
+
+    if not api_key:
+        return {"voices": fallback, "error": "SIXTYDB_API_KEY not set"}
+
+    def _normalize(item):
+        # 60db item shapes vary (voice_id/id, voice_name/name/title) — be lenient.
+        vid = item.get("voice_id") or item.get("id") or item.get("uuid")
+        name = item.get("name") or item.get("voice_name") or item.get("title") or vid
+        return {"id": vid, "name": name} if vid else None
+
+    def _extract(payload):
+        # Endpoints may return a bare list, {"data": [...]}, or {"voices": [...]}.
+        if isinstance(payload, list):
+            rows = payload
+        elif isinstance(payload, dict):
+            rows = payload.get("data") or payload.get("voices") or []
+        else:
+            rows = []
+        return [v for v in (_normalize(r) for r in rows if isinstance(r, dict)) if v]
+
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    voices, seen = [], set()
+    try:
+        timeout = aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            for path in ("/default-voices", "/myvoices"):
+                try:
+                    async with session.get(f"{base_url}{path}", headers=headers) as resp:
+                        if resp.status != 200:
+                            logger.warning(f"60db {path} returned HTTP {resp.status}")
+                            continue
+                        for v in _extract(await resp.json(content_type=None)):
+                            if v["id"] not in seen:
+                                seen.add(v["id"])
+                                voices.append(v)
+                except Exception as e:
+                    logger.warning(f"60db {path} fetch failed: {e}")
+    except Exception as e:
+        logger.error(f"Error fetching 60db voices: {e}")
+        return {"voices": fallback, "error": str(e)}
+
+    if not voices:
+        return {"voices": fallback}
+    # Guarantee the default is present so the saved env value always resolves.
+    if fallback[0]["id"] not in seen:
+        voices.insert(0, fallback[0])
+    return {"voices": voices}
 
 def signal_handler(sig, frame):
     print('\nShutting down gracefully... Press Ctrl+C again to force exit')

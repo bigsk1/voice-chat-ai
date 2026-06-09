@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const kokoroVoiceSelect = document.getElementById('kokoro-voice-select');
     const xaiTTSVoiceSelect = document.getElementById('xai-tts-voice-select');
     const typecastVoiceSelect = document.getElementById('typecast-voice-select');
+    const sixtydbVoiceSelect = document.getElementById('sixtydb-voice-select');
     const openaiModelSelect = document.getElementById('openai-model-select');
     const ollamaModelSelect = document.getElementById('ollama-model-select');
     const xaiModelSelect = document.getElementById('xai-model-select');
@@ -457,6 +458,8 @@ document.addEventListener("DOMContentLoaded", function() {
             fetchTypecastVoices();
         } else if (selectedTTS === 'openai') {
             fetchOpenAITTSVoices();
+        } else if (selectedTTS === 'sixtydb') {
+            fetchSixtydbVoices();
         }
     }
 
@@ -570,6 +573,44 @@ document.addEventListener("DOMContentLoaded", function() {
             .catch(error => {
                 console.error('Error fetching Typecast voices:', error);
                 typecastVoicePlaceholder();
+            });
+    }
+
+    function sixtydbVoicePlaceholder() {
+        const voiceSelect = document.getElementById('sixtydb-voice-select');
+        voiceSelect.innerHTML = '';
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.text = 'Select 60db TTS to Load';
+        voiceSelect.add(placeholderOption);
+    }
+
+    function fetchSixtydbVoices() {
+        fetch('/sixtydb_voices')
+            .then(response => response.json())
+            .then(data => {
+                const voiceSelect = document.getElementById('sixtydb-voice-select');
+                voiceSelect.innerHTML = '';
+
+                if (data.voices && data.voices.length > 0) {
+                    data.voices.forEach(voice => {
+                        const option = document.createElement('option');
+                        option.value = voice.id;
+                        option.text = voice.name;
+                        voiceSelect.add(option);
+                    });
+                    const saved = voiceSelect.dataset.initial;
+                    if (saved && saved !== 'None' && saved !== '' &&
+                        [...voiceSelect.options].some(o => o.value === saved)) {
+                        voiceSelect.value = saved;
+                    }
+                } else {
+                    sixtydbVoicePlaceholder();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching 60db voices:', error);
+                sixtydbVoicePlaceholder();
             });
     }
 

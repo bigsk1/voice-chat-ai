@@ -454,3 +454,143 @@ async def transcribe_audio(transcription_model="gpt-4o-mini-transcribe", use_loc
                 "message": f"Error: {str(e)}"
             })
         return f"Error: {str(e)}" 
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 60db.ai STT — REST and WebSocket transports.
+# A third STT_PROVIDER alongside Faster-Whisper (local) and OpenAI.
+# REST is for buffered file transcription (matches transcribe_with_openai_api
+# shape). WS is for live mic capture with VAD events.
+# Docs: https://docs.60db.ai/api-reference/stt/speech-to-text
+#       https://docs.60db.ai/api-reference/websocket/stt
+# ──────────────────────────────────────────────────────────────────────
+
+async def transcribe_with_sixtydb(audio_file: str) -> str:
+    """POST a WAV file to 60db /stt and return the canonical transcript text.
+    Drop-in alt for transcribe_with_openai_api() when STT_PROVIDER='sixtydb'.
+    """
+    import os as _os
+    import aiohttp as _aiohttp
+
+    api_key = _os.getenv("SIXTYDB_API_KEY", "").strip()
+    if not api_key:
+        return "Error: SIXTYDB_API_KEY not set"
+
+    base_url = _os.getenv("SIXTYDB_BASE_URL", "https://api.60db.ai")
+    url = f"{base_url}/stt"
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+    try:
+        async with _aiohttp.ClientSession() as session:
+            with open(audio_file, "rb") as f:
+                data = _aiohttp.FormData()
+                data.add_field("file", f, filename="audio.wav",
+                               content_type="audio/wav")
+                timeout = _aiohttp.ClientTimeout(total=120)
+                async with session.post(url, headers=headers, data=data,
+                                        timeout=timeout) as resp:
+                    if resp.status != 200:
+                        text = await resp.text()
+                        return f"Error: 60db STT HTTP {resp.status}: {text[:200]}"
+                    body = await resp.json()
+                    return body.get("text") or body.get("transcript") or ""
+    except Exception as e:
+        return f"Error: 60db STT failed: {e}"
+
+
+async def transcribe_sixtydb_ws_listen_once():
+    """Open /ws/stt, capture from the default mic, return the first final
+    transcript. Uses 60db's own VAD (`speech_final` event) instead of the
+    local silence-detector — no need to record-then-transcribe.
+
+    Returns (text, language) to match the existing patterns.
+    """
+    import asyncio as _asyncio
+    return await _listen_once_async_sixtydb()
+
+
+async def _listen_once_async_sixtydb():
+    import asyncio as _asyncio
+    import base64 as _b64
+    import json as _json
+    import os as _os
+    import pyaudio as _pa
+    import websockets as _ws
+
+    api_key = _os.getenv("SIXTYDB_API_KEY", "").strip()
+    if not api_key:
+        return "Error: SIXTYDB_API_KEY not set", "en"
+
+    base_ws = _os.getenv("SIXTYDB_WS_STT_URL", "wss://api.60db.ai/ws/stt")
+    url = f"{base_ws}?apiKey={api_key}"
+    SAMPLE_RATE = 16_000
+    transcript_holder = []
+
+    pa = _pa.PyAudio()
+    src = pa.open(
+        rate=SAMPLE_RATE, format=_pa.paInt16,
+        channels=1, input=True, frames_per_buffer=960,
+    )
+    stop = _asyncio.Event()
+
+    async with _ws.connect(url) as sock:
+        _json.loads(await sock.recv())  # greeting
+
+        await sock.send(_json.dumps({
+            "type": "start",
+            "languages": None,
+            "config": {
+                "encoding": "linear",
+                "sample_rate": SAMPLE_RATE,
+                "utterance_end_ms": 500,
+                "continuous_mode": True,
+                "interim_results_frequency": 300,
+                "audio_enhancement": "adaptive",
+                "no_speech_threshold": 0.60,
+            },
+        }))
+
+        async def pump_mic():
+            loop = _asyncio.get_event_loop()
+            while not stop.is_set():
+                chunk = await loop.run_in_executor(None, src.read, 960, False)
+                if stop.is_set():
+                    break
+                await sock.send(_json.dumps({
+                    "type": "audio",
+                    "audio": _b64.b64encode(chunk).decode("ascii"),
+                    "encoding": "linear",
+                    "sample_rate": SAMPLE_RATE,
+                }))
+
+        async def consume():
+            async for raw in sock:
+                frame = _json.loads(raw)
+                if frame.get("type") == "transcription" and frame.get("speech_final"):
+                    text = (frame.get("text") or "").strip()
+                    if text:
+                        lang = frame.get("language", "en")
+                        transcript_holder.append((text, lang))
+                        stop.set()
+                        return
+                elif frame.get("type") == "error":
+                    transcript_holder.append((f"Error: {frame.get('error')}", "en"))
+                    stop.set()
+                    return
+
+        try:
+            mic_task = _asyncio.create_task(pump_mic())
+            await consume()
+            stop.set()
+            await mic_task
+        finally:
+            try:
+                await sock.send(_json.dumps({"type": "stop"}))
+            except Exception:
+                pass
+            try:
+                src.stop_stream(); src.close(); pa.terminate()
+            except Exception:
+                pass
+
+    return transcript_holder[0] if transcript_holder else ("", "en")

@@ -97,6 +97,18 @@ TYPECAST_API_KEY = os.getenv('TYPECAST_API_KEY')
 TYPECAST_TTS_VOICE = os.getenv('TYPECAST_TTS_VOICE')
 TYPECAST_TTS_MODEL = os.getenv('TYPECAST_TTS_MODEL', 'ssfm-v30')
 TYPECAST_EMOTION_PRESET = os.getenv('TYPECAST_EMOTION_PRESET', 'normal')
+# 60db.ai — 7th TTS provider. REST sync by default; flip SIXTYDB_TTS_WS=true
+# to use the /ws/tts WebSocket transport instead. No official Python SDK, so
+# we use bare aiohttp + websockets (matching the existing ElevenLabs path).
+SIXTYDB_API_KEY = os.getenv('SIXTYDB_API_KEY')
+SIXTYDB_TTS_VOICE = os.getenv('SIXTYDB_TTS_VOICE', 'fbb75ed2-975a-40c7-9e06-38e30524a9a1')  # Zara
+SIXTYDB_TTS_URL = os.getenv('SIXTYDB_TTS_URL', 'https://api.60db.ai/tts-synthesize')
+SIXTYDB_WS_TTS_URL = os.getenv('SIXTYDB_WS_TTS_URL', 'wss://api.60db.ai/ws/tts')
+SIXTYDB_BASE_URL = os.getenv('SIXTYDB_BASE_URL', 'https://api.60db.ai')
+SIXTYDB_TTS_WS = os.getenv('SIXTYDB_TTS_WS', '').strip().lower() in ('1', 'true', 'yes')
+SIXTYDB_TTS_STABILITY = int(os.getenv('SIXTYDB_TTS_STABILITY', '50'))
+SIXTYDB_TTS_SIMILARITY = int(os.getenv('SIXTYDB_TTS_SIMILARITY', '75'))
+SIXTYDB_TTS_TIMEOUT = int(os.getenv('SIXTYDB_TTS_TIMEOUT', '120'))
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 SPARKTTS_MODEL_DIR = os.getenv('SPARKTTS_MODEL_DIR', 'pretrained_models/Spark-TTS-0.5B')
@@ -237,6 +249,11 @@ def init_typecast_tts_voice(voice_id):
     TYPECAST_TTS_VOICE = voice_id
     print(f"Switched to Typecast TTS voice: {voice_id}")
 
+def init_sixtydb_tts_voice(voice_id):
+    global SIXTYDB_TTS_VOICE
+    SIXTYDB_TTS_VOICE = voice_id
+    print(f"Switched to 60db TTS voice: {voice_id}")
+
 def init_voice_speed(speed_value):
     global VOICE_SPEED
     VOICE_SPEED = speed_value
@@ -297,6 +314,9 @@ def display_elevenlabs_quota():
 
 if TTS_PROVIDER == "elevenlabs":
     display_elevenlabs_quota()
+
+if TTS_PROVIDER == "sixtydb" and SIXTYDB_API_KEY:
+    display_sixtydb_credits()
     
 # Function to open a file and return its contents as a string
 def open_file(filepath):
@@ -506,6 +526,23 @@ async def process_and_play(prompt, audio_file_pth):
             await send_message_to_clients(json.dumps({
                 "action": "error",
                 "message": "Typecast audio file not found after generation"
+            }))
+    elif TTS_PROVIDER == 'sixtydb':
+        # 60db.ai — REST sync or WS streaming based on SIXTYDB_TTS_WS env.
+        output_path = os.path.join(output_dir, 'output.wav')
+        success = await sixtydb_text_to_speech(prompt, output_path)
+        if success and os.path.exists(output_path):
+            print("Playing generated audio...")
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+        elif not success:
+            print("Failed to generate 60db audio.")
+        else:
+            print("Error: 60db audio file not found after generation.")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "60db audio file not found after generation"
             }))
     else:
         print(f"Unknown TTS provider: {TTS_PROVIDER}")
@@ -730,6 +767,194 @@ async def elevenlabs_text_to_speech(text, output_path):
             "message": "Failed to connect to ElevenLabs TTS service"
         }))
         return False
+
+# ──────────────────────────────────────────────────────────────────────
+# 60db.ai TTS — REST sync + WS streaming.
+# Picks transport based on SIXTYDB_TTS_WS env var. Mirrors the existing
+# ElevenLabs pattern (aiohttp, write to disk, push WS error frames to the
+# browser via send_message_to_clients).
+# Docs: https://docs.60db.ai/api-reference/tts/text-to-speech
+#       https://docs.60db.ai/websocket-api/tts
+# ──────────────────────────────────────────────────────────────────────
+
+async def sixtydb_text_to_speech(text, output_path):
+    """Dispatch entry — REST sync by default, WS when SIXTYDB_TTS_WS=true."""
+    if SIXTYDB_TTS_WS:
+        return await _sixtydb_text_to_speech_ws(text, output_path)
+    return await _sixtydb_text_to_speech_rest(text, output_path)
+
+
+async def _sixtydb_text_to_speech_rest(text, output_path):
+    """POST /tts-synthesize → JSON envelope with audio_base64 → write WAV."""
+    import base64
+
+    if not SIXTYDB_API_KEY:
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "SIXTYDB_API_KEY not set",
+        }))
+        return False
+
+    voice_speed = float(os.getenv("VOICE_SPEED", "1.0"))
+    payload = {
+        "text": text,
+        "voice_id": SIXTYDB_TTS_VOICE,
+        "enhance": True,
+        "speed": voice_speed,
+        "stability": SIXTYDB_TTS_STABILITY,
+        "similarity": SIXTYDB_TTS_SIMILARITY,
+        "output_format": "wav",
+    }
+    headers = {
+        "Authorization": f"Bearer {SIXTYDB_API_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=SIXTYDB_TTS_TIMEOUT)
+            async with session.post(SIXTYDB_TTS_URL, headers=headers, json=payload,
+                                    timeout=timeout) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    print(f"60db TTS HTTP {response.status}: {error_text[:200]}")
+                    await send_message_to_clients(json.dumps({
+                        "action": "error",
+                        "message": f"60db TTS error: {response.status}",
+                    }))
+                    return False
+
+                body = await response.json()
+                audio_b64 = body.get("audio_base64")
+                if not audio_b64:
+                    msg = body.get("message", "no audio_base64 in response")
+                    await send_message_to_clients(json.dumps({
+                        "action": "error",
+                        "message": f"60db TTS: {msg}",
+                    }))
+                    return False
+
+                with open(output_path, "wb") as f:
+                    f.write(base64.b64decode(audio_b64))
+                print(f"60db audio saved successfully ({body.get('duration_seconds', '?')}s).")
+                return True
+
+    except asyncio.TimeoutError:
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "60db TTS request timed out. Text may be too long.",
+        }))
+        return False
+    except Exception as e:
+        print(f"Error during 60db TTS API call: {str(e)}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": f"60db TTS error: {str(e)}",
+        }))
+        return False
+
+
+async def _sixtydb_text_to_speech_ws(text, output_path):
+    """WebSocket /ws/tts — stateful create_context → send_text → flush → close.
+
+    Collects PCM16 chunks then wraps in a WAV header. Same observable result
+    as the REST path; useful when 60db's REST is rate-limited or when you
+    want lower time-to-first-byte (though we still buffer-and-play here).
+    """
+    import base64
+    import uuid
+    import wave
+    import io
+    import websockets
+
+    if not SIXTYDB_API_KEY:
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "SIXTYDB_API_KEY not set",
+        }))
+        return False
+
+    voice_speed = float(os.getenv("VOICE_SPEED", "1.0"))
+    url = f"{SIXTYDB_WS_TTS_URL}?apiKey={SIXTYDB_API_KEY}"
+    ctx_id = str(uuid.uuid4())
+    pcm = bytearray()
+    SAMPLE_RATE = 24_000  # we ask for LINEAR16 @ 24kHz
+
+    try:
+        async with websockets.connect(url) as ws:
+            json.loads(await ws.recv())  # connection_established greeting
+            await ws.send(json.dumps({
+                "create_context": {
+                    "context_id": ctx_id,
+                    "voice_id": SIXTYDB_TTS_VOICE,
+                    "audio_config": {
+                        "audio_encoding": "LINEAR16",
+                        "sample_rate_hertz": SAMPLE_RATE,
+                    },
+                    "speed": voice_speed,
+                    "stability": SIXTYDB_TTS_STABILITY,
+                    "similarity": SIXTYDB_TTS_SIMILARITY,
+                },
+            }))
+            await ws.send(json.dumps({
+                "send_text": {"context_id": ctx_id, "text": text},
+            }))
+            await ws.send(json.dumps({"flush_context": {"context_id": ctx_id}}))
+
+            while True:
+                frame = json.loads(await ws.recv())
+                if "audio_chunk" in frame:
+                    b64 = frame["audio_chunk"].get("audioContent")
+                    if b64:
+                        pcm.extend(base64.b64decode(b64))
+                elif "flush_completed" in frame:
+                    break
+                elif "error" in frame:
+                    raise RuntimeError(frame["error"])
+
+            try:
+                await ws.send(json.dumps({"close_context": {"context_id": ctx_id}}))
+            except Exception:
+                pass
+
+        # Wrap PCM16 in a WAV header so play_audio() can play directly.
+        with wave.open(output_path, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(SAMPLE_RATE)
+            w.writeframes(bytes(pcm))
+        print(f"60db WS audio saved successfully ({len(pcm)} PCM bytes).")
+        return True
+
+    except Exception as e:
+        print(f"Error during 60db WS TTS: {str(e)}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": f"60db WS TTS error: {str(e)}",
+        }))
+        return False
+
+
+def display_sixtydb_credits():
+    """Boot-time check — hit GET /myvoices and print whether the key works.
+    60db's connection_established WS frame carries credit_balance but a quick
+    REST liveness check works without opening a socket."""
+    import requests as _requests
+    try:
+        r = _requests.get(
+            f"{SIXTYDB_BASE_URL}/myvoices",
+            headers={"Authorization": f"Bearer {SIXTYDB_API_KEY}"},
+            timeout=10,
+        )
+        if r.ok:
+            voices = (r.json() or {}).get("data") or []
+            print(f"{NEON_GREEN}60db.ai key OK — {len(voices)} custom voice(s) available{RESET_COLOR}")
+        else:
+            print(f"{YELLOW}60db.ai key check returned HTTP {r.status_code}{RESET_COLOR}")
+    except Exception as e:
+        print(f"{YELLOW}60db.ai key check failed: {e}{RESET_COLOR}")
+
 
 async def typecast_text_to_speech(text, output_path):
     try:

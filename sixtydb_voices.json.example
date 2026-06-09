@@ -1,0 +1,13 @@
+{
+    "voices": [
+        {
+            "id": "fbb75ed2-975a-40c7-9e06-38e30524a9a1",
+            "name": "Zara — Hindi female (60db default)"
+        },
+        {
+            "id": "REPLACE_WITH_YOUR_VOICE_ID",
+            "name": "Custom voice 1 — replace with your cloned voice"
+        }
+    ],
+    "_comment": "Drop in voice IDs from your 60db.ai account. Run `python voices.py` (if you ship the CLI) or hit GET https://api.60db.ai/myvoices and GET https://api.60db.ai/default-voices manually to list IDs. The default Zara entry is the documented /default-voices first entry — keep it as the safe fallback."
+}
