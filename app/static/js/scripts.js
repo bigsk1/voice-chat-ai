@@ -88,33 +88,46 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
+    function matchOllamaModel(models, preferred) {
+        if (!preferred) {
+            return null;
+        }
+        if (models.includes(preferred)) {
+            return preferred;
+        }
+        const base = preferred.replace(/:latest$/, '');
+        return models.find(
+            (model) =>
+                model.replace(/:latest$/, '') === base ||
+                model.startsWith(`${base}:`)
+        ) || null;
+    }
+
     // Function to populate Ollama model select dropdown
     function populateOllamaModelSelect(models) {
-        // Save the current selection
+        const envModel = (ollamaModelSelect.dataset.initial || '').trim();
         const currentValue = ollamaModelSelect.value;
-        
-        // Clear the select element
+
         ollamaModelSelect.innerHTML = '';
-        
-        // Sort the models alphabetically
+
         models.sort((a, b) => a.localeCompare(b));
-        
-        // Add each model as an option
+
         models.forEach(model => {
             const option = document.createElement('option');
             option.value = model;
             option.textContent = model;
             ollamaModelSelect.appendChild(option);
         });
-        
-        // Try to restore the previous selection
-        if (models.includes(currentValue)) {
-            ollamaModelSelect.value = currentValue;
+
+        const matched =
+            matchOllamaModel(models, envModel) ||
+            matchOllamaModel(models, currentValue);
+
+        if (matched) {
+            ollamaModelSelect.value = matched;
         } else if (models.includes('llama3.2')) {
-            // Default to llama3.2 if available
             ollamaModelSelect.value = 'llama3.2';
         } else if (models.length > 0) {
-            // Otherwise select the first available model
             ollamaModelSelect.value = models[0];
         }
     }

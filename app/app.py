@@ -86,6 +86,7 @@ XAI_TTS_BIT_RATE = os.getenv('XAI_TTS_BIT_RATE')
 XAI_TTS_TIMEOUT = int(os.getenv('XAI_TTS_TIMEOUT', '180'))
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+OLLAMA_NUM_CTX = os.getenv('OLLAMA_NUM_CTX', '').strip()
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-7-sonnet-20250219')
 ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
@@ -191,6 +192,25 @@ if TTS_PROVIDER == 'sparktts':
             print(f"Failed to load Spark-TTS model: {e}")
             TTS_PROVIDER = 'openai'
             print("Switched to default TTS provider: openai")
+
+def _ollama_num_ctx():
+    if not OLLAMA_NUM_CTX:
+        return None
+    try:
+        value = int(OLLAMA_NUM_CTX)
+        if value <= 0:
+            raise ValueError
+        return value
+    except ValueError:
+        print(f"{YELLOW}Invalid OLLAMA_NUM_CTX: {OLLAMA_NUM_CTX!r} — must be a positive integer; ignoring.{RESET_COLOR}")
+        return None
+
+def ollama_request_options(**extra):
+    options = dict(extra)
+    num_ctx = _ollama_num_ctx()
+    if num_ctx is not None:
+        options["num_ctx"] = num_ctx
+    return options
 
 def init_ollama_model(model_name):
     global OLLAMA_MODEL
@@ -1153,7 +1173,7 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             "model": OLLAMA_MODEL,
             "messages": [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}],
             "stream": True,
-            "options": {"num_predict": -2, "temperature": 1.0}
+            "options": ollama_request_options(num_predict=-2, temperature=1.0)
         }
         try:
             print(f"Debug: Sending request to Ollama: {OLLAMA_BASE_URL}/v1/chat/completions")
@@ -1537,6 +1557,9 @@ async def analyze_image(image_path, question_prompt):
             "images": [encoded_image],
             "stream": False
         }
+        llava_options = ollama_request_options()
+        if llava_options:
+            payload["options"] = llava_options
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(f'{OLLAMA_BASE_URL}/api/generate', headers=headers, json=payload, timeout=30) as response:

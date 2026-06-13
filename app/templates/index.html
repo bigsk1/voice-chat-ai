@@ -186,7 +186,7 @@
             </div>
             <div class="setting-group">
                 <label for="ollama-model-select">Ollama Model:</label>
-                <select id="ollama-model-select">
+                <select id="ollama-model-select" data-initial="{{ ollama_model }}">
                     <option value="llama3.2">Select Ollama to Load</option>
                 </select>
             </div>
@@ -266,7 +266,6 @@
             document.getElementById('provider-select').value = "{{ model_provider }}";
             document.getElementById('tts-select').value = "{{ tts_provider }}";
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
-            document.getElementById('ollama-model-select').value = "{{ ollama_model }}";
             document.getElementById('xai-tts-voice-select').value = "{{ xai_tts_voice }}";
             document.getElementById('voice-speed-select').value = "{{ voice_speed }}";
             
