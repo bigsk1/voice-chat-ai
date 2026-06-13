@@ -667,6 +667,105 @@ def openai_tts_api_base(url: str | None = None) -> str:
     return speech_url
 
 
+def _normalize_kokoro_voice_entries(data) -> list[dict]:
+    """Normalize Kokoro /audio/voices payloads (legacy strings or v0.4+ id/name objects)."""
+    raw = data.get("voices", []) if isinstance(data, dict) else []
+    if not isinstance(raw, list):
+        return []
+
+    entries = []
+    for item in raw:
+        if isinstance(item, str):
+            entries.append({"id": item, "label": item})
+        elif isinstance(item, dict):
+            voice_id = item.get("id") or item.get("voice_id") or item.get("voice")
+            if not voice_id:
+                voice_id = item.get("name")
+            if not voice_id:
+                continue
+            voice_id = str(voice_id)
+            label = item.get("name") or item.get("label") or item.get("display_name") or voice_id
+            entries.append({"id": voice_id, "label": str(label)})
+    return entries
+
+
+def _build_kokoro_voice_dropdown(entries: list[dict]) -> list[dict]:
+    """Build UI voice options from normalized Kokoro voice entries."""
+    language_codes = {
+        "a": "American English",
+        "b": "British English",
+        "e": "European Spanish",
+        "f": "French",
+        "g": "German",
+        "h": "Hindi",
+        "i": "Italian",
+        "j": "Japanese",
+        "k": "Korean",
+        "p": "Polish",
+        "r": "Russian",
+        "s": "Spanish",
+        "z": "Chinese",
+    }
+
+    labels_by_id = {entry["id"]: entry["label"] for entry in entries}
+    voice_ids = [entry["id"] for entry in entries]
+
+    english_voices = []
+    other_voices_by_language = {}
+    unknown_voices = []
+
+    for voice_id in voice_ids:
+        parts = voice_id.split("_")
+        if len(parts) >= 2:
+            accent_code = parts[0][:1]
+            if accent_code not in language_codes:
+                unknown_voices.append(voice_id)
+            elif accent_code in ["a", "b"]:
+                english_voices.append(voice_id)
+            else:
+                other_voices_by_language.setdefault(accent_code, []).append(voice_id)
+        else:
+            unknown_voices.append(voice_id)
+
+    english_voices.sort()
+    for lang in other_voices_by_language:
+        other_voices_by_language[lang].sort()
+    unknown_voices.sort()
+
+    voices = []
+
+    for voice_id in english_voices:
+        parts = voice_id.split("_")
+        if len(parts) >= 2:
+            lang_code = parts[0]
+            name = parts[1].capitalize()
+            accent_code = lang_code[:1]
+            gender_code = lang_code[1:2]
+            gender = "Female" if gender_code == "f" else "Male"
+            accent_label = f" - {language_codes.get(accent_code, 'Unknown')}"
+            voices.append({"id": voice_id, "name": f"{name} ({gender}){accent_label}"})
+
+    for lang in sorted(other_voices_by_language.keys()):
+        if other_voices_by_language[lang]:
+            language_name = language_codes.get(lang, "Unknown Language")
+            voices.append({"id": f"separator_{lang}", "name": f"--- {language_name} Voices ---"})
+            for voice_id in other_voices_by_language[lang]:
+                parts = voice_id.split("_")
+                if len(parts) >= 2:
+                    name = parts[1].capitalize()
+                    gender_code = parts[0][1:2]
+                    gender = "Female" if gender_code == "f" else "Male"
+                    voices.append({"id": voice_id, "name": f"{name} ({gender})"})
+
+    if unknown_voices:
+        voices.append({"id": "separator_unknown", "name": "--- Other Voices ---"})
+        for voice_id in unknown_voices:
+            label = labels_by_id.get(voice_id, voice_id)
+            voices.append({"id": voice_id, "name": label})
+
+    return voices
+
+
 def _parse_openai_compatible_voices(data) -> list[dict]:
     """Normalize voice list payloads from OpenAI-compatible TTS servers."""
     voices = []
@@ -759,133 +858,33 @@ async def get_kokoro_voices():
             headers["Authorization"] = f"Basic {base64_auth}"
         
         try:
-            # Use the correct API endpoint for voices
-            voices_url = f"{kokoro_base_url}/audio/voices"
-            
-            # Make HTTP request directly with SSL verification disabled
+            voices_base_url = f"{kokoro_base_url}/audio/voices"
+            voice_list_urls = [voices_base_url]
+            if os.getenv("KOKORO_VOICES_LEGACY", "").lower() not in ("true", "1", "yes"):
+                voice_list_urls.append(f"{voices_base_url}?legacy=true")
+            else:
+                voice_list_urls = [f"{voices_base_url}?legacy=true", voices_base_url]
+
             connector = aiohttp.TCPConnector(ssl=False)
             async with aiohttp.ClientSession(connector=connector) as session:
                 try:
-                    async with session.get(voices_url, headers=headers, timeout=3) as response:
-                        if response.status == 200:
+                    last_error = None
+                    for voices_url in voice_list_urls:
+                        async with session.get(voices_url, headers=headers, timeout=3) as response:
+                            if response.status != 200:
+                                error_text = await response.text()
+                                last_error = f"HTTP {response.status} - {error_text}"
+                                continue
                             data = await response.json()
-                            # Process the voices from the response
-                            voices = []
-                            
-                            # Language/accent codes mapping
-                            language_codes = {
-                                'a': 'American English',
-                                'b': 'British English',
-                                'e': 'European Spanish',
-                                'f': 'French',
-                                'g': 'German',
-                                'h': 'Hindi',
-                                'i': 'Italian',
-                                'j': 'Japanese',
-                                'k': 'Korean',
-                                'p': 'Polish',
-                                'r': 'Russian',
-                                's': 'Spanish',
-                                'z': 'Chinese'
-                            }
-                            
-                            # Get all voice IDs
-                            voice_ids = data.get("voices", [])
-                            
-                            # Group voices by language/accent
-                            english_voices = []  # American and British English
-                            other_voices_by_language = {}  # Organize other voices by language code
-                            unknown_voices = []
-                            
-                            for voice_id in voice_ids:
-                                parts = voice_id.split('_')
-                                if len(parts) >= 2:
-                                    lang_code = parts[0]
-                                    # First character is language code
-                                    accent_code = lang_code[:1]
-                                    
-                                    # Prioritize English voices (American and British)
-                                    if accent_code in ['a', 'b']:
-                                        english_voices.append(voice_id)
-                                    else:
-                                        # Group other voices by language
-                                        if accent_code not in other_voices_by_language:
-                                            other_voices_by_language[accent_code] = []
-                                        other_voices_by_language[accent_code].append(voice_id)
-                                else:
-                                    unknown_voices.append(voice_id)
-                            
-                            # Sort voices within each group
-                            english_voices.sort()
-                            for lang in other_voices_by_language:
-                                other_voices_by_language[lang].sort()
-                            unknown_voices.sort()
-                            
-                            # Create final sorted list: English first, then other languages alphabetically
-                            sorted_voice_ids = english_voices
-                            
-                            # Process English voices
-                            for voice_id in english_voices:
-                                parts = voice_id.split('_')
-                                if len(parts) >= 2:
-                                    lang_code = parts[0]
-                                    name = parts[1].capitalize()
-                                    
-                                    accent_code = lang_code[:1]
-                                    gender_code = lang_code[1:2]
-                                    
-                                    gender = "Female" if gender_code == "f" else "Male"
-                                    accent_label = f" - {language_codes.get(accent_code, 'Unknown')}"
-                                    
-                                    voices.append({
-                                        "id": voice_id,
-                                        "name": f"{name} ({gender}){accent_label}"
-                                    })
-                            
-                            # Add other language groups with separators
-                            for lang in sorted(other_voices_by_language.keys()):
-                                # Add a language group header if we have voices for this language
-                                if other_voices_by_language[lang]:
-                                    language_name = language_codes.get(lang, "Unknown Language")
-                                    
-                                    # Add a separator for this language group
-                                    voices.append({
-                                        "id": f"separator_{lang}",
-                                        "name": f"--- {language_name} Voices ---"
-                                    })
-                                    
-                                    # Add the voices for this language
-                                    for voice_id in other_voices_by_language[lang]:
-                                        parts = voice_id.split('_')
-                                        if len(parts) >= 2:
-                                            name = parts[1].capitalize()
-                                            gender_code = parts[0][1:2]
-                                            gender = "Female" if gender_code == "f" else "Male"
-                                            
-                                            voices.append({
-                                                "id": voice_id,
-                                                "name": f"{name} ({gender})"
-                                            })
-                            
-                            # Add unknown voices at the end if any
-                            if unknown_voices:
-                                voices.append({
-                                    "id": "separator_unknown",
-                                    "name": "--- Other Voices ---"
-                                })
-                                
-                                for voice_id in unknown_voices:
-                                    voices.append({
-                                        "id": voice_id,
-                                        "name": voice_id
-                                    })
-                            
+                            entries = _normalize_kokoro_voice_entries(data)
+                            if not entries:
+                                last_error = "No voices in response"
+                                continue
+                            voices = _build_kokoro_voice_dropdown(entries)
                             return {"voices": voices}
-                        else:
-                            # Log the error and return empty voices
-                            error_text = await response.text()
-                            logger.error(f"Error fetching Kokoro voices: HTTP {response.status} - {error_text}")
-                            return {"voices": [], "error": f"HTTP Error: {response.status}"}
+
+                    logger.error(f"Error fetching Kokoro voices: {last_error or 'unknown'}")
+                    return {"voices": [], "error": last_error or "No voices found"}
                 except aiohttp.ClientConnectorError as e:
                     # Handle connection errors specifically (server not available)
                     logger.info(f"Kokoro server not available at {kokoro_base_url} - This is normal if you don't have Kokoro running")

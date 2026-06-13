@@ -807,42 +807,43 @@ document.addEventListener("DOMContentLoaded", function() {
 
     fetchOpenAITTSVoices();
 
+    function selectKokoroVoiceInDropdown() {
+        const envVoice = (kokoroVoiceSelect.dataset.initial || '').trim();
+        const optionValues = Array.from(kokoroVoiceSelect.options).map((option) => option.value);
+        if (envVoice && optionValues.includes(envVoice)) {
+            kokoroVoiceSelect.value = envVoice;
+        }
+    }
+
+    function populateKokoroVoiceSelect(voices) {
+        kokoroVoiceSelect.innerHTML = '';
+
+        if (voices && voices.length > 0) {
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.id;
+                option.text = voice.name;
+                kokoroVoiceSelect.add(option);
+            });
+            selectKokoroVoiceInDropdown();
+            return;
+        }
+
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = 'af_bella';
+        placeholderOption.text = 'Select Kokoro TTS to Load';
+        kokoroVoiceSelect.add(placeholderOption);
+    }
+
     // Fetch Kokoro voices
     fetch('/kokoro_voices')
         .then(response => response.json())
         .then(data => {
-            const voiceSelect = document.getElementById('kokoro-voice-select');
-            
-            // Clear any existing options
-            voiceSelect.innerHTML = '';
-            
-            // If we have voices, populate the dropdown with them
-            if (data.voices && data.voices.length > 0) {
-                // Populate with available voices
-                data.voices.forEach(voice => {
-                    const option = document.createElement('option');
-                    option.value = voice.id;
-                    option.text = voice.name;
-                    voiceSelect.add(option);
-                });
-            } else {
-                // If no voices are available, add a placeholder
-                const placeholderOption = document.createElement('option');
-                placeholderOption.value = 'af_bella';
-                placeholderOption.text = 'Select Kokoro TTS to Load';
-                voiceSelect.add(placeholderOption);
-            }
+            populateKokoroVoiceSelect(data.voices);
         })
         .catch(error => {
             console.error('Error fetching Kokoro voices:', error);
-            
-            // On error, ensure we have a placeholder
-            const voiceSelect = document.getElementById('kokoro-voice-select');
-            voiceSelect.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = 'af_bella';
-            placeholderOption.text = 'Select Kokoro TTS to Load';
-            voiceSelect.add(placeholderOption);
+            populateKokoroVoiceSelect([]);
         });
 
     // Typecast: only hit the API when Typecast is the active TTS provider (avoid 403/log spam for OpenAI/etc.)

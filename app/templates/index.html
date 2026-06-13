@@ -159,7 +159,7 @@
             </div>
             <div class="setting-group">
                 <label for="kokoro-voice-select">Kokoro Voice:</label>
-                <select id="kokoro-voice-select"></select>
+                <select id="kokoro-voice-select" data-initial="{{ kokoro_voice }}"></select>
             </div>
             <div class="setting-group">
                 <label for="xai-tts-voice-select">xAI Voice:</label>
@@ -268,14 +268,6 @@
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
             document.getElementById('xai-tts-voice-select').value = "{{ xai_tts_voice }}";
             document.getElementById('voice-speed-select').value = "{{ voice_speed }}";
-            
-            // Set Kokoro voice value
-            setTimeout(() => {
-                const kokoroVoiceSelect = document.getElementById('kokoro-voice-select');
-                if (kokoroVoiceSelect && kokoroVoiceSelect.options.length > 0) {
-                    kokoroVoiceSelect.value = "{{ kokoro_voice }}";
-                }
-            }, 300); // Short delay to ensure the dropdown is populated
         });
     </script>
 </body>
