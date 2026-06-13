@@ -715,6 +715,9 @@ def _build_kokoro_voice_dropdown(entries: list[dict]) -> list[dict]:
     unknown_voices = []
 
     for voice_id in voice_ids:
+        if "+" in voice_id:
+            unknown_voices.append(voice_id)
+            continue
         parts = voice_id.split("_")
         if len(parts) >= 2:
             accent_code = parts[0][:1]
@@ -764,6 +767,22 @@ def _build_kokoro_voice_dropdown(entries: list[dict]) -> list[dict]:
             voices.append({"id": voice_id, "name": label})
 
     return voices
+
+
+def _ensure_kokoro_configured_voice(voices: list[dict], configured_voice: str | None) -> list[dict]:
+    """Ensure KOKORO_TTS_VOICE appears in the dropdown (e.g. af_bella+af_sky mixes)."""
+    configured_voice = (configured_voice or "").strip()
+    if not configured_voice:
+        return voices
+    if any(voice.get("id") == configured_voice for voice in voices):
+        return voices
+
+    result = list(voices)
+    has_other_section = any(voice.get("id") == "separator_unknown" for voice in result)
+    if not has_other_section:
+        result.append({"id": "separator_unknown", "name": "--- Other Voices ---"})
+    result.append({"id": configured_voice, "name": configured_voice})
+    return result
 
 
 def _parse_openai_compatible_voices(data) -> list[dict]:
@@ -881,6 +900,9 @@ async def get_kokoro_voices():
                                 last_error = "No voices in response"
                                 continue
                             voices = _build_kokoro_voice_dropdown(entries)
+                            voices = _ensure_kokoro_configured_voice(
+                                voices, os.getenv("KOKORO_TTS_VOICE")
+                            )
                             return {"voices": voices}
 
                     logger.error(f"Error fetching Kokoro voices: {last_error or 'unknown'}")
