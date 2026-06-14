@@ -4,6 +4,7 @@ import signal
 import time
 import uvicorn
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -47,7 +48,21 @@ logger = logging.getLogger(__name__)
 # Display banner
 display_banner()
 
-app = FastAPI()
+
+def ui_server_logs_enabled() -> bool:
+    return os.getenv("UI_SERVER_LOGS", "true").lower() not in ("false", "0", "no")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if ui_server_logs_enabled():
+        from .log_stream import install_log_streaming
+
+        install_log_streaming(asyncio.get_running_loop())
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Mount static files and templates
 app.mount("/app/static", StaticFiles(directory="app/static"), name="static")
@@ -76,6 +91,7 @@ async def get_index(request: Request):
     typecast_voice = os.getenv("TYPECAST_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
     openai_tts_local = is_custom_openai_tts_url()
+    ui_server_logs = ui_server_logs_enabled()
 
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -92,6 +108,7 @@ async def get_index(request: Request):
         "xai_tts_voice": xai_tts_voice,
         "typecast_voice": typecast_voice,
         "faster_whisper_local": faster_whisper_local,
+        "ui_server_logs": ui_server_logs,
     })
 
 @app.get("/characters")
@@ -509,6 +526,39 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"Error in standard websocket: {e}")
         # Still remove the client to prevent resource leaks
         remove_client(websocket)
+
+@app.websocket("/ws/logs")
+async def websocket_logs_endpoint(websocket: WebSocket):
+    if not ui_server_logs_enabled():
+        # Accept then close cleanly — rejecting before accept spams 403 in uvicorn logs.
+        await websocket.accept()
+        try:
+            await websocket.send_json({"action": "log_stream_disabled"})
+        except Exception:
+            pass
+        await websocket.close(code=1000, reason="Server logs disabled")
+        return
+
+    from .log_stream import add_log_client, remove_log_client, send_log_history
+
+    await websocket.accept()
+    add_log_client(websocket)
+    try:
+        await send_log_history(websocket)
+        while True:
+            data = await websocket.receive_text()
+            try:
+                message = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            if message.get("action") == "ping":
+                await websocket.send_json({"action": "pong"})
+    except WebSocketDisconnect:
+        logger.info("Client disconnected from server logs websocket")
+    except Exception as e:
+        logger.error(f"Error in server logs websocket: {e}")
+    finally:
+        remove_log_client(websocket)
 
 @app.websocket("/ws_enhanced")
 async def websocket_enhanced_endpoint(websocket: WebSocket):
@@ -989,6 +1039,10 @@ def signal_handler(sig, frame):
                         loop.run_until_complete(client.close())
                 except Exception as e:
                     print(f"Error closing client: {e}")
+
+            if ui_server_logs_enabled():
+                from .log_stream import close_log_clients
+                loop.run_until_complete(close_log_clients())
                     
             loop.close()
         except Exception as e:

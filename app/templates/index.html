@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="default-character" content="{{ character_name }}">
+    <meta name="ui-server-logs" content="{{ 'true' if ui_server_logs else 'false' }}">
     <title>Voice Chat AI</title>
     <link rel="stylesheet" href="/app/static/css/styles.css">
     <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
@@ -233,10 +234,38 @@
             </div>
         </div>
     </main>
+    {% if ui_server_logs %}
+    <section class="server-logs-wrapper" aria-label="Server logs">
+        <div id="serverLogsPanel" class="server-logs-panel">
+            <button id="serverLogsToggle" class="server-logs-toggle" type="button" aria-expanded="false">
+                <span class="server-logs-caret" aria-hidden="true">▸</span>
+                <span class="server-logs-title">Server Logs</span>
+                <span
+                    id="serverLogsStatus"
+                    class="server-logs-status server-logs-status-connecting"
+                    title="Connecting to log stream..."
+                    aria-label="Log stream connecting"
+                ></span>
+            </button>
+            <div id="serverLogsBody" class="server-logs-body" hidden>
+                <div id="serverLogsContent" class="server-logs-content">
+                    <div class="server-log-line server-log-placeholder">
+                        <span class="server-log-ts">--:--:--</span>
+                        <span class="server-log-tag server-log-tag-sys">SYS</span>
+                        <span class="server-log-message">Click header to expand • Logs stream in real-time</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
     <footer>
         <p><a href="https://github.com/bigsk1/voice-chat-ai" target="_blank">GitHub Repository</a></p>
     </footer>
     <script src="/app/static/js/scripts.js"></script>
+    {% if ui_server_logs %}
+    <script src="/app/static/js/server_logs.js"></script>
+    {% endif %}
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             // Characters are already loaded by scripts.js

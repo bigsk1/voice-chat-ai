@@ -171,6 +171,182 @@ main {
     font-style: italic;
 }
 
+.server-logs-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+    border-top: 1px solid var(--border-color);
+    background: var(--secondary-color);
+}
+
+.server-logs-panel {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.server-logs-toggle {
+    width: 100%;
+    max-width: none;
+    flex-grow: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    justify-content: flex-start;
+    padding: 0.7rem 1rem;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-color);
+    box-shadow: none;
+    font: inherit;
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.server-logs-toggle:hover,
+.server-logs-toggle:focus-visible {
+    background: rgba(127, 127, 127, 0.14);
+    transform: none;
+}
+
+.server-logs-toggle:active {
+    transform: none;
+}
+
+.server-logs-caret {
+    display: inline-block;
+    width: 0.75rem;
+    flex: 0 0 auto;
+    color: rgba(127, 127, 127, 0.95);
+    font-size: 0.8rem;
+    line-height: 1;
+    transition: transform 0.15s ease;
+}
+
+.server-logs-panel.is-open .server-logs-caret {
+    transform: rotate(90deg);
+}
+
+.server-logs-title {
+    font-weight: 500;
+}
+
+.server-logs-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    margin-left: 0.35rem;
+    box-shadow: 0 0 6px currentColor;
+}
+
+.server-logs-status-connecting {
+    background: #eab308;
+    color: #eab308;
+    animation: server-logs-status-pulse 1.2s ease-in-out infinite;
+}
+
+.server-logs-status-connected {
+    background: #22c55e;
+    color: #22c55e;
+}
+
+.server-logs-status-disconnected {
+    background: #ef4444;
+    color: #ef4444;
+}
+
+@keyframes server-logs-status-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.server-logs-body {
+    border-top: 1px solid var(--border-color);
+}
+
+.server-logs-content {
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #0a0a0a;
+    padding: 0.65rem 1rem;
+    font-family: "Courier New", monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.server-log-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin-bottom: 0.35rem;
+    color: #d8d8d8;
+    word-break: break-word;
+}
+
+.server-log-placeholder {
+    opacity: 0.7;
+}
+
+.server-log-ts {
+    flex: 0 0 auto;
+    color: #8a8a8a;
+    min-width: 4.5rem;
+}
+
+.server-log-tag {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.server-log-tag-sys {
+    background: #f0f0f0;
+    color: #111;
+}
+
+.server-log-tag-info {
+    background: #2d3748;
+    color: #cbd5e0;
+}
+
+.server-log-tag-app {
+    background: #1f2937;
+    color: #d1d5db;
+}
+
+.server-log-tag-err,
+.server-log-tag-error,
+.server-log-tag-critical {
+    background: #7f1d1d;
+    color: #fecaca;
+}
+
+.server-log-tag-warning,
+.server-log-tag-warn {
+    background: #78350f;
+    color: #fde68a;
+}
+
+.server-log-message {
+    flex: 1 1 auto;
+    white-space: pre-wrap;
+}
+
+.server-logs-unread .server-logs-title {
+    font-weight: 600;
+}
+
 .ai-message, .user-message {
     margin: 0.5rem 0;
     padding: 0.8rem 1rem;
@@ -311,7 +487,7 @@ select:focus {
 
 footer {
     background-color: var(--secondary-color);
-    padding: 1rem;
+    /* padding: 1rem; */
     text-align: center;
     box-shadow: 0 -2px 4px var(--shadow-color);
 }
