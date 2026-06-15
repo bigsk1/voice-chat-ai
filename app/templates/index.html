@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="{% if ui_server_logs %}has-server-logs{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,7 +65,7 @@
         }
     </style>
 </head>
-<body class="dark-mode">
+<body class="dark-mode{% if ui_server_logs %} has-server-logs{% endif %}">
     <header>
         <h1>
             Voice Chat AI
@@ -237,18 +237,30 @@
     {% if ui_server_logs %}
     <section class="server-logs-wrapper" aria-label="Server logs">
         <div id="serverLogsPanel" class="server-logs-panel">
-            <button id="serverLogsToggle" class="server-logs-toggle" type="button" aria-expanded="false">
-                <span class="server-logs-caret" aria-hidden="true">▸</span>
-                <span class="server-logs-title">Server Logs</span>
-                <span
-                    id="serverLogsStatus"
-                    class="server-logs-status server-logs-status-connecting"
-                    title="Connecting to log stream..."
-                    aria-label="Log stream connecting"
-                ></span>
-            </button>
+            <div class="server-logs-header">
+                <button id="serverLogsToggle" class="server-logs-toggle" type="button" aria-expanded="false">
+                    <span class="server-logs-caret" aria-hidden="true">▸</span>
+                    <span class="server-logs-title">Server Logs</span>
+                    <span
+                        id="serverLogsStatus"
+                        class="server-logs-status server-logs-status-connecting"
+                        title="Connecting to log stream..."
+                        aria-label="Log stream connecting"
+                    ></span>
+                </button>
+                <button
+                    id="serverLogsFollow"
+                    class="server-logs-follow is-active"
+                    type="button"
+                    title="Following latest logs"
+                    aria-label="Follow latest logs"
+                    aria-pressed="true"
+                >
+                    <span class="server-logs-follow-icon" aria-hidden="true">↓</span>
+                </button>
+            </div>
             <div id="serverLogsBody" class="server-logs-body" hidden>
-                <div id="serverLogsContent" class="server-logs-content">
+                <div id="serverLogsContent" class="server-logs-content" tabindex="0">
                     <div class="server-log-line server-log-placeholder">
                         <span class="server-log-ts">--:--:--</span>
                         <span class="server-log-tag server-log-tag-sys">SYS</span>

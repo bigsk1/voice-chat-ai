@@ -6,11 +6,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const panel = document.getElementById("serverLogsPanel");
     const toggle = document.getElementById("serverLogsToggle");
+    const followBtn = document.getElementById("serverLogsFollow");
     const body = document.getElementById("serverLogsBody");
     const content = document.getElementById("serverLogsContent");
     const statusLed = document.getElementById("serverLogsStatus");
 
-    if (!panel || !toggle || !body || !content || !statusLed) {
+    if (!panel || !toggle || !followBtn || !body || !content || !statusLed) {
         return;
     }
 
@@ -25,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let reconnectTimer = null;
     let logsDisabled = false;
     let unreadCount = 0;
-    let stickToBottom = true;
+    let followLatest = true;
     const maxRenderedLines = 1500;
 
     function setConnectionStatus(state) {
@@ -35,23 +36,59 @@ document.addEventListener("DOMContentLoaded", function() {
         statusLed.setAttribute("aria-label", label);
     }
 
+    function setFollowLatest(isFollowing) {
+        followLatest = isFollowing;
+        followBtn.classList.toggle("is-active", isFollowing);
+        followBtn.setAttribute("aria-pressed", String(isFollowing));
+        followBtn.title = isFollowing ? "Following latest logs" : "Not following — scroll freely";
+        followBtn.setAttribute(
+            "aria-label",
+            isFollowing ? "Follow latest logs (on)" : "Follow latest logs (off)"
+        );
+        if (isFollowing && !body.hidden) {
+            scrollToBottom();
+        }
+    }
+
+    function syncPageLayout(isOpen) {
+        document.documentElement.classList.toggle("server-logs-open", isOpen);
+        document.body.classList.toggle("server-logs-open", isOpen);
+    }
+
+    function ensureContentClearsDock() {
+        const dock = document.querySelector(".server-logs-wrapper");
+        const settings = document.querySelector(".settings");
+        if (!dock || !settings || body.hidden) {
+            return;
+        }
+
+        const dockTop = dock.getBoundingClientRect().top;
+        const settingsBottom = settings.getBoundingClientRect().bottom;
+        const overlap = settingsBottom - dockTop + 16;
+        if (overlap > 0) {
+            window.scrollBy({ top: overlap, behavior: "smooth" });
+        }
+    }
+
     function setPanelOpen(isOpen) {
         body.hidden = !isOpen;
         toggle.setAttribute("aria-expanded", String(isOpen));
         panel.classList.toggle("is-open", isOpen);
+        syncPageLayout(isOpen);
         if (isOpen) {
             unreadCount = 0;
             panel.classList.remove("server-logs-unread");
-            scrollToBottom();
+            requestAnimationFrame(function() {
+                ensureContentClearsDock();
+                if (followLatest) {
+                    scrollToBottom();
+                }
+            });
         }
     }
 
     function scrollToBottom() {
         content.scrollTop = content.scrollHeight;
-    }
-
-    function isNearBottom() {
-        return content.scrollHeight - content.scrollTop - content.clientHeight < 40;
     }
 
     function tagClassName(tag) {
@@ -123,7 +160,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (body.hidden) {
             unreadCount += 1;
             panel.classList.add("server-logs-unread");
-        } else if (stickToBottom) {
+        } else if (followLatest) {
             scrollToBottom();
         }
     }
@@ -140,7 +177,9 @@ document.addEventListener("DOMContentLoaded", function() {
         if (payload.action === "log_history" && Array.isArray(payload.lines)) {
             content.innerHTML = "";
             payload.lines.forEach(appendLogLine);
-            scrollToBottom();
+            if (followLatest && !body.hidden) {
+                requestAnimationFrame(scrollToBottom);
+            }
             return;
         }
         if (payload.action === "server_log") {
@@ -197,13 +236,25 @@ document.addEventListener("DOMContentLoaded", function() {
         setPanelOpen(body.hidden);
     });
 
-    content.addEventListener("scroll", function() {
-        stickToBottom = isNearBottom();
+    followBtn.addEventListener("click", function(event) {
+        event.stopPropagation();
+        setFollowLatest(!followLatest);
     });
 
+    content.addEventListener("wheel", function(event) {
+        event.stopPropagation();
+    }, { passive: true });
+
     setPanelOpen(false);
+    setFollowLatest(true);
     setConnectionStatus("connecting");
     connectLogsWebSocket();
+
+    window.addEventListener("resize", function() {
+        if (!body.hidden) {
+            ensureContentClearsDock();
+        }
+    });
 
     window.addEventListener("beforeunload", function() {
         if (reconnectTimer) {
