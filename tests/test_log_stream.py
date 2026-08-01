@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+import pytest
+
 from app import log_stream
 
 

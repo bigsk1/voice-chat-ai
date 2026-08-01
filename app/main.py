@@ -93,7 +93,7 @@ async def get_index(request: Request):
     openai_tts_local = is_custom_openai_tts_url()
     ui_server_logs = ui_server_logs_enabled()
 
-    return templates.TemplateResponse("index.html", {
+    return templates.TemplateResponse(request, "index.html", {
         "request": request,
         "model_provider": model_provider,
         "character_name": character_name,
@@ -170,7 +170,7 @@ async def get_elevenlabs_voices():
 
 @app.get("/enhanced", response_class=HTMLResponse)
 async def get_enhanced(request: Request):
-    return templates.TemplateResponse("enhanced.html", {"request": request})
+    return templates.TemplateResponse(request, "enhanced.html", {"request": request})
 
 @app.get("/enhanced_defaults")
 async def get_enhanced_defaults():
@@ -619,6 +619,7 @@ async def get_webrtc_realtime(request: Request):
         realtime_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview-2024-12-17")
             
         return templates.TemplateResponse(
+            request,
             "webrtc_realtime.html", 
             {
                 "request": request,
@@ -630,6 +631,7 @@ async def get_webrtc_realtime(request: Request):
         logger.error(f"Error rendering WebRTC Realtime page: {e}")
         # Fallback with minimal context
         return templates.TemplateResponse(
+            request,
             "webrtc_realtime.html", 
             {
                 "request": request,
