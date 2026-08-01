@@ -218,7 +218,8 @@
             <div class="setting-group">
                 <label for="xai-model-select">XAI Model:</label>
                 <select id="xai-model-select">
-                    <option value="grok-4-1-fast-non-reasoning">Grok 4.1 fast non reasoning</option>
+                    <option value="grok-4.3">Grok 4.3 (fast, no reasoning)</option>
+                    <option value="grok-4.5">Grok 4.5 (low reasoning)</option>
                 </select>
             </div>
             <div class="setting-group">
@@ -330,6 +331,7 @@
             document.getElementById('provider-select').value = "{{ model_provider }}";
             document.getElementById('tts-select').value = "{{ tts_provider }}";
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
+            document.getElementById('xai-model-select').value = "{{ xai_model }}";
             document.getElementById('anthropic-model-select').value = "{{ anthropic_model }}";
             document.getElementById('xai-tts-voice-select').value = "{{ xai_tts_voice }}";
             document.getElementById('voice-speed-select').value = "{{ voice_speed }}";

@@ -14,6 +14,7 @@ from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, pause_audio_playback, resume_audio_playback, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation, pause_enhanced_audio_playback, resume_enhanced_audio_playback
+from .xai_compat import normalize_xai_model
 import logging
 import uuid
 import aiohttp
@@ -83,6 +84,7 @@ async def get_index(request: Request):
     tts_provider = os.getenv("TTS_PROVIDER")
     openai_tts_voice = os.getenv("OPENAI_TTS_VOICE")
     openai_model = os.getenv("OPENAI_MODEL")
+    xai_model = normalize_xai_model(os.getenv("XAI_MODEL"))
     anthropic_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     ollama_model = os.getenv("OLLAMA_MODEL")
     voice_speed = os.getenv("VOICE_SPEED")
@@ -102,6 +104,7 @@ async def get_index(request: Request):
         "openai_tts_local": openai_tts_local,
         "openai_tts_voice": openai_tts_voice,
         "openai_model": openai_model,
+        "xai_model": xai_model,
         "anthropic_model": anthropic_model,
         "ollama_model": ollama_model,
         "voice_speed": voice_speed,

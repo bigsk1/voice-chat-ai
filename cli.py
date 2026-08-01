@@ -24,6 +24,7 @@ from datetime import datetime
 import warnings
 from app.transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
 from app.openai_compat import build_openai_chat_payload
+from app.xai_compat import build_xai_chat_payload, normalize_xai_model, xai_chat_timeout
 from app.story_time import (
     add_message_timestamp,
     augment_story_system_message,
@@ -48,8 +49,10 @@ OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/c
 OPENAI_TRANSCRIPTION_MODEL = os.getenv('OPENAI_TRANSCRIPTION_MODEL', 'gpt-4o-mini-transcribe')
 OPENAI_MODEL_TTS = os.getenv('OPENAI_MODEL_TTS', 'gpt-4o-mini-tts')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
-XAI_MODEL = os.getenv('XAI_MODEL', 'grok-4-1-fast-non-reasoning')
+XAI_MODEL = normalize_xai_model(os.getenv('XAI_MODEL'))
+XAI_VISION_MODEL = normalize_xai_model(os.getenv('XAI_VISION_MODEL'))
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
+XAI_CHAT_TIMEOUT = os.getenv('XAI_CHAT_TIMEOUT')
 XAI_TTS_URL = os.getenv('XAI_TTS_URL', 'https://api.x.ai/v1/tts')
 XAI_TTS_VOICE = os.getenv('XAI_TTS_VOICE', 'eve')
 XAI_TTS_LANGUAGE = os.getenv('XAI_TTS_LANGUAGE', 'en')
@@ -1024,14 +1027,19 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             'Authorization': f'Bearer {XAI_API_KEY}',
             'Content-Type': 'application/json'
         }
-        payload = {
-            "model": XAI_MODEL,
-            "messages": messages,
-            "stream": True,
-            "temperature": 0.8,
-            "max_tokens": token_limit  # Using our calculated token limit for xAI
-        }
-        response = requests.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, stream=True, timeout=30)
+        payload = build_xai_chat_payload(
+            model=XAI_MODEL,
+            messages=messages,
+            max_tokens=token_limit,
+            stream=True,
+        )
+        response = requests.post(
+            f"{XAI_BASE_URL}/chat/completions",
+            headers=headers,
+            json=payload,
+            stream=True,
+            timeout=xai_chat_timeout(XAI_MODEL, XAI_CHAT_TIMEOUT),
+        )
         response.raise_for_status()
 
         full_response = ""
@@ -1301,15 +1309,19 @@ def analyze_image(image_path, question_prompt):
                 {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
             ]
         }
-        payload = {
-            "model": "grok-2-vision-1212",
-            "temperature": 0.5,
-            "messages": [message],
-            "max_tokens": 1000
-        }
+        payload = build_xai_chat_payload(
+            model=XAI_VISION_MODEL,
+            messages=[message],
+            max_tokens=1000,
+        )
         
         try:
-            response = requests.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, timeout=30)
+            response = requests.post(
+                f"{XAI_BASE_URL}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=xai_chat_timeout(XAI_VISION_MODEL, XAI_CHAT_TIMEOUT),
+            )
             if response.status_code == 200:
                 print("Using xAI for image analysis")
                 return response.json()

@@ -31,6 +31,7 @@ from .story_time import (
 )
 from .transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
 from .openai_compat import build_openai_chat_payload
+from .xai_compat import build_xai_chat_payload, normalize_xai_model, xai_chat_timeout
 
 # Load environment variables
 load_dotenv()
@@ -76,8 +77,10 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1/chat/completions')
 XAI_API_KEY = os.getenv('XAI_API_KEY')
-XAI_MODEL = os.getenv('XAI_MODEL', 'grok-4-1-fast-non-reasoning')
+XAI_MODEL = normalize_xai_model(os.getenv('XAI_MODEL'))
+XAI_VISION_MODEL = normalize_xai_model(os.getenv('XAI_VISION_MODEL'))
 XAI_BASE_URL = os.getenv('XAI_BASE_URL', 'https://api.x.ai/v1')
+XAI_CHAT_TIMEOUT = os.getenv('XAI_CHAT_TIMEOUT')
 XAI_TTS_URL = os.getenv('XAI_TTS_URL', 'https://api.x.ai/v1/tts')
 XAI_TTS_VOICE = os.getenv('XAI_TTS_VOICE', 'eve')
 XAI_TTS_LANGUAGE = os.getenv('XAI_TTS_LANGUAGE', 'en')
@@ -1214,15 +1217,21 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             'Authorization': f'Bearer {XAI_API_KEY}',
             'Content-Type': 'application/json'
         }
-        payload = {
-            "model": XAI_MODEL,
-            "messages": messages,
-            "stream": True,
-            "max_tokens": token_limit  # Approximate token conversion
-        }
+        payload = build_xai_chat_payload(
+            model=XAI_MODEL,
+            messages=messages,
+            max_tokens=token_limit,
+            stream=True,
+        )
         try:
             print(f"Debug: Sending request to XAI: {XAI_BASE_URL}")
-            response = requests.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, stream=True, timeout=30)
+            response = requests.post(
+                f"{XAI_BASE_URL}/chat/completions",
+                headers=headers,
+                json=payload,
+                stream=True,
+                timeout=xai_chat_timeout(XAI_MODEL, XAI_CHAT_TIMEOUT),
+            )
             response.raise_for_status()
 
             print("Starting XAI stream...")
@@ -1591,16 +1600,20 @@ async def analyze_image(image_path, question_prompt):
                 {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
             ]
         }
-        payload = {
-            "model": "grok-2-vision-1212",
-            "temperature": 0.5,
-            "messages": [message],
-            "max_tokens": 1000
-        }
+        payload = build_xai_chat_payload(
+            model=XAI_VISION_MODEL,
+            messages=[message],
+            max_tokens=1000,
+        )
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(f"{XAI_BASE_URL}/chat/completions", headers=headers, json=payload, timeout=30) as response:
+                async with session.post(
+                    f"{XAI_BASE_URL}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=xai_chat_timeout(XAI_VISION_MODEL, XAI_CHAT_TIMEOUT),
+                ) as response:
                     if response.status == 200:
                         print("Using xAI for image analysis")
                         return await response.json()
