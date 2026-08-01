@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OpenAI Realtime</title>
+    <title>Realtime Voice</title>
     <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" href="/app/static/favicon.ico" type="image/x-icon">
@@ -622,8 +622,13 @@
     
     <main>
         <div class="container">
-            <h2>OpenAI Realtime webRTC</h2>
+            {% if realtime_provider == "local" %}
+            <h2>Local Realtime WebRTC</h2>
+            <p>This feature uses your configured local speech-to-speech server for continuous voice streaming. Speak naturally with the AI without sending the conversation to OpenAI Realtime.</p>
+            {% else %}
+            <h2>OpenAI Realtime WebRTC</h2>
             <p>This feature uses OpenAI's Realtime API for continuous voice streaming. Speak naturally with the AI with minimal latency.</p>
+            {% endif %}
             
             <div class="status-container">
                 <span>Session Status:</span>
@@ -651,18 +656,11 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="voice-select">Voice:</label>
+                    <label for="voice-select">Voice{% if realtime_provider == "local" %} (Local Qwen){% endif %}:</label>
                     <select id="voice-select" class="form-control" style="width: 300px; max-width: 100%;">
-                        <option value="marin" selected>Marin - recommended</option>
-                        <option value="cedar">Cedar - recommended</option>
-                        <option value="alloy">Alloy - female</option>
-                        <option value="ash">Ash - male</option>
-                        <option value="ballad">Ballad - male</option>
-                        <option value="coral">Coral - female</option>
-                        <option value="echo">Echo - male</option>
-                        <option value="sage">Sage - female</option>
-                        <option value="shimmer">Shimmer - female</option>
-                        <option value="verse">Verse - male</option>
+                        {% for voice in realtime_voices %}
+                        <option value="{{ voice.value }}"{% if voice.value == realtime_voice %} selected{% endif %}>{{ voice.label }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
@@ -709,7 +707,12 @@
                         <li><strong>Debug Panel</strong>: Access technical details by clicking "Show Debug Panel".</li>
                         <li><strong>End Conversation</strong>: Click red mic and stop session to end the session.</li>
                     </ul>
-                    <p><em>Note: This is a real-time voice conversation using the GA Realtime API and gpt-realtime-2.1 by default. The AI responds as you speak, and you can interrupt it at any time. Stop and restart the session to change voices.</em></p>
+                    {% if realtime_provider == "local" %}
+                    <p><em>Note: This session uses the configured local GA-compatible Realtime server. It has one concurrent pipeline by default. The AI responds as you speak, and local playback is cleared when you interrupt it.</em></p>
+                    {% else %}
+                    <p><em>Note: This is a real-time voice conversation using OpenAI's GA Realtime API and gpt-realtime-2.1 by default. The AI responds as you speak, and you can interrupt it at any time.</em></p>
+                    {% endif %}
+                    <p><em>Stop the session before changing its character or voice.</em></p>
                 </div>
             </div>
         </div>
@@ -721,10 +724,8 @@
     
     <!-- Add at the start of the JavaScript section -->
     <script>
-        // Initialize WebRTC configuration with model from server
-        const rtcConfig = {
-            model: "{{ realtime_model }}"
-        };
+        // Initialize the server-selected Realtime backend configuration.
+        const rtcConfig = {{ realtime_config | tojson }};
         
         // Theme toggle functionality
         document.getElementById('theme-toggle').addEventListener('click', function() {

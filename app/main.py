@@ -9,16 +9,30 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPExcept
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, pause_audio_playback, resume_audio_playback, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation, pause_enhanced_audio_playback, resume_enhanced_audio_playback
 from .openai_realtime import (
+    DEFAULT_LOCAL_REALTIME_CALLS_URL,
+    DEFAULT_LOCAL_REALTIME_SILENCE_MS,
+    DEFAULT_LOCAL_REALTIME_VAD_THRESHOLD,
+    DEFAULT_LOCAL_REALTIME_VOICE,
     DEFAULT_OPENAI_REALTIME_MODEL,
+    DEFAULT_OPENAI_REALTIME_VOICE,
+    DEFAULT_REALTIME_PROVIDER,
+    LOCAL_REALTIME_VOICES,
     OPENAI_REALTIME_CALLS_URL,
+    build_local_realtime_call_url,
     build_openai_realtime_session,
+    extract_local_realtime_call_id,
+    normalize_local_realtime_url,
+    normalize_local_realtime_silence_ms,
+    normalize_local_realtime_vad_threshold,
+    normalize_local_realtime_voice,
     normalize_openai_realtime_model,
+    normalize_realtime_provider,
 )
 from .xai_compat import normalize_xai_model
 import logging
@@ -396,50 +410,69 @@ async def proxy_openai_realtime(request: Request):
     Create a GA OpenAI Realtime WebRTC call without exposing the API key.
     """
     try:
-        # Get the API key
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise HTTPException(
-                status_code=503,
-                detail="OpenAI API key not configured",
-            )
-        
         # Get the SDP from the request body
         body = await request.body()
         sdp = body.decode("utf-8")
         if not sdp.strip():
             raise HTTPException(status_code=400, detail="An SDP offer is required")
-        
-        configured_model = os.getenv("OPENAI_REALTIME_MODEL", DEFAULT_OPENAI_REALTIME_MODEL)
-        model = normalize_openai_realtime_model(request.query_params.get("model", configured_model))
-        voice = request.query_params.get("voice")
-        session = build_openai_realtime_session(model, voice)
-        
-        # Log the request (without the full SDP for privacy)
-        logger.info(f"Proxying WebRTC connection to OpenAI Realtime API for model: {model}")
-        
-        # Forward to OpenAI
+
+        provider = normalize_realtime_provider(
+            os.getenv("OPENAI_REALTIME_PROVIDER", DEFAULT_REALTIME_PROVIDER)
+        )
         import httpx
-        
+
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
-            response = await client.post(
-                OPENAI_REALTIME_CALLS_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                },
-                files={
-                    "sdp": (None, sdp, "application/sdp"),
-                    "session": (None, json.dumps(session), "application/json"),
-                },
-            )
-            
-            # OpenAI returns the SDP answer as text for successful requests and
-            # JSON error details otherwise. Preserve both for the browser.
-            from fastapi.responses import Response
+            if provider == "local":
+                calls_url = normalize_local_realtime_url(
+                    os.getenv("LOCAL_REALTIME_URL", DEFAULT_LOCAL_REALTIME_CALLS_URL)
+                )
+                logger.info(f"Proxying WebRTC connection to local Realtime server: {calls_url}")
+                response = await client.post(
+                    calls_url,
+                    content=sdp,
+                    headers={"Content-Type": "application/sdp"},
+                )
+                call_id = extract_local_realtime_call_id(
+                    response.headers.get("location"), calls_url
+                )
+            else:
+                api_key = os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="OpenAI API key not configured",
+                    )
+
+                configured_model = os.getenv(
+                    "OPENAI_REALTIME_MODEL", DEFAULT_OPENAI_REALTIME_MODEL
+                )
+                model = normalize_openai_realtime_model(
+                    request.query_params.get("model", configured_model)
+                )
+                voice = request.query_params.get("voice")
+                session = build_openai_realtime_session(model, voice)
+                logger.info(
+                    f"Proxying WebRTC connection to OpenAI Realtime API for model: {model}"
+                )
+                response = await client.post(
+                    OPENAI_REALTIME_CALLS_URL,
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    files={
+                        "sdp": (None, sdp, "application/sdp"),
+                        "session": (None, json.dumps(session), "application/json"),
+                    },
+                )
+                call_id = None
+
+            response_headers = {}
+            if call_id:
+                response_headers["X-Realtime-Call-Id"] = call_id
+
             return Response(
                 content=response.content,
                 status_code=response.status_code,
                 media_type=response.headers.get("content-type", "application/sdp"),
+                headers=response_headers,
             )
     
     except HTTPException:
@@ -450,6 +483,43 @@ async def proxy_openai_realtime(request: Request):
             status_code=502,
             detail=f"Error proxying to OpenAI: {str(e)}",
         ) from e
+
+
+@app.delete("/openai_realtime_proxy/{call_id}")
+async def close_local_realtime_call(call_id: str):
+    """Explicitly release a local Realtime pipeline using its Location call ID."""
+    provider = normalize_realtime_provider(
+        os.getenv("OPENAI_REALTIME_PROVIDER", DEFAULT_REALTIME_PROVIDER)
+    )
+    if provider != "local":
+        raise HTTPException(status_code=404, detail="Local Realtime is not enabled")
+
+    try:
+        calls_url = normalize_local_realtime_url(
+            os.getenv("LOCAL_REALTIME_URL", DEFAULT_LOCAL_REALTIME_CALLS_URL)
+        )
+        call_url = build_local_realtime_call_url(calls_url, call_id)
+
+        import httpx
+
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as client:
+            response = await client.delete(call_url)
+
+        if response.status_code in {200, 202, 204, 404, 410}:
+            return Response(status_code=204)
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            media_type=response.headers.get("content-type", "application/json"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error(f"Error closing local Realtime call: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Error closing local Realtime call: {str(exc)}",
+        ) from exc
 
 
 @app.websocket("/ws")
@@ -597,10 +667,57 @@ async def get_webrtc_realtime(request: Request):
             characters = ["assistant"]
             logger.warning("No character folders found, using fallback assistant")
         
-        # Get realtime model from environment variable or use default
-        realtime_model = normalize_openai_realtime_model(
-            os.getenv("OPENAI_REALTIME_MODEL", DEFAULT_OPENAI_REALTIME_MODEL)
+        realtime_provider = normalize_realtime_provider(
+            os.getenv("OPENAI_REALTIME_PROVIDER", DEFAULT_REALTIME_PROVIDER)
         )
+        if realtime_provider == "local":
+            realtime_model = "local"
+            realtime_voice = normalize_local_realtime_voice(
+                os.getenv("LOCAL_REALTIME_VOICE", DEFAULT_LOCAL_REALTIME_VOICE)
+            )
+            realtime_vad_threshold = normalize_local_realtime_vad_threshold(
+                os.getenv(
+                    "LOCAL_REALTIME_VAD_THRESHOLD",
+                    str(DEFAULT_LOCAL_REALTIME_VAD_THRESHOLD),
+                )
+            )
+            realtime_silence_ms = normalize_local_realtime_silence_ms(
+                os.getenv(
+                    "LOCAL_REALTIME_SILENCE_MS",
+                    str(DEFAULT_LOCAL_REALTIME_SILENCE_MS),
+                )
+            )
+            realtime_voices = [
+                {"value": voice, "label": voice.replace("_", " ")}
+                for voice in LOCAL_REALTIME_VOICES
+            ]
+        else:
+            realtime_model = normalize_openai_realtime_model(
+                os.getenv("OPENAI_REALTIME_MODEL", DEFAULT_OPENAI_REALTIME_MODEL)
+            )
+            realtime_voice = DEFAULT_OPENAI_REALTIME_VOICE
+            realtime_vad_threshold = None
+            realtime_silence_ms = None
+            realtime_voices = [
+                {"value": "marin", "label": "Marin - recommended"},
+                {"value": "cedar", "label": "Cedar - recommended"},
+                {"value": "alloy", "label": "Alloy - female"},
+                {"value": "ash", "label": "Ash - male"},
+                {"value": "ballad", "label": "Ballad - male"},
+                {"value": "coral", "label": "Coral - female"},
+                {"value": "echo", "label": "Echo - male"},
+                {"value": "sage", "label": "Sage - female"},
+                {"value": "shimmer", "label": "Shimmer - female"},
+                {"value": "verse", "label": "Verse - male"},
+            ]
+
+        realtime_config = {
+            "provider": realtime_provider,
+            "model": realtime_model,
+            "voice": realtime_voice,
+            "vadThreshold": realtime_vad_threshold,
+            "silenceDurationMs": realtime_silence_ms,
+        }
             
         return templates.TemplateResponse(
             request,
@@ -609,6 +726,10 @@ async def get_webrtc_realtime(request: Request):
                 "request": request,
                 "characters": characters,
                 "realtime_model": realtime_model,
+                "realtime_provider": realtime_provider,
+                "realtime_voice": realtime_voice,
+                "realtime_voices": realtime_voices,
+                "realtime_config": realtime_config,
             }
         )
     except Exception as e:
@@ -621,6 +742,18 @@ async def get_webrtc_realtime(request: Request):
                 "request": request,
                 "characters": ["assistant"],
                 "realtime_model": DEFAULT_OPENAI_REALTIME_MODEL,
+                "realtime_provider": DEFAULT_REALTIME_PROVIDER,
+                "realtime_voice": DEFAULT_OPENAI_REALTIME_VOICE,
+                "realtime_voices": [
+                    {"value": DEFAULT_OPENAI_REALTIME_VOICE, "label": "Marin - recommended"}
+                ],
+                "realtime_config": {
+                    "provider": DEFAULT_REALTIME_PROVIDER,
+                    "model": DEFAULT_OPENAI_REALTIME_MODEL,
+                    "voice": DEFAULT_OPENAI_REALTIME_VOICE,
+                    "vadThreshold": None,
+                    "silenceDurationMs": None,
+                },
             }
         )
 

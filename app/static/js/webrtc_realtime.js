@@ -1,6 +1,6 @@
 /**
- * WebRTC implementation for OpenAI's Realtime API
- * Based on OpenAI's example at https://platform.openai.com/docs/guides/realtime
+ * WebRTC implementation for hosted OpenAI or a local GA-compatible server.
+ * Based on https://developers.openai.com/api/docs/guides/realtime-webrtc
  */
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -25,6 +25,13 @@ document.addEventListener("DOMContentLoaded", function() {
     let dataChannel = null;
     let micStream = null;
     let isSessionActive = false;
+    let isResponseActive = false;
+    let realtimeCallId = null;
+    let currentResponseId = null;
+    let localSpeechTurn = 0;
+    let localResponseTurn = -1;
+    const suppressedResponseIds = new Set();
+    const responseTranscripts = new Map();
     let audioPlayer = new Audio();
     
     // Set dark mode as default
@@ -301,8 +308,8 @@ document.addEventListener("DOMContentLoaded", function() {
             // Setup audio playback
             audioPlayer.autoplay = true;
             peerConnection.ontrack = e => {
-                console.log(`Received ${e.track.kind} track from OpenAI`);
-                debugLog(`Received ${e.track.kind} track from OpenAI`, "success");
+                console.log(`Received ${e.track.kind} track from Realtime backend`);
+                debugLog(`Received ${e.track.kind} track from Realtime backend`, "success");
                 audioPlayer.srcObject = e.streams[0];
             };
             
@@ -376,7 +383,7 @@ document.addEventListener("DOMContentLoaded", function() {
             let model = rtcConfig.model || defaultModel;
             debugLog(`Using model: ${model}`, 'info');
             
-            // Construct URL for our proxy endpoint instead of the direct OpenAI endpoint
+            // The same-origin proxy selects the hosted or local backend server-side.
             const proxyParams = new URLSearchParams({
                 model: model,
                 voice: voiceSelect.value
@@ -411,6 +418,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
                 
                 // Get answer SDP
+                realtimeCallId = sdpResponse.headers.get('X-Realtime-Call-Id');
                 const answerSdp = await sdpResponse.text();
                 console.log("Received answer SDP from proxy");
                 
@@ -435,8 +443,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 voiceSelect.disabled = true;
                 
                 // Add session message
-                addTranscriptMessage("Session started with " + characterSelect.value, "system");
-                addTranscriptMessage("You can now speak", "system");
+                const backendName = rtcConfig.provider === 'local' ? 'local Realtime' : 'OpenAI Realtime';
+                addTranscriptMessage(`Session started with ${characterSelect.value} using ${backendName}`, "system");
+                addTranscriptMessage("Click the microphone button to speak", "system");
                 
                 // Set mic icon to waiting state
                 updateHeaderMicIcon(false);
@@ -466,8 +475,8 @@ document.addEventListener("DOMContentLoaded", function() {
             
             // Provide helpful error message
             if (error.message.includes('CORS')) {
-                console.error("This appears to be a CORS issue. The WebRTC implementation requires direct communication with OpenAI's servers, which browsers restrict for security reasons. Consider using the WebSocket implementation instead, which proxies through your server.");
-                addTranscriptMessage("CORS error: This browser implementation can't directly connect to OpenAI. Try the WebSocket implementation instead.", "error");
+                console.error("The browser could not reach the same-origin Realtime proxy. Check the Voice Chat AI URL and reverse-proxy CORS settings.");
+                addTranscriptMessage("CORS error: Check the Voice Chat AI URL and reverse-proxy configuration.", "error");
             }
         }
     }
@@ -612,6 +621,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 } else if (messageType === "input_audio_buffer.speech_started") {
                     debugLog("User speech detected", "info");
+                    if (rtcConfig.provider === 'local' && isResponseActive) {
+                        clearLocalRealtimePlayback();
+                    }
                     showWaitingIndicator(false);
                     userVoiceVisualization.classList.remove('hidden');
                     animateVoiceBars('userVoiceVisualization');
@@ -619,11 +631,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 } else if (messageType === "input_audio_buffer.speech_stopped") {
                     debugLog("User finished speaking", "success");
+                    if (rtcConfig.provider === 'local') {
+                        localSpeechTurn += 1;
+                    }
                     userVoiceVisualization.classList.add('hidden');
                     showWaitingIndicator(true);
 
                 } else if (messageType === "input_audio_buffer.committed") {
                     debugLog("Input audio committed", "info");
+
+                } else if (messageType === "conversation.item.created") {
+                    debugLog("Conversation item created", "info");
+
+                } else if (messageType === "conversation.item.input_audio_transcription.delta") {
+                    if (data.delta) {
+                        debugLog(`Input transcript delta: ${data.delta}`, "info");
+                    }
 
                 } else if (messageType === "conversation.item.input_audio_transcription.completed") {
                     if (data.transcript) {
@@ -631,7 +654,32 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
 
                 } else if (messageType === "response.created") {
-                    debugLog("OpenAI started a response", "info");
+                    const responseId = getResponseId(data);
+                    if (responseId && responseId === currentResponseId) {
+                        debugLog(`Ignored repeated response.created event for ${responseId}`, "warning");
+                        return;
+                    }
+                    if (
+                        rtcConfig.provider === 'local' &&
+                        localResponseTurn === localSpeechTurn
+                    ) {
+                        if (responseId) {
+                            suppressedResponseIds.add(responseId);
+                        }
+                        cancelDuplicateLocalResponse(responseId);
+                        debugLog(
+                            `Suppressed duplicate local response${responseId ? ` ${responseId}` : ''}`,
+                            "warning"
+                        );
+                        return;
+                    }
+
+                    if (rtcConfig.provider === 'local') {
+                        localResponseTurn = localSpeechTurn;
+                    }
+                    currentResponseId = responseId;
+                    isResponseActive = true;
+                    debugLog("Realtime backend started a response", "info");
 
                 } else if (messageType === "response.output_audio.delta") {
                     showWaitingIndicator(false);
@@ -645,8 +693,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 } else if (messageType === "response.output_audio_transcript.done") {
                     if (data.transcript) {
-                        addTranscriptMessage(data.transcript, "ai");
-                        debugLog(`AI responded: ${data.transcript}`, "success");
+                        recordResponseTranscript(data, data.transcript, "audio");
                     }
 
                 } else if (messageType === "response.output_text.delta") {
@@ -656,10 +703,28 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 } else if (messageType === "response.output_text.done") {
                     if (data.text) {
-                        addTranscriptMessage(data.text, "ai");
+                        recordResponseTranscript(data, data.text, "text");
                     }
 
-                } else if (messageType === "response.output_audio.done" || messageType === "response.done") {
+                } else if (messageType === "response.function_call_arguments.done") {
+                    debugLog("Realtime function-call arguments completed", "info");
+
+                } else if (messageType === "response.output_audio.done") {
+                    aiVoiceVisualization.classList.add('hidden');
+                    showWaitingIndicator(false);
+
+                } else if (messageType === "response.done") {
+                    const responseId = getResponseId(data);
+                    if (responseId && suppressedResponseIds.has(responseId)) {
+                        suppressedResponseIds.delete(responseId);
+                        responseTranscripts.delete(responseId);
+                        debugLog(`Duplicate local response ${responseId} cancelled`, "warning");
+                        return;
+                    }
+
+                    flushResponseTranscript(responseId);
+                    isResponseActive = false;
+                    currentResponseId = null;
                     aiVoiceVisualization.classList.add('hidden');
                     showWaitingIndicator(false);
                     debugLog("AI response completed", "success");
@@ -670,7 +735,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     userVoiceVisualization.classList.add('hidden');
                     aiVoiceVisualization.classList.add('hidden');
                     showWaitingIndicator(false);
-                    debugLog(`Error from OpenAI: ${errorMessage}`, "error");
+                    debugLog(`Error from Realtime backend: ${errorMessage}`, "error");
                     addTranscriptMessage(`Error: ${errorMessage}`, "error");
                     
                 } else {
@@ -807,6 +872,8 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     
     // Apply the character prompt after the GA Realtime data channel opens.
+    // Local Qwen voices are configured here because the local handshake accepts
+    // raw SDP rather than OpenAI's multipart session object.
     function sendSessionInstructions(instructions) {
         if (!dataChannel || dataChannel.readyState !== 'open') {
             console.error("Data channel not open");
@@ -817,15 +884,131 @@ document.addEventListener("DOMContentLoaded", function() {
         console.log("Sending instructions to API:", instructions);
         debugLog(`Sending instructions (${instructions.length} chars)`, "info");
         
+        const session = {
+            type: "realtime",
+            instructions: instructions
+        };
+
+        if (rtcConfig.provider === 'local') {
+            const localTurnRules = [
+                "Reply exactly once to each user turn.",
+                "Respond only as the selected assistant character.",
+                "Never invent, quote, or speak a user reply.",
+                "Never continue into the user's next turn.",
+                "Do not output role labels or dialogue separators such as ---.",
+                "Stop generation immediately after the assistant's answer."
+            ].join(" ");
+            session.instructions = `${instructions}\n\nREALTIME TURN RULES: ${localTurnRules}`;
+            session.audio = {
+                input: {
+                    turn_detection: {
+                        type: "server_vad",
+                        threshold: rtcConfig.vadThreshold,
+                        silence_duration_ms: rtcConfig.silenceDurationMs
+                    }
+                },
+                output: {
+                    voice: voiceSelect.value || rtcConfig.voice
+                }
+            };
+            debugLog(
+                `Local VAD: threshold ${rtcConfig.vadThreshold}, ` +
+                `${rtcConfig.silenceDurationMs} ms end-of-turn silence`,
+                "info"
+            );
+        }
+
         const message = {
             type: "session.update",
-            session: {
-                type: "realtime",
-                instructions: instructions
-            }
+            session: session
         };
         
         dataChannel.send(JSON.stringify(message));
+    }
+
+    function getResponseId(data) {
+        return data.response_id || data.response?.id || currentResponseId;
+    }
+
+    function recordResponseTranscript(data, text, source) {
+        const responseId = getResponseId(data) || "current-response";
+        if (suppressedResponseIds.has(responseId)) return;
+
+        const transcript = String(text || "").trim();
+        if (!transcript) return;
+
+        if (!responseTranscripts.has(responseId)) {
+            responseTranscripts.set(responseId, { audio: [], text: [] });
+        }
+
+        const parts = responseTranscripts.get(responseId)[source];
+        const previous = parts[parts.length - 1];
+        if (previous === transcript || previous?.startsWith(transcript)) return;
+        if (previous && transcript.startsWith(previous)) {
+            parts[parts.length - 1] = transcript;
+        } else {
+            parts.push(transcript);
+        }
+    }
+
+    function flushResponseTranscript(responseId) {
+        const key = responseId || currentResponseId || "current-response";
+        const transcripts = responseTranscripts.get(key);
+        if (!transcripts) return;
+
+        // Prefer the spoken transcript. Some backends emit both spoken-audio
+        // and output-text completion events for the same response.
+        const parts = transcripts.audio.length > 0 ? transcripts.audio : transcripts.text;
+        const text = parts.join(" ").replace(/\s+/g, " ").trim();
+        if (text) {
+            addTranscriptMessage(text, "ai");
+            debugLog(`AI responded: ${text}`, "success");
+        }
+        responseTranscripts.delete(key);
+    }
+
+    function cancelDuplicateLocalResponse(responseId) {
+        if (!dataChannel || dataChannel.readyState !== 'open') return;
+
+        const cancelEvent = { type: "response.cancel" };
+        if (responseId) {
+            cancelEvent.response_id = responseId;
+        }
+        dataChannel.send(JSON.stringify(cancelEvent));
+        clearLocalRealtimePlayback();
+    }
+
+    // The local server cancels generation on VAD interruption. This event also
+    // clears transport-buffered audio, while reattaching the MediaStream drops
+    // audio already queued by the browser.
+    function clearLocalRealtimePlayback() {
+        if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(JSON.stringify({ type: "output_audio_buffer.clear" }));
+        }
+
+        const remoteStream = audioPlayer.srcObject;
+        if (remoteStream) {
+            audioPlayer.pause();
+            audioPlayer.srcObject = null;
+            audioPlayer.srcObject = remoteStream;
+            audioPlayer.play().catch(error => {
+                debugLog(`Could not resume remote audio after interruption: ${error.message}`, "warning");
+            });
+        }
+    }
+
+    function closeLocalRealtimeCall(callId) {
+        if (!callId) return;
+
+        fetch(`/openai_realtime_proxy/${encodeURIComponent(callId)}`, {
+            method: "DELETE"
+        }).then(response => {
+            if (!response.ok) {
+                debugLog(`Local Realtime cleanup returned ${response.status}`, "warning");
+            }
+        }).catch(error => {
+            debugLog(`Could not explicitly close local Realtime call: ${error.message}`, "warning");
+        });
     }
     
     // Toggle microphone
@@ -902,6 +1085,10 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Stop session
     function stopSession() {
+        const callId = realtimeCallId;
+        realtimeCallId = null;
+        closeLocalRealtimeCall(callId);
+
         // Clean up resources
         if (dataChannel) {
             dataChannel.close();
@@ -924,6 +1111,12 @@ document.addEventListener("DOMContentLoaded", function() {
         
         // Update state
         isSessionActive = false;
+        isResponseActive = false;
+        currentResponseId = null;
+        localSpeechTurn = 0;
+        localResponseTurn = -1;
+        suppressedResponseIds.clear();
+        responseTranscripts.clear();
         
         // Update UI
         sessionStatus.textContent = "Inactive";

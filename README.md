@@ -532,6 +532,8 @@ https://github.com/user-attachments/assets/d1cc9ca4-e750-4c36-816e-6f27b8caeec1
 
 Set `OPENAI_REALTIME_MODEL` to `gpt-realtime-2.1`, `gpt-realtime-2.1-mini`, or `gpt-realtime-1.5`. Retired preview and legacy mini model IDs are automatically mapped to their current GA replacements.
 
+The Realtime page can alternatively use a self-hosted, GA-compatible speech-to-speech server without sending audio to OpenAI. Set `OPENAI_REALTIME_PROVIDER=local`, configure `LOCAL_REALTIME_URL`, and select the server's Qwen voice with `LOCAL_REALTIME_VOICE`. See [Local Realtime](docs/LOCAL_REALTIME.md) for native, Docker, lifecycle, security, and validation details.
+
 ### Using OpenAI Realtime
 
 1. Navigate to the "OpenAI Realtime" tab in the application
