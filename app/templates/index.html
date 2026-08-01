@@ -165,6 +165,27 @@
             <div class="setting-group">
                 <label for="xai-tts-voice-select">xAI Voice:</label>
                 <select id="xai-tts-voice-select">
+                    <option value="carina">Carina - soft, empathetic, soothing</option>
+                    <option value="zagan">Zagan - powerful, dramatic, unmistakable</option>
+                    <option value="helix">Helix - bold, dynamic, adrenaline-fueled</option>
+                    <option value="orion">Orion - rich, cinematic, resonant</option>
+                    <option value="luna">Luna - gentle, patient, nurturing</option>
+                    <option value="iris">Iris - friendly, upbeat, charming</option>
+                    <option value="altair">Altair - elegant, refined, premium</option>
+                    <option value="zenith">Zenith - sharp, focused, driven</option>
+                    <option value="perseus">Perseus - strong, confident, trustworthy</option>
+                    <option value="helios">Helios - upbeat, energetic, versatile</option>
+                    <option value="lux">Lux - grounded, calm, wise</option>
+                    <option value="kepler">Kepler - inventive, forward-thinking, charismatic</option>
+                    <option value="rigel">Rigel - precise, professional, confident</option>
+                    <option value="cosmo">Cosmo - bright, curious, easy to follow</option>
+                    <option value="celeste">Celeste - compassionate, confident, reassuring</option>
+                    <option value="ursa">Ursa - friendly, warm, steadfast</option>
+                    <option value="sirius">Sirius - quick-witted, clever, playful</option>
+                    <option value="lumen">Lumen - warm, articulate, engaging</option>
+                    <option value="castor">Castor - charismatic, down-to-earth, easygoing</option>
+                    <option value="naksh">Naksh - warm, thoughtful, wise</option>
+                    <option value="atlas">Atlas - confident, commanding, reassuring</option>
                     <option value="eve">Eve - energetic, upbeat</option>
                     <option value="ara">Ara - warm, friendly</option>
                     <option value="rex">Rex - confident, clear</option>
@@ -200,10 +221,13 @@
             <div class="setting-group">
                 <label for="anthropic-model-select">Anthropic Model:</label>
                 <select id="anthropic-model-select">
-                    <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                    <option value="claude-sonnet-5">Claude Sonnet 5</option>
                     <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                    <option value="claude-3-7-sonnet-20250219">Claude 3.7 Sonnet</option>
-                    <option value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet</option>
+                    <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                    <option value="claude-opus-5">Claude Opus 5</option>
+                    <option value="claude-opus-4-8">Claude Opus 4.8</option>
+                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                    <option value="claude-fable-5">Claude Fable 5</option>
                 </select>
             </div>
             <div class="setting-group">
@@ -307,6 +331,7 @@
             document.getElementById('provider-select').value = "{{ model_provider }}";
             document.getElementById('tts-select').value = "{{ tts_provider }}";
             document.getElementById('openai-model-select').value = "{{ openai_model }}";
+            document.getElementById('anthropic-model-select').value = "{{ anthropic_model }}";
             document.getElementById('xai-tts-voice-select').value = "{{ xai_tts_voice }}";
             document.getElementById('voice-speed-select').value = "{{ voice_speed }}";
         });

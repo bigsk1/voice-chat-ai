@@ -83,6 +83,7 @@ async def get_index(request: Request):
     tts_provider = os.getenv("TTS_PROVIDER")
     openai_tts_voice = os.getenv("OPENAI_TTS_VOICE")
     openai_model = os.getenv("OPENAI_MODEL")
+    anthropic_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     ollama_model = os.getenv("OLLAMA_MODEL")
     voice_speed = os.getenv("VOICE_SPEED")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
@@ -101,6 +102,7 @@ async def get_index(request: Request):
         "openai_tts_local": openai_tts_local,
         "openai_tts_voice": openai_tts_voice,
         "openai_model": openai_model,
+        "anthropic_model": anthropic_model,
         "ollama_model": ollama_model,
         "voice_speed": voice_speed,
         "elevenlabs_voice": elevenlabs_voice,

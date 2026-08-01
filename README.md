@@ -166,7 +166,7 @@ To use xAI TTS:
 2. Configure:
    - `TTS_PROVIDER=xai`
    - `XAI_API_KEY=your_api_key_here`
-   - `XAI_TTS_VOICE=eve` (options: `eve`, `ara`, `rex`, `sal`, `leo`)
+   - `XAI_TTS_VOICE=eve` (all built-in voices are available in the dashboard, including `carina`, `orion`, `luna`, `atlas`, `eve`, `ara`, `rex`, `sal`, and `leo`)
    - `XAI_TTS_LANGUAGE=en` (use `auto` for language detection)
    - `XAI_TTS_FORMAT=mp3` (use `mp3` or `wav` for dashboard/CLI playback)
 
