@@ -25,7 +25,6 @@ document.addEventListener("DOMContentLoaded", function() {
     let dataChannel = null;
     let micStream = null;
     let isSessionActive = false;
-    let ephemeralKey = null;
     let audioPlayer = new Audio();
     
     // Set dark mode as default
@@ -70,8 +69,7 @@ document.addEventListener("DOMContentLoaded", function() {
     voiceSelect.addEventListener('change', function() {
         const selectedVoice = voiceSelect.value;
         if (isSessionActive && dataChannel && dataChannel.readyState === 'open') {
-            sendVoicePreference(selectedVoice);
-            addTranscriptMessage(`Voice changed to ${selectedVoice}`, "system");
+            addTranscriptMessage(`Stop and restart the session to change the voice to ${selectedVoice}`, "system");
         }
     });
     
@@ -276,25 +274,6 @@ document.addEventListener("DOMContentLoaded", function() {
             sessionStatus.classList.add("badge-warning");
             startButton.disabled = true;
             
-            console.log("Fetching ephemeral key...");
-            // Get ephemeral key from server
-            const response = await fetch('/openai_ephemeral_key');
-            console.log("Ephemeral key response status:", response.status);
-            if (!response.ok) {
-                throw new Error(`Failed to get ephemeral key: ${response.status} - ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            console.log("Received data from server:", data);
-            ephemeralKey = data.client_secret?.value;
-            
-            if (!ephemeralKey) {
-                throw new Error("Invalid ephemeral key received from server: " + JSON.stringify(data));
-            }
-            
-            // Log success
-            console.log("Received valid ephemeral key from server");
-            
             // Create peer connection with STUN servers to help with NAT traversal
             console.log("Creating RTCPeerConnection with STUN servers...");
             peerConnection = new RTCPeerConnection({
@@ -391,14 +370,18 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             
             // Configuration/Settings
-            const defaultModel = "gpt-4o-realtime-preview-2024-12-17"; // Default fallback model
+            const defaultModel = "gpt-realtime-2.1";
             
             // Fetch model from server-side configuration or use default
             let model = rtcConfig.model || defaultModel;
             debugLog(`Using model: ${model}`, 'info');
             
             // Construct URL for our proxy endpoint instead of the direct OpenAI endpoint
-            const proxyUrl = `/openai_realtime_proxy?model=${model}`;
+            const proxyParams = new URLSearchParams({
+                model: model,
+                voice: voiceSelect.value
+            });
+            const proxyUrl = `/openai_realtime_proxy?${proxyParams.toString()}`;
             
             // Log SDP being sent
             console.log(`Sending SDP to proxy endpoint: ${proxyUrl}`);
@@ -448,6 +431,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 startButton.disabled = true;
                 stopButton.disabled = false;
                 micButton.disabled = false;
+                characterSelect.disabled = true;
+                voiceSelect.disabled = true;
                 
                 // Add session message
                 addTranscriptMessage("Session started with " + characterSelect.value, "system");
@@ -456,7 +441,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Set mic icon to waiting state
                 updateHeaderMicIcon(false);
                 
-                // Start microphone automatically
+                // Start with the microphone paused; the user enables it with
+                // the microphone button after the WebRTC track is negotiated.
                 toggleMicrophone();
                 console.log("Session started successfully");
             } catch (fetchError) {
@@ -568,18 +554,15 @@ document.addEventListener("DOMContentLoaded", function() {
         dataChannel.onopen = () => {
             debugLog("Data channel opened", "success");
             
-            // Get character and voice settings
+            // Get the selected character. Voice is already configured when the
+            // backend creates the GA Realtime call.
             const character = characterSelect.value;
-            const voice = voiceSelect.value;
-            
-            // Set voice preference
-            sendVoicePreference(voice);
             
             // Fetch and use the actual character prompt
             fetchCharacterPrompt(character)
                 .then(instructions => {
                     // Send the instructions immediately
-                    sendInstructions(instructions);
+                    sendSessionInstructions(instructions);
                     
                     // Log the instructions
                     debugLog(`Using character instructions for ${character}`, "info");
@@ -589,7 +572,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     const characterName = characterSelect.options[characterSelect.selectedIndex].text;
                     const fallbackInstructions = `You are ${characterName}. Speak in the style of ${characterName}. Keep your responses concise and engaging.`;
                     
-                    sendInstructions(fallbackInstructions);
+                    sendSessionInstructions(fallbackInstructions);
                     debugLog(`Using fallback instructions for ${characterName}`, "warning");
                     console.error("Error fetching character prompt:", error);
                 });
@@ -600,9 +583,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Parse the message
                 const data = JSON.parse(event.data);
                 const messageType = data.type;
-                
-                // Hide waiting indicator whenever we get a response
-                showWaitingIndicator(false);
                 
                 // Use direct message display without showing the panel
                 if (window.forceDebugMessage) {
@@ -617,66 +597,79 @@ document.addEventListener("DOMContentLoaded", function() {
                 debugLog(`Received message: ${JSON.stringify(data)}`, "data");
                 
                 // Handle different message types
-                if (messageType === "conversation.item.text.created") {
-                    // AI text response
-                    const content = data.content || {};
-                    const text = content.text || "";
-                    
-                    if (text) {
-                        addTranscriptMessage(text, "ai");
-                        // Add explicit debug log for AI speech
-                        debugLog(`AI responded: ${text}`, "success");
-                    }
-                    
-                    // Show AI voice visualization during speech
-                    aiVoiceVisualization.classList.remove('hidden');
-                    // Simulate voice bars animation
-                    animateVoiceBars('aiVoiceVisualization');
-                    
-                } else if (messageType === "conversation.item.message.completed") {
-                    // Message completed
-                    debugLog("AI message completed", "success");
-                    // Hide AI voice visualization
-                    aiVoiceVisualization.classList.add('hidden');
-                    
-                } else if (messageType === "conversation.item.text.delta") {
-                    // Text delta - partial text updates
-                    const content = data.delta || {};
-                    const text = content.text || "";
-                    
-                    if (text) {
-                        debugLog(`Text delta: ${text}`, "info");
-                        // We could update the UI incrementally here if desired
-                    }
-                    
-                } else if (messageType === "audio_buffer.meta.received") {
-                    // Audio buffer meta info
-                    debugLog("Audio received by API - user is speaking", "info");
-                    // Show user voice visualization
-                    userVoiceVisualization.classList.remove('hidden');
-                    // Simulate voice bars animation
-                    animateVoiceBars('userVoiceVisualization');
-                    
-                } else if (messageType === "audio_buffer.committed") {
-                    // Audio buffer committed
-                    debugLog("Audio buffer committed - user finished speaking", "success");
-                    // Hide user voice visualization
-                    userVoiceVisualization.classList.add('hidden');
-                    
+                if (messageType === "session.created") {
+                    debugLog(`Realtime session created with ${data.session?.model || "configured model"}`, "success");
+
                 } else if (messageType === "session.updated") {
-                    // Session update confirmation
                     const session = data.session || {};
-                    if (session.voice) {
-                        debugLog(`Voice set to: ${session.voice}`, "success");
+                    const voice = session.audio?.output?.voice;
+                    if (voice) {
+                        debugLog(`Voice set to: ${voice}`, "success");
                     }
                     if (session.instructions) {
-                        debugLog("Instructions updated", "success");
+                        debugLog("Character instructions updated", "success");
                     }
-                    
+
+                } else if (messageType === "input_audio_buffer.speech_started") {
+                    debugLog("User speech detected", "info");
+                    showWaitingIndicator(false);
+                    userVoiceVisualization.classList.remove('hidden');
+                    animateVoiceBars('userVoiceVisualization');
+                    aiVoiceVisualization.classList.add('hidden');
+
+                } else if (messageType === "input_audio_buffer.speech_stopped") {
+                    debugLog("User finished speaking", "success");
+                    userVoiceVisualization.classList.add('hidden');
+                    showWaitingIndicator(true);
+
+                } else if (messageType === "input_audio_buffer.committed") {
+                    debugLog("Input audio committed", "info");
+
+                } else if (messageType === "conversation.item.input_audio_transcription.completed") {
+                    if (data.transcript) {
+                        addTranscriptMessage(data.transcript, "user");
+                    }
+
+                } else if (messageType === "response.created") {
+                    debugLog("OpenAI started a response", "info");
+
+                } else if (messageType === "response.output_audio.delta") {
+                    showWaitingIndicator(false);
+                    aiVoiceVisualization.classList.remove('hidden');
+                    animateVoiceBars('aiVoiceVisualization');
+
+                } else if (messageType === "response.output_audio_transcript.delta") {
+                    if (data.delta) {
+                        debugLog(`Audio transcript delta: ${data.delta}`, "info");
+                    }
+
+                } else if (messageType === "response.output_audio_transcript.done") {
+                    if (data.transcript) {
+                        addTranscriptMessage(data.transcript, "ai");
+                        debugLog(`AI responded: ${data.transcript}`, "success");
+                    }
+
+                } else if (messageType === "response.output_text.delta") {
+                    if (data.delta) {
+                        debugLog(`Text delta: ${data.delta}`, "info");
+                    }
+
+                } else if (messageType === "response.output_text.done") {
+                    if (data.text) {
+                        addTranscriptMessage(data.text, "ai");
+                    }
+
+                } else if (messageType === "response.output_audio.done" || messageType === "response.done") {
+                    aiVoiceVisualization.classList.add('hidden');
+                    showWaitingIndicator(false);
+                    debugLog("AI response completed", "success");
+
                 } else if (messageType === "error") {
-                    // Error message
                     const error = data.error || {};
                     const errorMessage = error.message || "Unknown error";
+                    userVoiceVisualization.classList.add('hidden');
+                    aiVoiceVisualization.classList.add('hidden');
+                    showWaitingIndicator(false);
                     debugLog(`Error from OpenAI: ${errorMessage}`, "error");
                     addTranscriptMessage(`Error: ${errorMessage}`, "error");
                     
@@ -813,31 +806,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
-    // Send voice preference
-    function sendVoicePreference(voice) {
-        if (!isSessionActive || !dataChannel || dataChannel.readyState !== "open") {
-            return;
-        }
-        
-        try {
-            const message = {
-                event_id: `event_${Date.now()}`,
-                type: "session.update",
-                session: {
-                    voice: voice
-                }
-            };
-            
-            dataChannel.send(JSON.stringify(message));
-            debugLog(`Set voice preference: ${voice}`);
-        } catch (error) {
-            console.error("Error setting voice:", error);
-            debugLog(`Error setting voice: ${error.message}`, true);
-        }
-    }
-    
-    // Send instructions to the API
-    function sendInstructions(instructions) {
+    // Apply the character prompt after the GA Realtime data channel opens.
+    function sendSessionInstructions(instructions) {
         if (!dataChannel || dataChannel.readyState !== 'open') {
             console.error("Data channel not open");
             debugLog("Data channel not open, can't send instructions", "error");
@@ -850,6 +820,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const message = {
             type: "session.update",
             session: {
+                type: "realtime",
                 instructions: instructions
             }
         };
@@ -961,6 +932,8 @@ document.addEventListener("DOMContentLoaded", function() {
         startButton.disabled = false;
         stopButton.disabled = true;
         micButton.disabled = true;
+        characterSelect.disabled = false;
+        voiceSelect.disabled = false;
         
         // Reset mic UI
         micButton.classList.remove('listening');
@@ -1056,4 +1029,4 @@ document.addEventListener("DOMContentLoaded", function() {
             micIcon.classList.add('mic-off');
         }
     }
-}); 
+});

@@ -14,6 +14,12 @@ from starlette.background import BackgroundTask
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, pause_audio_playback, resume_audio_playback, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation, pause_enhanced_audio_playback, resume_enhanced_audio_playback
+from .openai_realtime import (
+    DEFAULT_OPENAI_REALTIME_MODEL,
+    OPENAI_REALTIME_CALLS_URL,
+    build_openai_realtime_session,
+    normalize_openai_realtime_model,
+)
 from .xai_compat import normalize_xai_model
 import logging
 import uuid
@@ -384,44 +390,10 @@ async def get_ollama_models():
     """
     return await fetch_ollama_models()
 
-@app.get("/openai_ephemeral_key")
-async def get_openai_ephemeral_key():
-    """
-    Generate an ephemeral key for OpenAI API access from the browser
-    
-    In a production environment, you would use a service like Supabase or a proper server-side
-    authentication system. For simplicity in this demo, we're just returning the API key directly.
-    """
-    try:
-        # Get the API key from environment
-        api_key = os.getenv("OPENAI_API_KEY")
-        
-        if not api_key:
-            logger.error("OPENAI_API_KEY not set in environment")
-            return {"error": "API key not configured"}
-        
-        # In a real application, you might want to create a temporary token or session
-        # For this demo, we'll just return the key directly
-        # WARNING: This exposes your API key in production!
-        
-        # Add logging to help debug
-        logger.info(f"Returning ephemeral key (first 5 chars): {api_key[:5]}...")
-        
-        # Return in the exact format expected by the WebRTC client
-        return {
-            "client_secret": {
-                "value": api_key
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error generating ephemeral key: {e}")
-        return {"error": str(e)}
-
 @app.post("/openai_realtime_proxy")
 async def proxy_openai_realtime(request: Request):
     """
-    Proxy endpoint to relay WebRTC connection to OpenAI API.
-    This avoids CORS issues when connecting directly from the browser.
+    Create a GA OpenAI Realtime WebRTC call without exposing the API key.
     """
     try:
         # Get the API key
@@ -434,11 +406,14 @@ async def proxy_openai_realtime(request: Request):
         
         # Get the SDP from the request body
         body = await request.body()
-        sdp = body.decode('utf-8')
+        sdp = body.decode("utf-8")
+        if not sdp.strip():
+            raise HTTPException(status_code=400, detail="An SDP offer is required")
         
-        # Get the model parameter from query params or default from environment
-        default_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview-2024-12-17")
-        model = request.query_params.get('model', default_model)
+        configured_model = os.getenv("OPENAI_REALTIME_MODEL", DEFAULT_OPENAI_REALTIME_MODEL)
+        model = normalize_openai_realtime_model(request.query_params.get("model", configured_model))
+        voice = request.query_params.get("voice")
+        session = build_openai_realtime_session(model, voice)
         
         # Log the request (without the full SDP for privacy)
         logger.info(f"Proxying WebRTC connection to OpenAI Realtime API for model: {model}")
@@ -446,23 +421,25 @@ async def proxy_openai_realtime(request: Request):
         # Forward to OpenAI
         import httpx
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
             response = await client.post(
-                f"https://api.openai.com/v1/realtime?model={model}",
-                content=sdp,
+                OPENAI_REALTIME_CALLS_URL,
                 headers={
                     "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/sdp",
-                    "OpenAI-Beta": "realtime=v1"
-                }
+                },
+                files={
+                    "sdp": (None, sdp, "application/sdp"),
+                    "session": (None, json.dumps(session), "application/json"),
+                },
             )
             
-            # Return the same status code and content
+            # OpenAI returns the SDP answer as text for successful requests and
+            # JSON error details otherwise. Preserve both for the browser.
             from fastapi.responses import Response
             return Response(
                 content=response.content,
                 status_code=response.status_code,
-                media_type="application/sdp"
+                media_type=response.headers.get("content-type", "application/sdp"),
             )
     
     except HTTPException:
@@ -621,7 +598,9 @@ async def get_webrtc_realtime(request: Request):
             logger.warning("No character folders found, using fallback assistant")
         
         # Get realtime model from environment variable or use default
-        realtime_model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview-2024-12-17")
+        realtime_model = normalize_openai_realtime_model(
+            os.getenv("OPENAI_REALTIME_MODEL", DEFAULT_OPENAI_REALTIME_MODEL)
+        )
             
         return templates.TemplateResponse(
             request,
@@ -641,7 +620,7 @@ async def get_webrtc_realtime(request: Request):
             {
                 "request": request,
                 "characters": ["assistant"],
-                "realtime_model": "gpt-4o-realtime-preview-2024-12-17",  # Default fallback
+                "realtime_model": DEFAULT_OPENAI_REALTIME_MODEL,
             }
         )
 

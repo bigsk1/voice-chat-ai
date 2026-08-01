@@ -520,15 +520,17 @@ By adding Voice Instructions in the system prompt you can guide the AI to respon
 
 ## OpenAI Realtime
 
-The OpenAI Realtime feature uses WebRTC to connect directly to OpenAI's Realtime API, enabling continuous voice streaming with minimal latency for the most natural conversation experience.
+The OpenAI Realtime feature uses OpenAI's GA WebRTC interface, enabling continuous voice streaming with minimal latency for the most natural conversation experience. The backend creates the session through `/v1/realtime/calls`, so the standard OpenAI API key is never sent to the browser.
 
 ### RealTime Features
 
 https://github.com/user-attachments/assets/d1cc9ca4-e750-4c36-816e-6f27b8caeec1
 
-- **Direct WebRTC Connection**: Connect directly to OpenAI's API for the lowest possible latency.
+- **GA WebRTC Connection**: Audio travels over WebRTC while session setup stays securely on the backend.
 - **Zero Turn-Taking**: No need to wait for the AI to finish before speaking - interrupt naturally like a real conversation.
 - **Character Instructions**: Use different character personalities and customize the interaction.
+
+Set `OPENAI_REALTIME_MODEL` to `gpt-realtime-2.1`, `gpt-realtime-2.1-mini`, or `gpt-realtime-1.5`. Retired preview and legacy mini model IDs are automatically mapped to their current GA replacements.
 
 ### Using OpenAI Realtime
 

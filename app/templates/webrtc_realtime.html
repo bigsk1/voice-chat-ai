@@ -653,6 +653,8 @@
                 <div class="form-group">
                     <label for="voice-select">Voice:</label>
                     <select id="voice-select" class="form-control" style="width: 300px; max-width: 100%;">
+                        <option value="marin" selected>Marin - recommended</option>
+                        <option value="cedar">Cedar - recommended</option>
                         <option value="alloy">Alloy - female</option>
                         <option value="ash">Ash - male</option>
                         <option value="ballad">Ballad - male</option>
@@ -707,7 +709,7 @@
                         <li><strong>Debug Panel</strong>: Access technical details by clicking "Show Debug Panel".</li>
                         <li><strong>End Conversation</strong>: Click red mic and stop session to end the session.</li>
                     </ul>
-                    <p><em>Note: This is a real-time voice conversation - the AI responds as you speak and you can interrupt the AI at any time. If 30mins of inactivity session will end. Setting gpt-4o-realtime-preview-2024-12-17 is recommended for better performance and following the character prompt</em></p>
+                    <p><em>Note: This is a real-time voice conversation using the GA Realtime API and gpt-realtime-2.1 by default. The AI responds as you speak, and you can interrupt it at any time. Stop and restart the session to change voices.</em></p>
                 </div>
             </div>
         </div>
@@ -743,4 +745,4 @@
     <script src="{{ url_for('static', path='js/debug_panel.js') }}"></script>
     <script src="{{ url_for('static', path='js/webrtc_realtime.js') }}"></script>
 </body>
-</html> 
+</html>
