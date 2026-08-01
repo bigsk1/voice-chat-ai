@@ -23,6 +23,7 @@ from pydub import AudioSegment
 from datetime import datetime
 import warnings
 from app.transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
+from app.openai_compat import build_openai_chat_payload
 from app.story_time import (
     add_message_timestamp,
     augment_story_system_message,
@@ -1085,12 +1086,14 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
                 max_tokens=token_limit,  # Using our calculated token limit for Anthropic
                 model=ANTHROPIC_MODEL,
                 system=system_content,
-                messages=anthropic_messages + [{"role": "user", "content": user_input}],
-                temperature=0.8
+                messages=anthropic_messages + [{"role": "user", "content": user_input}]
             ) as stream:
                 # Process the stream events
                 for event in stream:
-                    if event.type == "content_block_delta":
+                    if (
+                        event.type == "content_block_delta"
+                        and event.delta.type == "text_delta"
+                    ):
                         delta_content = event.delta.text
                         if delta_content:
                             if not is_xai_tts_enabled():
@@ -1111,12 +1114,12 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             'Authorization': f'Bearer {OPENAI_API_KEY}',
             'Content-Type': 'application/json'
         }
-        payload = {
-            "model": OPENAI_MODEL,
-            "messages": messages,
-            "stream": True,
-            "max_completion_tokens": token_limit  # Using the new parameter name for OpenAI
-        }
+        payload = build_openai_chat_payload(
+            model=OPENAI_MODEL,
+            messages=messages,
+            max_completion_tokens=token_limit,
+            stream=True,
+        )
         response = requests.post(OPENAI_BASE_URL, headers=headers, json=payload, stream=True, timeout=30)
         response.raise_for_status()
 
@@ -1334,12 +1337,11 @@ def analyze_image_with_openai(encoded_image, question_prompt):
             {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
         ]
     }
-    payload = {
-        "model": OPENAI_MODEL,
-        "temperature": 1.0,
-        "messages": [message],
-        "max_tokens": 1000
-    }
+    payload = build_openai_chat_payload(
+        model=OPENAI_MODEL,
+        messages=[message],
+        max_completion_tokens=1000,
+    )
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=30)
         response.raise_for_status()

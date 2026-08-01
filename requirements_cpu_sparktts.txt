@@ -21,8 +21,8 @@ pydantic==2.13.4
 pillow==12.3.0
 
 pydub==0.25.1
-openai==1.68.2
-anthropic==0.49.0
+openai==2.52.0
+anthropic==0.120.2
 textblob==0.18.0.post0
 python-dotenv==1.2.2 
 requests==2.33.0 

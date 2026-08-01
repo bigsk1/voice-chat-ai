@@ -27,6 +27,7 @@ from .story_time import (
     history_for_model,
 )
 from .transcription import transcribe_audio
+from .openai_compat import build_openai_chat_payload
 
 router = APIRouter()
 
@@ -767,13 +768,12 @@ async def enhanced_chat_completion(prompt, system_message, mood_prompt, conversa
             "Content-Type": "application/json"
         }
         
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": 1.0,
-            "max_completion_tokens": token_limit,
-            "stream": True
-        }
+        payload = build_openai_chat_payload(
+            model=model,
+            messages=messages,
+            max_completion_tokens=token_limit,
+            stream=True,
+        )
         
         # Variable to store the full response
         full_response = ""

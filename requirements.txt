@@ -37,8 +37,8 @@ spacy-legacy==3.0.12
 spacy-loggers==1.0.5
 
 # API clients
-openai==1.68.2
-anthropic==0.49.0
+openai==2.52.0
+anthropic==0.120.2
 aiohttp==3.14.1
 httpx==0.28.1
 requests==2.33.0

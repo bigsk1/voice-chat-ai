@@ -30,6 +30,7 @@ from .story_time import (
     save_story_history,
 )
 from .transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
+from .openai_compat import build_openai_chat_payload
 
 # Load environment variables
 load_dotenv()
@@ -1258,12 +1259,12 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
     elif MODEL_PROVIDER == 'openai':
         messages = [{"role": "system", "content": system_message + "\n" + mood_prompt}] + model_history + [{"role": "user", "content": user_input}]
         headers = {'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}
-        payload = {
-            "model": OPENAI_MODEL,
-            "messages": messages,
-            "stream": True,
-            "max_completion_tokens": token_limit  # Approximate token conversion
-        }
+        payload = build_openai_chat_payload(
+            model=OPENAI_MODEL,
+            messages=messages,
+            max_completion_tokens=token_limit,
+            stream=True,
+        )
         try:
             print(f"Debug: Sending request to OpenAI: {OPENAI_BASE_URL}")
             response = requests.post(OPENAI_BASE_URL, headers=headers, json=payload, stream=True, timeout=45)
@@ -1325,15 +1326,17 @@ def chatgpt_streamed(user_input, system_message, mood_prompt, conversation_histo
             max_tokens=token_limit,  # Approximate token conversion
             model=ANTHROPIC_MODEL,
             system=system_content,
-            messages=anthropic_messages + [{"role": "user", "content": user_input}],
-            temperature=0.8
+            messages=anthropic_messages + [{"role": "user", "content": user_input}]
         ) as stream:
                 print("Starting Anthropic stream...")
                 line_buffer = ""
                 
                 # Process the stream events
                 for event in stream:
-                    if event.type == "content_block_delta":
+                    if (
+                        event.type == "content_block_delta"
+                        and event.delta.type == "text_delta"
+                    ):
                         delta_content = event.delta.text
                         if delta_content:
                             line_buffer += delta_content
@@ -1626,12 +1629,11 @@ async def fallback_to_openai_image_analysis(encoded_image, question_prompt):
             {"type": "image_url", "image_url": {"url": f"data:image/jpg;base64,{encoded_image}", "detail": "high"}}
         ]
     }
-    payload = {
-        "model": OPENAI_MODEL,
-        "temperature": 1.0,
-        "messages": [message],
-        "max_tokens": 1000
-    }
+    payload = build_openai_chat_payload(
+        model=OPENAI_MODEL,
+        messages=[message],
+        max_completion_tokens=1000,
+    )
     
     try:
         async with aiohttp.ClientSession() as session:
