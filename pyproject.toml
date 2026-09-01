@@ -32,7 +32,7 @@ dependencies = [
     # NLP and language
     "transformers==5.5.0",
     # 3.10.1 blocks packages installed in a repo-local virtualenv as CWD imports.
-    "nltk==3.10.0",
+    "nltk==3.10.3",
     "langid==1.1.6",
     "textblob==0.18.0.post0",
     "spacy==3.7.5",
