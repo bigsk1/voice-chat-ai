@@ -110,153 +110,157 @@
             </div>
         </div>
         <div class="controls">
-            <button id="start-conversation-btn">Start</button>
+            <button id="start-conversation-btn" disabled>Start</button>
             <button id="pause-audio-btn" disabled>Pause</button>
             <button id="stop-conversation-btn">Stop</button>
             <button id="clear-conversation-btn">Clear</button>
         </div>
         <div class="settings">
-            <div class="setting-group">
-                <label for="character-select">* Character:</label>
-                <select id="character-select"></select>
-            </div>
-            <div class="setting-group">
-                <label for="provider-select">* Model Provider:</label>
-                <select id="provider-select" data-initial="{{ model_provider }}">
-                    <option value="openai">OpenAI</option>
-                    <option value="ollama">Ollama</option>
-                    <option value="xai">XAI</option>
-                    <option value="anthropic">Anthropic</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="tts-select">* TTS Provider:</label>
-                <select id="tts-select" data-initial="{{ tts_provider }}">
-                    <option value="openai">OpenAI</option>
-                    <option value="xai">xAI Grok TTS</option>
-                    <option value="elevenlabs">ElevenLabs</option>
-                    <option value="kokoro">Kokoro-TTS</option>
-                    <option value="sparktts">Spark-TTS (Local)</option>
-                    <option value="typecast">Typecast</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="openai-voice-select" id="openai-voice-label">{% if openai_tts_local %}TTS Voice (local){% else %}OpenAI Voice{% endif %}:</label>
-                <select id="openai-voice-select" data-initial="{{ openai_tts_voice }}">
-                    <option value="alloy">Alloy - female</option>
-                    <option value="echo">Echo - male</option>
-                    <option value="fable">Fable - male</option>
-                    <option value="onyx">Onyx - male</option>
-                    <option value="nova">Nova - female</option>
-                    <option value="shimmer">Shimmer - female</option>
-                    <option value="sage">Sage - female</option>
-                    <option value="coral">Coral - female</option>
-                    <option value="ash">Ash - male</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="elevenlabs-voice-select">ElevenLabs Voice:</label>
-                <select id="elevenlabs-voice-select"></select>
-            </div>
-            <div class="setting-group">
-                <label for="kokoro-voice-select">Kokoro Voice:</label>
-                <select id="kokoro-voice-select" data-initial="{{ kokoro_voice }}"></select>
-            </div>
-            <div class="setting-group">
-                <label for="xai-tts-voice-select">xAI Voice:</label>
-                <select id="xai-tts-voice-select">
-                    <option value="carina">Carina - soft, empathetic, soothing</option>
-                    <option value="zagan">Zagan - powerful, dramatic, unmistakable</option>
-                    <option value="helix">Helix - bold, dynamic, adrenaline-fueled</option>
-                    <option value="orion">Orion - rich, cinematic, resonant</option>
-                    <option value="luna">Luna - gentle, patient, nurturing</option>
-                    <option value="iris">Iris - friendly, upbeat, charming</option>
-                    <option value="altair">Altair - elegant, refined, premium</option>
-                    <option value="zenith">Zenith - sharp, focused, driven</option>
-                    <option value="perseus">Perseus - strong, confident, trustworthy</option>
-                    <option value="helios">Helios - upbeat, energetic, versatile</option>
-                    <option value="lux">Lux - grounded, calm, wise</option>
-                    <option value="kepler">Kepler - inventive, forward-thinking, charismatic</option>
-                    <option value="rigel">Rigel - precise, professional, confident</option>
-                    <option value="cosmo">Cosmo - bright, curious, easy to follow</option>
-                    <option value="celeste">Celeste - compassionate, confident, reassuring</option>
-                    <option value="ursa">Ursa - friendly, warm, steadfast</option>
-                    <option value="sirius">Sirius - quick-witted, clever, playful</option>
-                    <option value="lumen">Lumen - warm, articulate, engaging</option>
-                    <option value="castor">Castor - charismatic, down-to-earth, easygoing</option>
-                    <option value="naksh">Naksh - warm, thoughtful, wise</option>
-                    <option value="atlas">Atlas - confident, commanding, reassuring</option>
-                    <option value="eve">Eve - energetic, upbeat</option>
-                    <option value="ara">Ara - warm, friendly</option>
-                    <option value="rex">Rex - confident, clear</option>
-                    <option value="sal">Sal - smooth, balanced</option>
-                    <option value="leo">Leo - authoritative, strong</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="typecast-voice-select">Typecast Voice:</label>
-                <select id="typecast-voice-select" data-initial="{{ typecast_voice }}"></select>
-            </div>
-            <div class="setting-group">
-                <label for="openai-model-select">OpenAI Model:</label>
-                <select id="openai-model-select">
-                    <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
-                    <option value="gpt-5.4-mini">GPT-5.4 mini</option>
-                    <option value="gpt-5.4-nano">GPT-5.4 nano</option>
-                    <option value="gpt-5.2">GPT-5.2</option>
-                    <option value="gpt-5-mini">GPT-5 mini</option>
-                    <option value="gpt-4o">GPT-4o</option>
-                    <option value="gpt-4o-mini">GPT-4o-mini</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="ollama-model-select">Ollama Model:</label>
-                <select id="ollama-model-select" data-initial="{{ ollama_model }}">
-                    <option value="llama3.2">Select Ollama to Load</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="xai-model-select">XAI Model:</label>
-                <select id="xai-model-select">
-                    <option value="grok-4.3">Grok 4.3 (fast, no reasoning)</option>
-                    <option value="grok-4.5">Grok 4.5 (low reasoning)</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="anthropic-model-select">Anthropic Model:</label>
-                <select id="anthropic-model-select">
-                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                    <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
-                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="voice-speed-select">Voice Speed:</label>
-                <select id="voice-speed-select">
-                    <option value="0.7">0.7</option>
-                    <option value="0.9">0.9</option>
-                    <option value="1.0">1.0 (Normal)</option>
-                    <option value="1.1">1.1</option>
-                    <option value="1.2">1.2</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label for="transcription-select">Transcription:</label>
-                <select id="transcription-select">
-                    {% if faster_whisper_local %}
-                    <option value="local_whisper" selected>Local Faster Whisper</option>
-                    <option value="gpt-4o-mini-transcribe">OpenAI GPT-4o Mini</option>
-                    <option value="gpt-4o-transcribe">OpenAI GPT-4o</option>
-                    <option value="whisper-1">OpenAI Whisper-1</option>
-                    {% else %}
-                    <option value="gpt-4o-mini-transcribe" selected>OpenAI GPT-4o Mini</option>
-                    <option value="gpt-4o-transcribe">OpenAI GPT-4o</option>
-                    <option value="whisper-1">OpenAI Whisper-1</option>
-                    <option value="local_whisper">Local Faster Whisper</option>
-                    {% endif %}
-                </select>
-            </div>
+            <section class="settings-section" aria-labelledby="conversation-settings-title">
+                <div class="settings-section-heading">
+                    <h2 id="conversation-settings-title">Conversation</h2>
+                    <p>Choose who you talk with and which model replies.</p>
+                </div>
+                <div class="settings-grid">
+                    <div class="setting-group setting-group-wide">
+                        <label for="character-select">* Character:</label>
+                        <select id="character-select"></select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="provider-select">* Model Provider:</label>
+                        <select id="provider-select" data-initial="{{ model_provider }}" data-configured="{{ configured_model_provider or '' }}" {% if not model_providers %}disabled{% endif %}>
+                            {% for value, label in model_providers %}
+                            <option value="{{ value }}" {% if value == model_provider %}selected{% endif %}>{{ label }}</option>
+                            {% else %}
+                            <option value="">Configure a model provider in .env</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="model-select">* Model:</label>
+                        <select id="model-select" disabled>
+                            <option value="">Select a model provider</option>
+                        </select>
+                        <small id="model-hint" class="setting-hint" aria-live="polite"></small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section" aria-labelledby="speech-settings-title">
+                <div class="settings-section-heading">
+                    <h2 id="speech-settings-title">Speech</h2>
+                    <p>Pick a voice that belongs to the selected TTS provider.</p>
+                </div>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="tts-select">* TTS Provider:</label>
+                        <select id="tts-select" data-initial="{{ tts_provider }}" data-configured="{{ configured_tts_provider or '' }}" {% if not tts_providers %}disabled{% endif %}>
+                            {% for value, label in tts_providers %}
+                            <option value="{{ value }}" {% if value == tts_provider %}selected{% endif %}>{{ label }}</option>
+                            {% else %}
+                            <option value="">Configure a TTS provider in .env</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="voice-select">Voice:</label>
+                        <select id="voice-select" disabled>
+                            <option value="">Select a TTS provider</option>
+                        </select>
+                        <small id="voice-hint" class="setting-hint" aria-live="polite"></small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="voice-speed-select">Voice Speed:</label>
+                        <select id="voice-speed-select">
+                            <option value="0.7" {% if voice_speed == '0.7' %}selected{% endif %}>0.7</option>
+                            <option value="0.9" {% if voice_speed == '0.9' %}selected{% endif %}>0.9</option>
+                            <option value="1.0" {% if voice_speed == '1.0' %}selected{% endif %}>1.0 (Normal)</option>
+                            <option value="1.1" {% if voice_speed == '1.1' %}selected{% endif %}>1.1</option>
+                            <option value="1.2" {% if voice_speed == '1.2' %}selected{% endif %}>1.2</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="transcription-select">Transcription:</label>
+                        <select id="transcription-select">
+                            {% if faster_whisper_local %}
+                            <option value="local_whisper" selected>Local Faster Whisper</option>
+                            <option value="gpt-4o-mini-transcribe">OpenAI GPT-4o Mini</option>
+                            <option value="gpt-4o-transcribe">OpenAI GPT-4o</option>
+                            <option value="whisper-1">OpenAI Whisper-1</option>
+                            {% else %}
+                            <option value="gpt-4o-mini-transcribe" selected>OpenAI GPT-4o Mini</option>
+                            <option value="gpt-4o-transcribe">OpenAI GPT-4o</option>
+                            <option value="whisper-1">OpenAI Whisper-1</option>
+                            <option value="local_whisper">Local Faster Whisper</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+            </section>
         </div>
+
+        <template id="model-options-openai" data-initial="{{ openai_model or '' }}">
+            <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
+            <option value="gpt-5.4-mini">GPT-5.4 mini</option>
+            <option value="gpt-5.4-nano">GPT-5.4 nano</option>
+            <option value="gpt-5.2">GPT-5.2</option>
+            <option value="gpt-5-mini">GPT-5 mini</option>
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4o-mini">GPT-4o-mini</option>
+        </template>
+        <template id="model-options-ollama" data-initial="{{ ollama_model or '' }}"></template>
+        <template id="model-options-xai" data-initial="{{ xai_model or '' }}">
+            <option value="grok-4.3">Grok 4.3 (fast, no reasoning)</option>
+            <option value="grok-4.5">Grok 4.5 (low reasoning)</option>
+        </template>
+        <template id="model-options-anthropic" data-initial="{{ anthropic_model or '' }}">
+            <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+            <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+            <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+        </template>
+
+        <template id="voice-options-openai" data-initial="{{ openai_tts_voice or '' }}">
+            <option value="alloy">Alloy - female</option>
+            <option value="echo">Echo - male</option>
+            <option value="fable">Fable - male</option>
+            <option value="onyx">Onyx - male</option>
+            <option value="nova">Nova - female</option>
+            <option value="shimmer">Shimmer - female</option>
+            <option value="sage">Sage - female</option>
+            <option value="coral">Coral - female</option>
+            <option value="ash">Ash - male</option>
+        </template>
+        <template id="voice-options-elevenlabs" data-initial="{{ elevenlabs_voice or '' }}"></template>
+        <template id="voice-options-kokoro" data-initial="{{ kokoro_voice or '' }}"></template>
+        <template id="voice-options-xai" data-initial="{{ xai_tts_voice or '' }}">
+            <option value="carina">Carina - soft, empathetic, soothing</option>
+            <option value="zagan">Zagan - powerful, dramatic, unmistakable</option>
+            <option value="helix">Helix - bold, dynamic, adrenaline-fueled</option>
+            <option value="orion">Orion - rich, cinematic, resonant</option>
+            <option value="luna">Luna - gentle, patient, nurturing</option>
+            <option value="iris">Iris - friendly, upbeat, charming</option>
+            <option value="altair">Altair - elegant, refined, premium</option>
+            <option value="zenith">Zenith - sharp, focused, driven</option>
+            <option value="perseus">Perseus - strong, confident, trustworthy</option>
+            <option value="helios">Helios - upbeat, energetic, versatile</option>
+            <option value="lux">Lux - grounded, calm, wise</option>
+            <option value="kepler">Kepler - inventive, forward-thinking, charismatic</option>
+            <option value="rigel">Rigel - precise, professional, confident</option>
+            <option value="cosmo">Cosmo - bright, curious, easy to follow</option>
+            <option value="celeste">Celeste - compassionate, confident, reassuring</option>
+            <option value="ursa">Ursa - friendly, warm, steadfast</option>
+            <option value="sirius">Sirius - quick-witted, clever, playful</option>
+            <option value="lumen">Lumen - warm, articulate, engaging</option>
+            <option value="castor">Castor - charismatic, down-to-earth, easygoing</option>
+            <option value="naksh">Naksh - warm, thoughtful, wise</option>
+            <option value="atlas">Atlas - confident, commanding, reassuring</option>
+            <option value="eve">Eve - energetic, upbeat</option>
+            <option value="ara">Ara - warm, friendly</option>
+            <option value="rex">Rex - confident, clear</option>
+            <option value="sal">Sal - smooth, balanced</option>
+            <option value="leo">Leo - authoritative, strong</option>
+        </template>
+        <template id="voice-options-typecast" data-initial="{{ typecast_voice or '' }}"></template>
     </main>
     {% if ui_server_logs %}
     <section class="server-logs-wrapper" aria-label="Server logs">
@@ -302,40 +306,5 @@
     {% if ui_server_logs %}
     <script src="/app/static/js/server_logs.js"></script>
     {% endif %}
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Characters are already loaded by scripts.js
-            // We only need to set the value here
-            setTimeout(() => {
-                document.getElementById('character-select').value = "{{ character_name }}";
-            }, 100);
-
-            fetch('/elevenlabs_voices')
-                .then(response => response.json())
-                .then(data => {
-                    const voiceSelect = document.getElementById('elevenlabs-voice-select');
-                    const defaultOption = document.createElement('option');
-                    defaultOption.value = '';
-                    defaultOption.text = 'Default Voice';
-                    voiceSelect.add(defaultOption);
-
-                    data.voices.forEach(voice => {
-                        const option = document.createElement('option');
-                        option.value = voice.id;
-                        option.text = voice.name;
-                        voiceSelect.add(option);
-                    });
-                    voiceSelect.value = "{{ elevenlabs_voice }}";
-                });
-
-            document.getElementById('provider-select').value = "{{ model_provider }}";
-            document.getElementById('tts-select').value = "{{ tts_provider }}";
-            document.getElementById('openai-model-select').value = "{{ openai_model }}";
-            document.getElementById('xai-model-select').value = "{{ xai_model }}";
-            document.getElementById('anthropic-model-select').value = "{{ anthropic_model }}";
-            document.getElementById('xai-tts-voice-select').value = "{{ xai_tts_voice }}";
-            document.getElementById('voice-speed-select').value = "{{ voice_speed }}";
-        });
-    </script>
 </body>
 </html>

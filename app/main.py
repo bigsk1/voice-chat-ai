@@ -74,6 +74,66 @@ def ui_server_logs_enabled() -> bool:
     return os.getenv("UI_SERVER_LOGS", "true").lower() not in ("false", "0", "no")
 
 
+def _dashboard_api_key_configured(name: str) -> bool:
+    value = (os.getenv(name) or "").strip().lower()
+    return bool(
+        value
+        and value not in {"your_api_key_here", "your-api-key", "your_key_here", "replace_me"}
+    )
+
+
+def _dashboard_model_providers() -> list[tuple[str, str]]:
+    providers = []
+    openai_url = os.getenv("OPENAI_BASE_URL", "").strip().rstrip("/")
+    if _dashboard_api_key_configured("OPENAI_API_KEY") or (
+        openai_url and openai_url != "https://api.openai.com/v1/chat/completions"
+    ):
+        providers.append(("openai", "OpenAI"))
+    if any(os.getenv(name) for name in ("OLLAMA_BASE_URL", "OLLAMA_MODEL")) or (
+        os.getenv("MODEL_PROVIDER") == "ollama"
+    ):
+        providers.append(("ollama", "Ollama"))
+    if _dashboard_api_key_configured("XAI_API_KEY"):
+        providers.append(("xai", "xAI"))
+    if _dashboard_api_key_configured("ANTHROPIC_API_KEY"):
+        providers.append(("anthropic", "Anthropic"))
+    return providers
+
+
+def _dashboard_tts_providers() -> list[tuple[str, str]]:
+    providers = []
+    if _dashboard_api_key_configured("OPENAI_API_KEY") or is_custom_openai_tts_url():
+        providers.append(("openai", "OpenAI"))
+    if _dashboard_api_key_configured("XAI_API_KEY"):
+        providers.append(("xai", "xAI Grok TTS"))
+    if _dashboard_api_key_configured("ELEVENLABS_API_KEY"):
+        providers.append(("elevenlabs", "ElevenLabs"))
+    if any(os.getenv(name) for name in ("KOKORO_BASE_URL", "KOKORO_TTS_VOICE")) or (
+        os.getenv("TTS_PROVIDER") == "kokoro"
+    ):
+        providers.append(("kokoro", "Kokoro-TTS"))
+
+    spark_dir = os.getenv("SPARKTTS_MODEL_DIR", "pretrained_models/Spark-TTS-0.5B")
+    spark_configured = os.getenv("SPARKTTS_MODEL_DIR") or (
+        os.getenv("TTS_PROVIDER") == "sparktts"
+    )
+    if spark_configured and all(
+        os.path.isfile(os.path.join(spark_dir, part, "model.safetensors"))
+        for part in ("LLM", "BiCodec")
+    ):
+        providers.append(("sparktts", "Spark-TTS (Local)"))
+    if _dashboard_api_key_configured("TYPECAST_API_KEY"):
+        providers.append(("typecast", "Typecast"))
+    return providers
+
+
+def _dashboard_selected_provider(
+    providers: list[tuple[str, str]], configured: str | None
+) -> str:
+    available = [value for value, _ in providers]
+    return configured if configured in available else (available[0] if available else "")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if ui_server_logs_enabled():
@@ -99,29 +159,35 @@ app.add_middleware(
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
-    model_provider = os.getenv("MODEL_PROVIDER")
-    character_name = os.getenv("CHARACTER_NAME", "wizard") 
-    tts_provider = os.getenv("TTS_PROVIDER")
-    openai_tts_voice = os.getenv("OPENAI_TTS_VOICE")
-    openai_model = os.getenv("OPENAI_MODEL")
+    configured_model_provider = os.getenv("MODEL_PROVIDER")
+    character_name = os.getenv("CHARACTER_NAME", "wizard")
+    configured_tts_provider = os.getenv("TTS_PROVIDER")
+    model_providers = _dashboard_model_providers()
+    tts_providers = _dashboard_tts_providers()
+    model_provider = _dashboard_selected_provider(model_providers, configured_model_provider)
+    tts_provider = _dashboard_selected_provider(tts_providers, configured_tts_provider)
+    openai_tts_voice = os.getenv("OPENAI_TTS_VOICE", "alloy")
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     xai_model = normalize_xai_model(os.getenv("XAI_MODEL"))
     anthropic_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
-    ollama_model = os.getenv("OLLAMA_MODEL")
-    voice_speed = os.getenv("VOICE_SPEED")
+    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
+    voice_speed = os.getenv("VOICE_SPEED", "1.0")
     elevenlabs_voice = os.getenv("ELEVENLABS_TTS_VOICE")
-    kokoro_voice = os.getenv("KOKORO_TTS_VOICE")
+    kokoro_voice = os.getenv("KOKORO_TTS_VOICE", "af_bella")
     xai_tts_voice = os.getenv("XAI_TTS_VOICE", "eve")
     typecast_voice = os.getenv("TYPECAST_TTS_VOICE")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
-    openai_tts_local = is_custom_openai_tts_url()
     ui_server_logs = ui_server_logs_enabled()
 
     return templates.TemplateResponse(request, "index.html", {
         "request": request,
         "model_provider": model_provider,
+        "configured_model_provider": configured_model_provider,
+        "model_providers": model_providers,
         "character_name": character_name,
         "tts_provider": tts_provider,
-        "openai_tts_local": openai_tts_local,
+        "configured_tts_provider": configured_tts_provider,
+        "tts_providers": tts_providers,
         "openai_tts_voice": openai_tts_voice,
         "openai_model": openai_model,
         "xai_model": xai_model,

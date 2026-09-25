@@ -12,30 +12,35 @@ document.addEventListener("DOMContentLoaded", function() {
     const messages = document.getElementById('messages');
     const micIcon = document.getElementById('mic-icon');
     const characterSelect = document.getElementById('character-select');
+
     const providerSelect = document.getElementById('provider-select');
-    // Apply server default before Ollama fetch; DOM default is first option (openai) until inline script runs later.
-    const initialModelProvider = providerSelect.dataset.initial;
-    if (initialModelProvider && initialModelProvider !== 'None' && initialModelProvider !== '') {
-        providerSelect.value = initialModelProvider;
-    }
+    const modelSelect = document.getElementById('model-select');
+    const modelHint = document.getElementById('model-hint');
     const ttsSelect = document.getElementById('tts-select');
-    const openaiVoiceSelect = document.getElementById('openai-voice-select');
-    
-    // Set initial TTS provider from server
-    const initialTTS = ttsSelect.dataset.initial;
-    if (initialTTS && initialTTS !== 'None' && initialTTS !== '') {
-        ttsSelect.value = initialTTS;
-    }
-    
-    const elevenLabsVoiceSelect = document.getElementById('elevenlabs-voice-select');
-    const kokoroVoiceSelect = document.getElementById('kokoro-voice-select');
-    const xaiTTSVoiceSelect = document.getElementById('xai-tts-voice-select');
-    const typecastVoiceSelect = document.getElementById('typecast-voice-select');
-    const openaiModelSelect = document.getElementById('openai-model-select');
-    const ollamaModelSelect = document.getElementById('ollama-model-select');
-    const xaiModelSelect = document.getElementById('xai-model-select');
+    const voiceSelect = document.getElementById('voice-select');
+    const voiceHint = document.getElementById('voice-hint');
     const voiceSpeedSelect = document.getElementById('voice-speed-select');
     const transcriptionSelect = document.getElementById('transcription-select');
+
+    const modelActions = {
+        openai: 'set_openai_model',
+        ollama: 'set_ollama_model',
+        xai: 'set_xai_model',
+        anthropic: 'set_anthropic_model'
+    };
+    const voiceActions = {
+        openai: 'set_openai_voice',
+        elevenlabs: 'set_elevenlabs_voice',
+        kokoro: 'set_kokoro_voice',
+        xai: 'set_xai_tts_voice',
+        typecast: 'set_typecast_voice'
+    };
+    const selectedModels = Object.create(null);
+    const selectedVoices = Object.create(null);
+    let activeModelProvider = providerSelect.value;
+    let activeTTSProvider = ttsSelect.value;
+    let modelRequestVersion = 0;
+    let voiceRequestVersion = 0;
 
     let aiMessageQueue = [];
     let isAISpeaking = false;
@@ -44,10 +49,6 @@ document.addEventListener("DOMContentLoaded", function() {
     // Fetch and populate characters as soon as page loads
     fetchCharacters();
     
-    // Fetch Ollama models if that's the current provider
-    if (providerSelect.value === 'ollama') {
-        fetchOllamaModels();
-    }
 
     // Function to fetch available characters
     async function fetchCharacters() {
@@ -64,71 +65,131 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
-    // Function to fetch available Ollama models
-    async function fetchOllamaModels() {
-        try {
-            const response = await fetch('/ollama_models');
-            if (response.ok) {
-                const data = await response.json();
-                
-                if (data.error) {
-                    console.warn('Ollama API warning:', data.error);
-                }
-                
-                if (data.models && data.models.length > 0) {
-                    populateOllamaModelSelect(data.models);
-                } else {
-                    console.warn('No Ollama models found');
-                }
-            } else {
-                console.error('Failed to fetch Ollama models:', response.statusText);
-            }
-        } catch (error) {
-            console.error('Error fetching Ollama models:', error);
+
+    function sendSetting(action, field, value) {
+        if (websocket.readyState === WebSocket.OPEN && action && value) {
+            websocket.send(JSON.stringify({ action, [field]: value }));
+            return true;
         }
+        return false;
     }
-    
+
+    function updateStartAvailability() {
+        const hasModel = providerSelect.value && !modelSelect.disabled && modelSelect.value;
+        const hasVoice = ttsSelect.value === 'sparktts' || (!voiceSelect.disabled && voiceSelect.value);
+        startButton.disabled = websocket.readyState !== WebSocket.OPEN ||
+            !ttsSelect.value || !hasModel || !hasVoice;
+    }
+
+    function showPlaceholder(select, label) {
+        select.replaceChildren(new Option(label, ''));
+        select.disabled = true;
+        updateStartAvailability();
+    }
+
+    function templateOptions(kind, provider) {
+        const template = document.getElementById(`${kind}-options-${provider}`);
+        return template ? Array.from(template.content.querySelectorAll('option'), option => ({
+            id: option.value,
+            name: option.textContent,
+            disabled: option.disabled
+        })) : [];
+    }
+
+    function configuredSelection(kind, provider) {
+        const selected = kind === 'model' ? selectedModels : selectedVoices;
+        const template = document.getElementById(`${kind}-options-${provider}`);
+        return selected[provider] || (template && template.dataset.initial) || '';
+    }
+
+    function fillSelect(select, options, preferred, emptyLabel, allowConfigured = true) {
+        select.replaceChildren();
+        const usable = options.filter(option => option.id && !option.disabled);
+        if (preferred && allowConfigured && !usable.some(option => option.id === preferred)) {
+            options = [...options, { id: preferred, name: `${preferred} (configured)` }];
+        }
+        for (const item of options) {
+            const option = new Option(item.name || item.id, item.id);
+            option.disabled = Boolean(item.disabled);
+            select.add(option);
+        }
+        const first = Array.from(select.options).find(option => !option.disabled && option.value);
+        if (!first) {
+            showPlaceholder(select, emptyLabel);
+            return false;
+        }
+        select.value = preferred && Array.from(select.options).some(
+            option => option.value === preferred && !option.disabled
+        ) ? preferred : first.value;
+        select.disabled = false;
+        updateStartAvailability();
+        return true;
+    }
+
     function matchOllamaModel(models, preferred) {
-        if (!preferred) {
-            return null;
-        }
-        if (models.includes(preferred)) {
-            return preferred;
-        }
+        if (!preferred) return '';
+        if (models.includes(preferred)) return preferred;
         const base = preferred.replace(/:latest$/, '');
-        return models.find(
-            (model) =>
-                model.replace(/:latest$/, '') === base ||
-                model.startsWith(`${base}:`)
-        ) || null;
+        return models.find(model =>
+            model.replace(/:latest$/, '') === base || model.startsWith(`${base}:`)
+        ) || '';
     }
 
-    // Function to populate Ollama model select dropdown
-    function populateOllamaModelSelect(models) {
-        const envModel = (ollamaModelSelect.dataset.initial || '').trim();
-        const currentValue = ollamaModelSelect.value;
+    async function fetchVoiceData(path) {
+        const response = await fetch(path);
+        if (!response.ok) throw new Error(`Voice list request failed: ${response.status}`);
+        return response.json();
+    }
 
-        ollamaModelSelect.innerHTML = '';
+    async function renderModelSelect() {
+        const provider = providerSelect.value;
+        const requestVersion = ++modelRequestVersion;
+        modelHint.textContent = '';
+        if (!provider) {
+            showPlaceholder(modelSelect, 'Configure a model provider in .env');
+            return;
+        }
 
-        models.sort((a, b) => a.localeCompare(b));
-
-        models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model;
-            option.textContent = model;
-            ollamaModelSelect.appendChild(option);
-        });
-
-        const matched =
-            matchOllamaModel(models, envModel) ||
-            matchOllamaModel(models, currentValue);
-
-        if (matched) {
-            ollamaModelSelect.value = matched;
-        } else if (models.includes('llama3.2')) {
-            ollamaModelSelect.value = 'llama3.2';
-        } else if (models.length > 0) {
-            ollamaModelSelect.value = models[0];
+        const preferred = configuredSelection('model', provider);
+        if (provider === 'ollama') {
+            showPlaceholder(modelSelect, 'Loading Ollama models…');
+            try {
+                const response = await fetch('/ollama_models');
+                if (!response.ok) throw new Error('Ollama model request failed');
+                const data = await response.json();
+                if (providerSelect.value !== provider || requestVersion !== modelRequestVersion) return;
+                if (data.error) {
+                    showPlaceholder(modelSelect, 'Ollama models unavailable');
+                    modelHint.textContent = 'Check the Ollama server connection.';
+                    return;
+                }
+                const models = Array.isArray(data.models) ? data.models : [];
+                const matched = matchOllamaModel(models, preferred);
+                fillSelect(
+                    modelSelect,
+                    models.sort((a, b) => a.localeCompare(b)).map(id => ({ id, name: id })),
+                    matched,
+                    'No Ollama models available',
+                    false
+                );
+                if (!models.length) modelHint.textContent = 'Start Ollama and install a model.';
+            } catch (error) {
+                if (providerSelect.value !== provider || requestVersion !== modelRequestVersion) return;
+                console.error('Error fetching Ollama models:', error);
+                showPlaceholder(modelSelect, 'Ollama models unavailable');
+                modelHint.textContent = 'Check the Ollama server connection.';
+            }
+        } else {
+            fillSelect(
+                modelSelect,
+                templateOptions('model', provider),
+                preferred,
+                'No models available'
+            );
+        }
+        if (providerSelect.value === provider && !modelSelect.disabled) {
+            selectedModels[provider] = modelSelect.value;
+            sendSetting(modelActions[provider], 'model', modelSelect.value);
         }
     }
 
@@ -155,7 +216,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     websocket.onopen = function(event) {
         console.log("WebSocket is open now.");
-        startButton.disabled = false;
+        sendDashboardState();
+        updateStartAvailability();
         pauseAudioButton.disabled = true;
     };
 
@@ -453,187 +515,122 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    function setProvider() {
+    function syncProviderSelection() {
         const provider = providerSelect.value;
-        websocket.send(JSON.stringify({ action: "set_provider", provider: provider }));
-        
-        // When Ollama is selected, fetch available models
-        if (provider === 'ollama') {
-            fetchOllamaModels();
+        if (provider && provider !== providerSelect.dataset.configured &&
+            sendSetting('set_provider', 'provider', provider)) {
+            providerSelect.dataset.configured = provider;
         }
+    }
+
+    function syncTTSSelection() {
+        const provider = ttsSelect.value;
+        if (provider && provider !== ttsSelect.dataset.configured &&
+            sendSetting('set_tts', 'tts', provider)) {
+            ttsSelect.dataset.configured = provider;
+        }
+    }
+
+    function sendDashboardState() {
+        syncProviderSelection();
+        syncTTSSelection();
+        if (!modelSelect.disabled) {
+            sendSetting(modelActions[providerSelect.value], 'model', modelSelect.value);
+        }
+        if (!voiceSelect.disabled) {
+            sendSetting(voiceActions[ttsSelect.value], 'voice', voiceSelect.value);
+        }
+    }
+
+    function setProvider() {
+        if (activeModelProvider && modelSelect.value) {
+            selectedModels[activeModelProvider] = modelSelect.value;
+        }
+        activeModelProvider = providerSelect.value;
+        syncProviderSelection();
+        renderModelSelect();
     }
 
     function setTTS() {
-        const selectedTTS = document.getElementById('tts-select').value;
-        websocket.send(JSON.stringify({ action: "set_tts", tts: selectedTTS }));
-        if (selectedTTS === 'typecast') {
-            fetchTypecastVoices();
-        } else if (selectedTTS === 'openai') {
-            fetchOpenAITTSVoices();
+        if (activeTTSProvider && voiceSelect.value) {
+            selectedVoices[activeTTSProvider] = voiceSelect.value;
         }
+        activeTTSProvider = ttsSelect.value;
+        syncTTSSelection();
+        renderVoiceSelect();
     }
 
-    const OPENAI_CLOUD_VOICES = [
-        { id: 'alloy', name: 'Alloy - female' },
-        { id: 'echo', name: 'Echo - male' },
-        { id: 'fable', name: 'Fable - male' },
-        { id: 'onyx', name: 'Onyx - male' },
-        { id: 'nova', name: 'Nova - female' },
-        { id: 'shimmer', name: 'Shimmer - female' },
-        { id: 'sage', name: 'Sage - female' },
-        { id: 'coral', name: 'Coral - female' },
-        { id: 'ash', name: 'Ash - male' },
-    ];
-
-    function restoreDefaultOpenAIVoices() {
-        openaiVoiceSelect.innerHTML = '';
-        OPENAI_CLOUD_VOICES.forEach(voice => {
-            const option = document.createElement('option');
-            option.value = voice.id;
-            option.text = voice.name;
-            openaiVoiceSelect.add(option);
-        });
-    }
-
-    function applyOpenAIVoiceSelection(savedVoice) {
-        const saved = savedVoice || openaiVoiceSelect.dataset.initial || '';
-        if (saved && saved !== 'None' && saved !== '' &&
-            [...openaiVoiceSelect.options].some(o => o.value === saved)) {
-            openaiVoiceSelect.value = saved;
+    async function renderVoiceSelect() {
+        const provider = ttsSelect.value;
+        const requestVersion = ++voiceRequestVersion;
+        const isCurrent = () => ttsSelect.value === provider &&
+            requestVersion === voiceRequestVersion;
+        voiceHint.textContent = '';
+        if (!provider) {
+            showPlaceholder(voiceSelect, 'Configure a TTS provider in .env');
+            return;
         }
-    }
+        if (provider === 'sparktts') {
+            showPlaceholder(voiceSelect, 'Uses selected character voice');
+            voiceHint.textContent = 'Spark-TTS clones the selected character’s reference audio.';
+            return;
+        }
 
-    function fetchOpenAITTSVoices() {
-        fetch('/openai_tts_voices')
-            .then(response => response.json())
-            .then(data => {
-                const label = document.getElementById('openai-voice-label');
-                if (!data.local) {
-                    if (label) {
-                        label.textContent = 'OpenAI Voice:';
-                    }
-                    restoreDefaultOpenAIVoices();
-                    applyOpenAIVoiceSelection();
-                    return;
-                }
-
-                if (label) {
-                    label.textContent = 'TTS Voice (local):';
-                }
-
-                if (!data.voices || data.voices.length === 0) {
-                    openaiVoiceSelect.innerHTML = '';
-                    const placeholderOption = document.createElement('option');
-                    placeholderOption.value = '';
-                    placeholderOption.text = data.error
-                        ? 'Local TTS voices unavailable'
-                        : 'No voices returned from server';
-                    openaiVoiceSelect.add(placeholderOption);
-                    applyOpenAIVoiceSelection();
-                    return;
-                }
-
-                openaiVoiceSelect.innerHTML = '';
-                data.voices.forEach(voice => {
-                    const option = document.createElement('option');
-                    option.value = voice.id;
-                    option.text = voice.name || voice.id;
-                    openaiVoiceSelect.add(option);
-                });
-                applyOpenAIVoiceSelection();
-            })
-            .catch(error => {
-                console.error('Error fetching local OpenAI TTS voices:', error);
-                applyOpenAIVoiceSelection();
-            });
-    }
-
-    function typecastVoicePlaceholder() {
-        const voiceSelect = document.getElementById('typecast-voice-select');
-        voiceSelect.innerHTML = '';
-        const placeholderOption = document.createElement('option');
-        placeholderOption.value = '';
-        placeholderOption.text = 'Select Typecast TTS to Load';
-        voiceSelect.add(placeholderOption);
-    }
-
-    function fetchTypecastVoices() {
-        fetch('/typecast_voices')
-            .then(response => response.json())
-            .then(data => {
-                const voiceSelect = document.getElementById('typecast-voice-select');
-                voiceSelect.innerHTML = '';
-
-                if (data.voices && data.voices.length > 0) {
-                    data.voices.forEach(voice => {
-                        const option = document.createElement('option');
-                        option.value = voice.id;
-                        option.text = voice.name;
-                        voiceSelect.add(option);
-                    });
-                    const saved = voiceSelect.dataset.initial;
-                    if (saved && saved !== 'None' && saved !== '' &&
-                        [...voiceSelect.options].some(o => o.value === saved)) {
-                        voiceSelect.value = saved;
-                    }
+        const preferred = configuredSelection('voice', provider);
+        let options = [];
+        let emptyLabel = 'No voices available';
+        showPlaceholder(voiceSelect, 'Loading voices…');
+        try {
+            if (provider === 'openai') {
+                const data = await fetchVoiceData('/openai_tts_voices');
+                if (!isCurrent()) return;
+                if (data.local) {
+                    options = Array.isArray(data.voices) ? data.voices : [];
+                    voiceHint.textContent = data.error
+                        ? 'Local voice list unavailable; using the configured voice if available.'
+                        : 'Voices from your OpenAI-compatible TTS server.';
                 } else {
-                    typecastVoicePlaceholder();
+                    options = templateOptions('voice', provider);
                 }
-            })
-            .catch(error => {
-                console.error('Error fetching Typecast voices:', error);
-                typecastVoicePlaceholder();
-            });
-    }
+            } else if (provider === 'xai') {
+                options = templateOptions('voice', provider);
+            } else {
+                const paths = {
+                    elevenlabs: '/elevenlabs_voices',
+                    kokoro: '/kokoro_voices',
+                    typecast: '/typecast_voices'
+                };
+                const data = await fetchVoiceData(paths[provider]);
+                if (!isCurrent()) return;
+                const voices = Array.isArray(data.voices)
+                    ? data.voices
+                    : Object.entries(data.voices || {}).map(([name, id]) => ({ id, name }));
+                options = voices.map(voice => ({
+                    id: voice.id,
+                    name: voice.name || voice.id,
+                    disabled: String(voice.id).startsWith('separator_')
+                }));
+                if (data.error) {
+                    voiceHint.textContent = 'Voice list unavailable; using the configured voice if available.';
+                }
+            }
+        } catch (error) {
+            if (!isCurrent()) return;
+            console.error(`Error fetching ${provider} voices:`, error);
+            voiceHint.textContent = 'Voice list unavailable; using the configured voice if available.';
+            emptyLabel = 'Voices unavailable';
+        }
 
-    function setOpenAIVoice() {
-        const selectedVoice = document.getElementById('openai-voice-select').value;
-        websocket.send(JSON.stringify({ action: "set_openai_voice", voice: selectedVoice }));
-    }
-
-    function setOpenAIModel() {
-        const selectedModel = document.getElementById('openai-model-select').value;
-        websocket.send(JSON.stringify({ action: "set_openai_model", model: selectedModel }));
-    }
-
-    function setOllamaModel() {
-        const selectedModel = document.getElementById('ollama-model-select').value;
-        websocket.send(JSON.stringify({ action: "set_ollama_model", model: selectedModel }));
-    }
-
-    function setXAIModel() {
-        const selectedModel = document.getElementById('xai-model-select').value;
-        websocket.send(JSON.stringify({ action: "set_xai_model", model: selectedModel }));
-    }
-
-    function setAnthropicModel() {
-        const selectedModel = document.getElementById('anthropic-model-select').value;
-        websocket.send(JSON.stringify({ action: "set_anthropic_model", model: selectedModel }));
+        if (!isCurrent()) return;
+        fillSelect(voiceSelect, options, preferred, emptyLabel);
+        if (!voiceSelect.disabled) {
+            selectedVoices[provider] = voiceSelect.value;
+            sendSetting(voiceActions[provider], 'voice', voiceSelect.value);
+        }
     }
 
     function setVoiceSpeed() {
-        const selectedSpeed = document.getElementById('voice-speed-select').value;
-        websocket.send(JSON.stringify({ action: "set_voice_speed", speed: selectedSpeed }));
-    }
-
-    function setElevenLabsVoice() {
-        const selectedVoice = document.getElementById('elevenlabs-voice-select').value;
-        websocket.send(JSON.stringify({ action: "set_elevenlabs_voice", voice: selectedVoice }));
-    }
-
-    function setKokoroVoice() {
-        const selectedVoice = document.getElementById('kokoro-voice-select').value;
-        websocket.send(JSON.stringify({ action: "set_kokoro_voice", voice: selectedVoice }));
-    }
-
-    function setXAITTSVoice() {
-        const selectedVoice = document.getElementById('xai-tts-voice-select').value;
-        websocket.send(JSON.stringify({ action: "set_xai_tts_voice", voice: selectedVoice }));
-    }
-
-    function setTypecastVoice() {
-        const selectedVoice = document.getElementById('typecast-voice-select').value;
-        websocket.send(JSON.stringify({ action: "set_typecast_voice", voice: selectedVoice }));
+        sendSetting('set_voice_speed', 'speed', voiceSpeedSelect.value);
     }
 
     characterSelect.addEventListener('change', function() {
@@ -727,19 +724,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
     providerSelect.addEventListener('change', setProvider);
     ttsSelect.addEventListener('change', setTTS);
-    openaiVoiceSelect.addEventListener('change', setOpenAIVoice);
-    openaiModelSelect.addEventListener('change', setOpenAIModel);
-    ollamaModelSelect.addEventListener('change', setOllamaModel);
-    xaiModelSelect.addEventListener('change', setXAIModel);
-    const anthropicModelSelect = document.getElementById('anthropic-model-select');
-    if (anthropicModelSelect) {
-        anthropicModelSelect.addEventListener('change', setAnthropicModel);
-    }
+    modelSelect.addEventListener('change', function() {
+        selectedModels[providerSelect.value] = modelSelect.value;
+        sendSetting(modelActions[providerSelect.value], 'model', modelSelect.value);
+        updateStartAvailability();
+    });
+    voiceSelect.addEventListener('change', function() {
+        selectedVoices[ttsSelect.value] = voiceSelect.value;
+        sendSetting(voiceActions[ttsSelect.value], 'voice', voiceSelect.value);
+        updateStartAvailability();
+    });
     voiceSpeedSelect.addEventListener('change', setVoiceSpeed);
-    elevenLabsVoiceSelect.addEventListener('change', setElevenLabsVoice);
-    kokoroVoiceSelect.addEventListener('change', setKokoroVoice);
-    xaiTTSVoiceSelect.addEventListener('change', setXAITTSVoice);
-    typecastVoiceSelect.addEventListener('change', setTypecastVoice);
 
     transcriptionSelect.addEventListener('change', function() {
         fetch('/set_transcription_model', {
@@ -805,60 +800,13 @@ document.addEventListener("DOMContentLoaded", function() {
     loadThemePreference();
     setDarkModeDefault();
 
-    fetchOpenAITTSVoices();
+    renderModelSelect();
+    renderVoiceSelect();
 
-    function selectKokoroVoiceInDropdown() {
-        const envVoice = (kokoroVoiceSelect.dataset.initial || '').trim();
-        const optionValues = Array.from(kokoroVoiceSelect.options).map((option) => option.value);
-        if (envVoice && optionValues.includes(envVoice)) {
-            kokoroVoiceSelect.value = envVoice;
-        }
-    }
-
-    function populateKokoroVoiceSelect(voices) {
-        kokoroVoiceSelect.innerHTML = '';
-
-        if (voices && voices.length > 0) {
-            voices.forEach(voice => {
-                const option = document.createElement('option');
-                option.value = voice.id;
-                option.text = voice.name;
-                kokoroVoiceSelect.add(option);
-            });
-            selectKokoroVoiceInDropdown();
-            return;
-        }
-
-        const placeholderOption = document.createElement('option');
-        placeholderOption.value = 'af_bella';
-        placeholderOption.text = 'Select Kokoro TTS to Load';
-        kokoroVoiceSelect.add(placeholderOption);
-    }
-
-    // Fetch Kokoro voices
-    fetch('/kokoro_voices')
-        .then(response => response.json())
-        .then(data => {
-            populateKokoroVoiceSelect(data.voices);
-        })
-        .catch(error => {
-            console.error('Error fetching Kokoro voices:', error);
-            populateKokoroVoiceSelect([]);
-        });
-
-    // Typecast: only hit the API when Typecast is the active TTS provider (avoid 403/log spam for OpenAI/etc.)
-    if (ttsSelect.value === 'typecast') {
-        fetchTypecastVoices();
-    } else {
-        typecastVoicePlaceholder();
-    }
-
-    window.addEventListener('pageshow', function (ev) {
-        if (ev.persisted && providerSelect.value === 'ollama') {
-            fetchOllamaModels();
-        }
-        if (ev.persisted && ttsSelect.value === 'typecast') {
-            fetchTypecastVoices();
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            renderModelSelect();
+            renderVoiceSelect();
         }
     });
 });

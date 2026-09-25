@@ -537,14 +537,62 @@ button:active {
 
 .settings {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 1.25rem;
     width: 100%;
+}
+
+.settings-section {
+    min-width: 0;
+    padding: 1.25rem;
+    background: var(--conversation-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 3px 12px var(--shadow-color);
+}
+
+.settings-section-heading {
+    margin-bottom: 1.15rem;
+}
+
+.settings-section-heading h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+}
+
+.settings-section-heading p {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.72;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
 }
 
 .setting-group {
     display: flex;
     flex-direction: column;
+    min-width: 0;
+}
+
+.setting-group-wide {
+    grid-column: 1 / -1;
+}
+
+.setting-hint {
+    margin-top: 0.4rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    opacity: 0.72;
+}
+
+.setting-hint:empty {
+    display: none;
 }
 
 label {
@@ -793,9 +841,11 @@ a:hover {
     main {
         max-width: 1200px;
     }
+}
 
-    .settings {
-        grid-template-columns: repeat(4, 1fr);
+@media (max-width: 480px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
     }
 }
 
