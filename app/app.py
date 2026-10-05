@@ -102,6 +102,12 @@ TYPECAST_API_KEY = os.getenv('TYPECAST_API_KEY')
 TYPECAST_TTS_VOICE = os.getenv('TYPECAST_TTS_VOICE')
 TYPECAST_TTS_MODEL = os.getenv('TYPECAST_TTS_MODEL', 'ssfm-v30')
 TYPECAST_EMOTION_PRESET = os.getenv('TYPECAST_EMOTION_PRESET', 'normal')
+SPEECHIFY_API_KEY = os.getenv('SPEECHIFY_API_KEY')
+SPEECHIFY_BASE_URL = os.getenv('SPEECHIFY_BASE_URL', 'https://api.speechify.ai')
+SPEECHIFY_TTS_VOICE = os.getenv('SPEECHIFY_TTS_VOICE', 'geffen_32')
+SPEECHIFY_TTS_MODEL = os.getenv('SPEECHIFY_TTS_MODEL', 'simba-3.2')
+SPEECHIFY_TTS_LANGUAGE = os.getenv('SPEECHIFY_TTS_LANGUAGE', '').strip()
+SPEECHIFY_TTS_TIMEOUT = int(os.getenv('SPEECHIFY_TTS_TIMEOUT', '60'))
 MAX_CHAR_LENGTH = int(os.getenv('MAX_CHAR_LENGTH', 500))
 VOICE_SPEED = os.getenv('VOICE_SPEED', '1.0')
 SPARKTTS_MODEL_DIR = os.getenv('SPARKTTS_MODEL_DIR', 'pretrained_models/Spark-TTS-0.5B')
@@ -260,6 +266,11 @@ def init_typecast_tts_voice(voice_id):
     global TYPECAST_TTS_VOICE
     TYPECAST_TTS_VOICE = voice_id
     print(f"Switched to Typecast TTS voice: {voice_id}")
+
+def init_speechify_tts_voice(voice_id):
+    global SPEECHIFY_TTS_VOICE
+    SPEECHIFY_TTS_VOICE = voice_id
+    print(f"Switched to Speechify TTS voice: {voice_id}")
 
 def init_voice_speed(speed_value):
     global VOICE_SPEED
@@ -531,6 +542,22 @@ async def process_and_play(prompt, audio_file_pth):
                 "action": "error",
                 "message": "Typecast audio file not found after generation"
             }))
+    elif TTS_PROVIDER == 'speechify':
+        output_path = os.path.join(output_dir, 'output.wav')
+        success = await speechify_text_to_speech(prompt, output_path)
+        if success and os.path.exists(output_path):
+            print("Playing generated audio...")
+            await send_message_to_clients(json.dumps({"action": "ai_start_speaking"}))
+            await play_audio(output_path)
+            await send_message_to_clients(json.dumps({"action": "ai_stop_speaking"}))
+        elif not success:
+            print("Failed to generate Speechify audio.")
+        else:
+            print("Error: Speechify audio file not found after generation.")
+            await send_message_to_clients(json.dumps({
+                "action": "error",
+                "message": "Speechify audio file not found after generation"
+            }))
     else:
         print(f"Unknown TTS provider: {TTS_PROVIDER}")
         await send_message_to_clients(json.dumps({
@@ -789,6 +816,72 @@ async def typecast_text_to_speech(text, output_path):
         await send_message_to_clients(json.dumps({
             "action": "error",
             "message": f"Typecast TTS error: {str(e)}"
+        }))
+        return False
+
+def build_speechify_tts_payload(text):
+    payload = {
+        "input": text,
+        "voice_id": SPEECHIFY_TTS_VOICE,
+        "model": SPEECHIFY_TTS_MODEL,
+    }
+    if SPEECHIFY_TTS_LANGUAGE:
+        payload["language"] = SPEECHIFY_TTS_LANGUAGE
+    return payload
+
+async def speechify_text_to_speech(text, output_path):
+    """Stream speech from the Speechify API and save it as a WAV file."""
+    if not SPEECHIFY_API_KEY:
+        print("SPEECHIFY_API_KEY is not set. Cannot use Speechify TTS.")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "SPEECHIFY_API_KEY is not set"
+        }))
+        return False
+
+    headers = {
+        "Authorization": f"Bearer {SPEECHIFY_API_KEY}",
+        "Content-Type": "application/json",
+        # Raw 16-bit mono PCM at 24 kHz, wrapped in a WAV header below.
+        "Accept": "audio/pcm",
+    }
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=SPEECHIFY_TTS_TIMEOUT)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{SPEECHIFY_BASE_URL.rstrip('/')}/v1/audio/stream",
+                headers=headers,
+                json=build_speechify_tts_payload(text),
+                timeout=timeout,
+            ) as response:
+                if response.status == 200:
+                    pcm_data = io.BytesIO()
+                    async for chunk in response.content.iter_chunked(8192):
+                        pcm_data.write(chunk)
+                    save_pcm_as_wav(pcm_data.getvalue(), output_path, sample_rate=24000)
+                    print("Audio generated successfully with Speechify.")
+                    return True
+
+                error_text = await response.text()
+                print(f"Error generating Speechify speech (HTTP {response.status}): {error_text}")
+                await send_message_to_clients(json.dumps({
+                    "action": "error",
+                    "message": f"Speechify TTS error: {response.status}"
+                }))
+                return False
+    except asyncio.TimeoutError:
+        print("Speechify TTS request timed out. Try a shorter text or check your connection.")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": "Speechify TTS request timed out. Text may be too long."
+        }))
+        return False
+    except Exception as e:
+        print(f"Error during Speechify TTS generation: {str(e)}")
+        await send_message_to_clients(json.dumps({
+            "action": "error",
+            "message": f"Speechify TTS error: {str(e)}"
         }))
         return False
 
@@ -1491,6 +1584,9 @@ async def execute_once(question_prompt):
     elif TTS_PROVIDER == 'openai':
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for OpenAI
         max_char_length = MAX_CHAR_LENGTH  # Set a higher limit for OpenAI
+    elif TTS_PROVIDER == 'speechify':
+        temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # PCM stream saved as wav
+        max_char_length = MAX_CHAR_LENGTH  # Stream endpoint supports up to 20,000 chars
     else:
         temp_audio_path = os.path.join(output_dir, 'temp_audio.wav')  # Use wav for Spark-TTS
         max_char_length = SPARKTTS_MAX_CHARS  # Spark-TTS character limit
@@ -1682,6 +1778,9 @@ async def generate_speech(text, temp_audio_path):
 
     elif TTS_PROVIDER == 'typecast':
         await typecast_text_to_speech(text, temp_audio_path)
+
+    elif TTS_PROVIDER == 'speechify':
+        await speechify_text_to_speech(text, temp_audio_path)
 
     else:  # Spark-TTS
         if sparktts_model is not None:

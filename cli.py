@@ -78,6 +78,12 @@ TYPECAST_API_KEY = os.getenv('TYPECAST_API_KEY')
 TYPECAST_TTS_VOICE = os.getenv('TYPECAST_TTS_VOICE')
 TYPECAST_TTS_MODEL = os.getenv('TYPECAST_TTS_MODEL', 'ssfm-v30')
 TYPECAST_EMOTION_PRESET = os.getenv('TYPECAST_EMOTION_PRESET', 'normal')
+SPEECHIFY_API_KEY = os.getenv('SPEECHIFY_API_KEY')
+SPEECHIFY_BASE_URL = os.getenv('SPEECHIFY_BASE_URL', 'https://api.speechify.ai')
+SPEECHIFY_TTS_VOICE = os.getenv('SPEECHIFY_TTS_VOICE', 'geffen_32')
+SPEECHIFY_TTS_MODEL = os.getenv('SPEECHIFY_TTS_MODEL', 'simba-3.2')
+SPEECHIFY_TTS_LANGUAGE = os.getenv('SPEECHIFY_TTS_LANGUAGE', '').strip()
+SPEECHIFY_TTS_TIMEOUT = int(os.getenv('SPEECHIFY_TTS_TIMEOUT', '60'))
 
 audio_playback_stop_requested = False
 
@@ -267,7 +273,7 @@ print(f"Model provider: {MODEL_PROVIDER}")
 print(f"Model: {OPENAI_MODEL if MODEL_PROVIDER == 'openai' else XAI_MODEL if MODEL_PROVIDER == 'xai' else ANTHROPIC_MODEL if MODEL_PROVIDER == 'anthropic' else OLLAMA_MODEL}")
 print(f"Character: {character_display_name}")
 print(f"Text-to-Speech provider: {TTS_PROVIDER}")
-print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else 'xai-grok-tts' if TTS_PROVIDER == 'xai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else TYPECAST_TTS_MODEL if TTS_PROVIDER == 'typecast' else 'Unknown'}")
+print(f"Text-to-Speech model: {OPENAI_MODEL_TTS if TTS_PROVIDER == 'openai' else 'xai-grok-tts' if TTS_PROVIDER == 'xai' else ELEVENLABS_TTS_MODEL if TTS_PROVIDER == 'elevenlabs' else 'kokoro-tts' if TTS_PROVIDER == 'kokoro' else 'Spark-TTS-0.5B' if TTS_PROVIDER == 'sparktts' else TYPECAST_TTS_MODEL if TTS_PROVIDER == 'typecast' else SPEECHIFY_TTS_MODEL if TTS_PROVIDER == 'speechify' else 'Unknown'}")
 print("To stop chatting say Quit or Exit. One moment please loading...")
 
 # Function to synthesize speech
@@ -339,6 +345,17 @@ def process_and_play(prompt, audio_file_pth):
         if os.path.exists(output_path):
             print("Playing generated audio...")
             play_audio(output_path)
+        else:
+            print("Error: Audio file not found.")
+    elif TTS_PROVIDER == 'speechify':
+        output_path = os.path.join(output_dir, 'output.wav')
+        success = speechify_text_to_speech(prompt, output_path)
+        print(f"Generated audio file at: {output_path}")
+        if success and os.path.exists(output_path):
+            print("Playing generated audio...")
+            play_audio(output_path)
+        elif not success:
+            print("Failed to generate Speechify audio.")
         else:
             print("Error: Audio file not found.")
 
@@ -585,6 +602,46 @@ def typecast_text_to_speech(text, output_path):
         return False
     except Exception as e:
         print(f"Error during Typecast TTS generation: {e}")
+        return False
+
+def speechify_text_to_speech(text, output_path):
+    """Stream speech from the Speechify API and save it as a WAV file."""
+    if not SPEECHIFY_API_KEY:
+        print("SPEECHIFY_API_KEY is not set. Cannot use Speechify TTS.")
+        return False
+
+    headers = {
+        "Authorization": f"Bearer {SPEECHIFY_API_KEY}",
+        "Content-Type": "application/json",
+        # Raw 16-bit mono PCM at 24 kHz, wrapped in a WAV header below.
+        "Accept": "audio/pcm",
+    }
+    payload = {
+        "input": text,
+        "voice_id": SPEECHIFY_TTS_VOICE,
+        "model": SPEECHIFY_TTS_MODEL,
+    }
+    if SPEECHIFY_TTS_LANGUAGE:
+        payload["language"] = SPEECHIFY_TTS_LANGUAGE
+
+    try:
+        with requests.post(
+            f"{SPEECHIFY_BASE_URL.rstrip('/')}/v1/audio/stream",
+            headers=headers,
+            json=payload,
+            stream=True,
+            timeout=SPEECHIFY_TTS_TIMEOUT,
+        ) as response:
+            if response.status_code != 200:
+                print(f"Error from Speechify API: HTTP {response.status_code} - {response.text}")
+                return False
+            pcm_data = b"".join(response.iter_content(chunk_size=8192))
+
+        save_pcm_as_wav(pcm_data, output_path, sample_rate=24000)
+        print("Audio generated successfully with Speechify.")
+        return True
+    except Exception as e:
+        print(f"Error during Speechify TTS generation: {e}")
         return False
 
 def sanitize_response(response):
@@ -1391,6 +1448,8 @@ def generate_speech(text, temp_audio_path):
         xai_text_to_speech(text, temp_audio_path)
     elif TTS_PROVIDER == 'typecast':
         typecast_text_to_speech(text, temp_audio_path)
+    elif TTS_PROVIDER == 'speechify':
+        speechify_text_to_speech(text, temp_audio_path)
     else:  # Spark-TTS
         if sparktts_model is not None:
             try:

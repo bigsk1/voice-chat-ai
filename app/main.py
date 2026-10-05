@@ -124,6 +124,8 @@ def _dashboard_tts_providers() -> list[tuple[str, str]]:
         providers.append(("sparktts", "Spark-TTS (Local)"))
     if _dashboard_api_key_configured("TYPECAST_API_KEY"):
         providers.append(("typecast", "Typecast"))
+    if _dashboard_api_key_configured("SPEECHIFY_API_KEY"):
+        providers.append(("speechify", "Speechify"))
     return providers
 
 
@@ -176,6 +178,7 @@ async def get_index(request: Request):
     kokoro_voice = os.getenv("KOKORO_TTS_VOICE", "af_bella")
     xai_tts_voice = os.getenv("XAI_TTS_VOICE", "eve")
     typecast_voice = os.getenv("TYPECAST_TTS_VOICE")
+    speechify_voice = os.getenv("SPEECHIFY_TTS_VOICE", "geffen_32")
     faster_whisper_local = os.getenv("FASTER_WHISPER_LOCAL", "true").lower() == "true"
     ui_server_logs = ui_server_logs_enabled()
 
@@ -198,6 +201,7 @@ async def get_index(request: Request):
         "kokoro_voice": kokoro_voice,
         "xai_tts_voice": xai_tts_voice,
         "typecast_voice": typecast_voice,
+        "speechify_voice": speechify_voice,
         "faster_whisper_local": faster_whisper_local,
         "ui_server_logs": ui_server_logs,
     })
@@ -634,6 +638,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 set_env_variable("XAI_TTS_VOICE", message["voice"])
             elif message["action"] == "set_typecast_voice":
                 set_env_variable("TYPECAST_TTS_VOICE", message["voice"])
+            elif message["action"] == "set_speechify_voice":
+                set_env_variable("SPEECHIFY_TTS_VOICE", message["voice"])
             elif message["action"] == "clear":
                 conversation_history.clear()
                 await websocket.send_json({"message": "Conversation history cleared."})
@@ -1186,6 +1192,71 @@ async def get_typecast_voices():
         return {"voices": [], "error": "typecast-python package is not installed"}
     except Exception as e:
         logger.error(f"Error fetching Typecast voices: {str(e)}")
+        return {"voices": [], "error": str(e)}
+
+def _speechify_voice_options(voice_list) -> list[dict]:
+    """Turn GET /v1/voices entries into dashboard dropdown options."""
+    voices = []
+    seen_labels = set()
+    for voice in voice_list:
+        voice_id = voice.get("id")
+        if not voice_id:
+            continue
+        name = voice.get("display_name") or voice_id
+        details = ", ".join(
+            part for part in (voice.get("locale"), voice.get("gender")) if part
+        )
+        label = f"{name} ({details})" if details else name
+        if voice.get("type") == "personal":
+            label = f"{label} - your voice"
+        if label in seen_labels:
+            label = f"{label} [{voice_id}]"
+        seen_labels.add(label)
+        voices.append({"id": voice_id, "name": label})
+    return voices
+
+
+@app.get("/speechify_voices")
+async def get_speechify_voices():
+    api_key = os.getenv("SPEECHIFY_API_KEY")
+    if not _dashboard_api_key_configured("SPEECHIFY_API_KEY"):
+        return {"voices": [], "error": "SPEECHIFY_API_KEY not set"}
+
+    base_url = os.getenv("SPEECHIFY_BASE_URL", "https://api.speechify.ai").rstrip("/")
+    model = os.getenv("SPEECHIFY_TTS_MODEL", "simba-3.2")
+    headers = {"Authorization": f"Bearer {api_key}"}
+    params = {"model": model, "limit": "200"}
+    voice_list = []
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            # Newer API versions return {"voices": [...], "next_cursor": ...};
+            # older ones return a plain list. Handle both.
+            for _ in range(20):
+                async with session.get(
+                    f"{base_url}/v1/voices", headers=headers, params=params
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(
+                            f"Error fetching Speechify voices: HTTP {response.status} - {error_text}"
+                        )
+                        return {"voices": [], "error": f"HTTP {response.status}"}
+                    data = await response.json()
+
+                if isinstance(data, list):
+                    voice_list.extend(data)
+                    break
+                voice_list.extend(data.get("voices") or [])
+                next_cursor = data.get("next_cursor")
+                if not data.get("has_more") or not next_cursor:
+                    break
+                params = {**params, "cursor": next_cursor}
+
+        return {"voices": _speechify_voice_options(voice_list)}
+    except Exception as e:
+        logger.error(f"Error fetching Speechify voices: {str(e)}")
         return {"voices": [], "error": str(e)}
 
 def signal_handler(sig, frame):

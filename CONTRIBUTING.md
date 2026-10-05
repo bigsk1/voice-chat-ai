@@ -26,7 +26,7 @@ Include steps to reproduce (for bugs) or how you tested the change.
 
 ### LLM and TTS providers — curated, not exhaustive
 
-The app already supports several **chat** providers (OpenAI, xAI, Ollama, Anthropic) and **TTS** options (OpenAI, xAI, ElevenLabs, Kokoro, Spark-TTS, Typecast). That set is intentional and sufficient for most users.
+The app already supports several **chat** providers (OpenAI, xAI, Ollama, Anthropic) and **TTS** options (OpenAI, xAI, ElevenLabs, Kokoro, Spark-TTS, Typecast, Speechify). That set is intentional and sufficient for most users.
 
 We are **not** looking to add every provider from the ecosystem (dozens of TTS backends, gateway wrappers, etc.). Each integration must be maintained, documented, and tested across Web UI, CLI, `.env` configuration, and install paths.
 

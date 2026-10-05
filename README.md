@@ -32,7 +32,7 @@ Get up and running fast with Voice Chat AI! 🔊
 ## Features
 
 - **Supports OpenAI, xAI, Anthropic or Ollama language models**: Choose the model that best fits your needs.
-- **Provides text-to-speech synthesis using Spark-TTS or OpenAI TTS or ElevenLabs or Kokoro TTS or Typecast**: Enjoy natural and expressive voices with optional local voice cloning.
+- **Provides text-to-speech synthesis using Spark-TTS or OpenAI TTS or ElevenLabs or Kokoro TTS or Typecast or Speechify**: Enjoy natural and expressive voices with optional local voice cloning.
 - **Provides speech to speech using OpenAI Realtime API**: Have a real time conversation with AI characters, interrupt the AI and have instant responses.
 - **OpenAI Enhanced Mode TTS Model**: Uses emotions and prompts to make the AI more human like.
 - **Flexible transcription options**: Uses OpenAI transcription by default, with option to use Local Faster Whisper.
@@ -52,7 +52,7 @@ Get up and running fast with Voice Chat AI! 🔊
 - Python 3.11+
 - ffmpeg
 - Ollama models or OpenAI or xAI or Anthropic for chat
-- Spark-TTS (local), OpenAI API, ElevenLabs API, Kokoro TTS, or Typecast API for speech
+- Spark-TTS (local), OpenAI API, ElevenLabs API, Kokoro TTS, Typecast API, or Speechify API for speech
 - Microphone
 - A sense of humor
 
@@ -185,6 +185,21 @@ To use Typecast TTS:
    - `TYPECAST_TTS_VOICE=your_voice_id_here`
    - `TYPECAST_TTS_MODEL=ssfm-v30` (or `ssfm-v21`)
    - `TYPECAST_EMOTION_PRESET=normal` (options: `normal`, `happy`, `sad`, `angry`, `whisper`, `toneup`, `tonedown`)
+
+### Speechify TTS - Optional
+
+[Speechify](https://speechify.ai) is a cloud TTS API with streaming, low latency voices.
+
+To use Speechify TTS:
+
+1. Get an API key from [platform.speechify.ai](https://platform.speechify.ai)
+2. Configure in `.env`:
+   - `TTS_PROVIDER=speechify`
+   - `SPEECHIFY_API_KEY=your_api_key_here`
+   - `SPEECHIFY_TTS_VOICE=geffen_32` (the dashboard lists every voice your key can use)
+   - `SPEECHIFY_TTS_MODEL=simba-3.2` (or `simba-3.0` for German, Spanish, French, Italian or Portuguese)
+
+See [docs/SPEECHIFY.md](docs/SPEECHIFY.md) for more details.
 
 ## Usage
 
