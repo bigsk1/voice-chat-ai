@@ -29,6 +29,7 @@ from .app import (
     init_kokoro_tts_voice,
     init_xai_tts_voice,
     init_typecast_tts_voice,
+    init_speechify_tts_voice,
     init_voice_speed,
     reset_audio_playback_stop,
     save_conversation_history,
@@ -371,6 +372,8 @@ def set_env_variable(key: str, value: str):
         init_xai_tts_voice(value)  # Reinitialize xAI TTS voice
     if key == "TYPECAST_TTS_VOICE":
         init_typecast_tts_voice(value)  # Reinitialize Typecast TTS voice
+    if key == "SPEECHIFY_TTS_VOICE":
+        init_speechify_tts_voice(value)  # Reinitialize Speechify TTS voice
     if key == "VOICE_SPEED":
         init_voice_speed(value)  # Reinitialize Voice Speed for all TTS providers
     if key == "TTS_PROVIDER":

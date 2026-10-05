@@ -16,6 +16,7 @@ DASHBOARD_ENV_KEYS = (
     "ANTHROPIC_API_KEY",
     "ELEVENLABS_API_KEY",
     "TYPECAST_API_KEY",
+    "SPEECHIFY_API_KEY",
     "OLLAMA_BASE_URL",
     "OLLAMA_MODEL",
     "KOKORO_BASE_URL",
@@ -59,11 +60,24 @@ def test_dashboard_lists_configured_cloud_providers(clean_dashboard_env, monkeyp
     monkeypatch.setenv("ELEVENLABS_API_KEY", "test-elevenlabs-key")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "your_api_key_here")
     monkeypatch.setenv("TYPECAST_API_KEY", "your_api_key_here")
+    monkeypatch.setenv("SPEECHIFY_API_KEY", "your_api_key_here")
 
     response = TestClient(app).get("/")
 
     assert select_values(response.text, "provider-select") == ["xai"]
     assert select_values(response.text, "tts-select") == ["xai", "elevenlabs"]
+
+
+def test_dashboard_lists_speechify_when_key_configured(clean_dashboard_env, monkeypatch):
+    monkeypatch.setenv("TTS_PROVIDER", "speechify")
+    monkeypatch.setenv("SPEECHIFY_API_KEY", "test-speechify-key")
+    monkeypatch.setenv("SPEECHIFY_TTS_VOICE", "geffen_32")
+
+    response = TestClient(app).get("/")
+
+    assert select_values(response.text, "tts-select") == ["speechify"]
+    assert 'id="tts-select" data-initial="speechify" data-configured="speechify"' in response.text
+    assert 'id="voice-options-speechify" data-initial="geffen_32"' in response.text
 
 
 def test_dashboard_supports_local_and_custom_tts_without_cloud_key(

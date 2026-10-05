@@ -33,7 +33,8 @@ document.addEventListener("DOMContentLoaded", function() {
         elevenlabs: 'set_elevenlabs_voice',
         kokoro: 'set_kokoro_voice',
         xai: 'set_xai_tts_voice',
-        typecast: 'set_typecast_voice'
+        typecast: 'set_typecast_voice',
+        speechify: 'set_speechify_voice'
     };
     const selectedModels = Object.create(null);
     const selectedVoices = Object.create(null);
@@ -598,7 +599,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 const paths = {
                     elevenlabs: '/elevenlabs_voices',
                     kokoro: '/kokoro_voices',
-                    typecast: '/typecast_voices'
+                    typecast: '/typecast_voices',
+                    speechify: '/speechify_voices'
                 };
                 const data = await fetchVoiceData(paths[provider]);
                 if (!isCurrent()) return;
