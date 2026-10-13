@@ -104,7 +104,11 @@ def test_speechify_voices_follows_cursor_pages(monkeypatch):
     response = TestClient(app).get("/speechify_voices")
 
     assert [v["id"] for v in response.json()["voices"]] == ["geffen_32", "harper_32"]
-    assert calls[0][2]["headers"] == {"Authorization": "Bearer test-key"}
+    assert calls[0][2]["headers"] == {
+        "Authorization": "Bearer test-key",
+        "Speechify-Caller": "voice-chat-ai",
+        "Speechify-Caller-Version": "1.4.1",
+    }
     assert calls[0][2]["params"]["model"] == "simba-3.2"
     assert calls[1][2]["params"]["cursor"] == "page2"
 
@@ -149,6 +153,8 @@ def test_speechify_tts_writes_wav_from_pcm_stream(monkeypatch, tmp_path):
     assert (method, url) == ("POST", "https://api.speechify.ai/v1/audio/stream")
     assert kwargs["headers"]["Authorization"] == "Bearer test-key"
     assert kwargs["headers"]["Accept"] == "audio/pcm"
+    assert kwargs["headers"]["Speechify-Caller"] == "voice-chat-ai"
+    assert kwargs["headers"]["Speechify-Caller-Version"] == "1.4.1"
     with wave.open(str(output_path), "rb") as wav:
         assert wav.getframerate() == 24000
         assert wav.getnchannels() == 1
@@ -171,3 +177,14 @@ def test_speechify_tts_reports_http_error(monkeypatch, tmp_path):
     assert not asyncio.run(app_module.speechify_text_to_speech("Hi", str(output_path)))
     assert not output_path.exists()
     assert "Speechify TTS error: 401" in sent[0]
+
+
+def test_speechify_caller_version_matches_pyproject():
+    import tomllib
+    from pathlib import Path
+
+    from app.speechify_compat import speechify_caller_headers
+
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    version = tomllib.loads(pyproject.read_text())["project"]["version"]
+    assert speechify_caller_headers()["Speechify-Caller-Version"] == version

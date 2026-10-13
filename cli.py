@@ -24,6 +24,7 @@ from datetime import datetime
 import warnings
 from app.transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
 from app.openai_compat import build_openai_chat_payload
+from app.speechify_compat import speechify_caller_headers
 from app.xai_compat import build_xai_chat_payload, normalize_xai_model, xai_chat_timeout
 from app.story_time import (
     add_message_timestamp,
@@ -615,6 +616,7 @@ def speechify_text_to_speech(text, output_path):
         "Content-Type": "application/json",
         # Raw 16-bit mono PCM at 24 kHz, wrapped in a WAV header below.
         "Accept": "audio/pcm",
+        **speechify_caller_headers(),
     }
     payload = {
         "input": text,

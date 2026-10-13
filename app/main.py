@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from starlette.background import BackgroundTask
+from .speechify_compat import speechify_caller_headers
 from .shared import clients, set_current_character, conversation_history, add_client, remove_client
 from .app_logic import start_conversation, stop_conversation, pause_audio_playback, resume_audio_playback, set_env_variable, save_conversation_history, characters_folder, set_transcription_model, fetch_ollama_models, load_character_prompt, save_character_specific_history
 from .enhanced_logic import start_enhanced_conversation, stop_enhanced_conversation, pause_enhanced_audio_playback, resume_enhanced_audio_playback
@@ -1224,7 +1225,7 @@ async def get_speechify_voices():
 
     base_url = os.getenv("SPEECHIFY_BASE_URL", "https://api.speechify.ai").rstrip("/")
     model = os.getenv("SPEECHIFY_TTS_MODEL", "simba-3.2")
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = {"Authorization": f"Bearer {api_key}", **speechify_caller_headers()}
     params = {"model": model, "limit": "200"}
     voice_list = []
 
