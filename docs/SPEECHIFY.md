@@ -1,10 +1,10 @@
 # Speechify TTS - Optional
 
-[Speechify](https://speechify.ai) is a cloud text-to-speech API. Voice Chat AI calls its streaming endpoint (`POST /v1/audio/stream`) directly, so there is nothing extra to install: it uses the `aiohttp` and `requests` packages the app already ships with.
+[Speechify](https://speechify.ai?utm_source=github&utm_medium=docs&utm_campaign=voice-chat-ai) is a cloud text-to-speech API. Voice Chat AI calls its streaming endpoint (`POST /v1/audio/stream`) directly, so there is nothing extra to install: it uses the `aiohttp` and `requests` packages the app already ships with.
 
 ## 1. Get an API key
 
-Sign up at [platform.speechify.ai](https://platform.speechify.ai) and create an API key.
+Sign up at [platform.speechify.ai](https://platform.speechify.ai/signup?utm_source=github&utm_medium=docs&utm_campaign=voice-chat-ai) and create an API key.
 
 ## 2. Configure `.env`
 
@@ -58,4 +58,4 @@ curl -s "https://api.speechify.ai/v1/voices?model=simba-3.2" \
 - **HTTP 400:** usually a model name that is not valid. Use `simba-3.2` or `simba-3.0`.
 - **HTTP 429:** you hit your plan's rate or concurrency limit. Wait a moment and try again.
 
-API reference: [docs.speechify.ai](https://docs.speechify.ai)
+API reference: [docs.speechify.ai](https://docs.speechify.ai?utm_source=github&utm_medium=docs&utm_campaign=voice-chat-ai)

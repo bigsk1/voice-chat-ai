@@ -31,6 +31,7 @@ from .story_time import (
 )
 from .transcription import STT_SILENCE_DURATION, STT_SILENCE_THRESHOLD
 from .openai_compat import build_openai_chat_payload
+from .speechify_compat import speechify_caller_headers
 from .xai_compat import build_xai_chat_payload, normalize_xai_model, xai_chat_timeout
 
 # Load environment variables
@@ -844,6 +845,7 @@ async def speechify_text_to_speech(text, output_path):
         "Content-Type": "application/json",
         # Raw 16-bit mono PCM at 24 kHz, wrapped in a WAV header below.
         "Accept": "audio/pcm",
+        **speechify_caller_headers(),
     }
 
     try:

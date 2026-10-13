@@ -188,11 +188,11 @@ To use Typecast TTS:
 
 ### Speechify TTS - Optional
 
-[Speechify](https://speechify.ai) is a cloud TTS API with streaming, low latency voices.
+[Speechify](https://speechify.ai?utm_source=github&utm_medium=readme&utm_campaign=voice-chat-ai) is a cloud TTS API with streaming, low latency voices.
 
 To use Speechify TTS:
 
-1. Get an API key from [platform.speechify.ai](https://platform.speechify.ai)
+1. Get an API key from [platform.speechify.ai](https://platform.speechify.ai/signup?utm_source=github&utm_medium=readme&utm_campaign=voice-chat-ai)
 2. Configure in `.env`:
    - `TTS_PROVIDER=speechify`
    - `SPEECHIFY_API_KEY=your_api_key_here`
