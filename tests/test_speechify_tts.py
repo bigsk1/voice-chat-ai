@@ -85,7 +85,7 @@ def test_speechify_voices_requires_key(monkeypatch):
 
 def test_speechify_voices_follows_cursor_pages(monkeypatch):
     monkeypatch.setenv("SPEECHIFY_API_KEY", "test-key")
-    monkeypatch.setenv("SPEECHIFY_TTS_MODEL", "simba-3.2")
+    monkeypatch.delenv("SPEECHIFY_TTS_MODEL", raising=False)  # the default model is simba-3.5
     calls = []
     responses = [
         FakeResponse(body={
@@ -109,7 +109,7 @@ def test_speechify_voices_follows_cursor_pages(monkeypatch):
         "Speechify-Caller": "voice-chat-ai",
         "Speechify-Caller-Version": "1.4.1",
     }
-    assert calls[0][2]["params"]["model"] == "simba-3.2"
+    assert calls[0][2]["params"]["model"] == "simba-3.5"
     assert calls[1][2]["params"]["cursor"] == "page2"
 
 
@@ -127,12 +127,12 @@ def test_speechify_voices_accepts_plain_list(monkeypatch):
 
 def test_speechify_tts_payload(monkeypatch):
     monkeypatch.setattr(app_module, "SPEECHIFY_TTS_VOICE", "geffen_32")
-    monkeypatch.setattr(app_module, "SPEECHIFY_TTS_MODEL", "simba-3.2")
+    monkeypatch.setattr(app_module, "SPEECHIFY_TTS_MODEL", "simba-3.5")
     monkeypatch.setattr(app_module, "SPEECHIFY_TTS_LANGUAGE", "")
     assert app_module.build_speechify_tts_payload("Hello") == {
         "input": "Hello",
         "voice_id": "geffen_32",
-        "model": "simba-3.2",
+        "model": "simba-3.5",
     }
 
     monkeypatch.setattr(app_module, "SPEECHIFY_TTS_LANGUAGE", "fr-FR")

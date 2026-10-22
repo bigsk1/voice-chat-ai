@@ -197,7 +197,7 @@ To use Speechify TTS:
    - `TTS_PROVIDER=speechify`
    - `SPEECHIFY_API_KEY=your_api_key_here`
    - `SPEECHIFY_TTS_VOICE=geffen_32` (the dashboard lists every voice your key can use)
-   - `SPEECHIFY_TTS_MODEL=simba-3.2` (or `simba-3.0` for German, Spanish, French, Italian or Portuguese)
+   - `SPEECHIFY_TTS_MODEL=simba-3.5` (48 languages and every voice; set `SPEECHIFY_TTS_LANGUAGE` when the text is not in the voice's own language)
 
 See [docs/SPEECHIFY.md](docs/SPEECHIFY.md) for more details.
 
