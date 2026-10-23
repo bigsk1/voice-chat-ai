@@ -18,7 +18,7 @@ transformers==5.5.0
 # 3.10.1 blocks packages installed in a repo-local virtualenv as CWD imports.
 nltk==3.10.3
 pydantic==2.13.4
-pillow==12.3.0
+pillow==13.0.0
 
 pydub==0.25.1
 openai==2.52.0
