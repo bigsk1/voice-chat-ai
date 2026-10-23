@@ -1224,7 +1224,7 @@ async def get_speechify_voices():
         return {"voices": [], "error": "SPEECHIFY_API_KEY not set"}
 
     base_url = os.getenv("SPEECHIFY_BASE_URL", "https://api.speechify.ai").rstrip("/")
-    model = os.getenv("SPEECHIFY_TTS_MODEL", "simba-3.2")
+    model = os.getenv("SPEECHIFY_TTS_MODEL", "simba-3.5")
     headers = {"Authorization": f"Bearer {api_key}", **speechify_caller_headers()}
     params = {"model": model, "limit": "200"}
     voice_list = []
